@@ -6,100 +6,116 @@ sidebar:
   order: 4
 ---
 
-## 결과의 세 층
+## 결과는 세 층으로 나옵니다
 
-| 결과 | 의미 | 주로 쓰는 곳 |
+| 결과 | 뜻 | 주로 어디에 쓰나 |
 | --- | --- | --- |
-| bucket `anomaly_score` | 그 bucket의 모든 record 이상 정도를 통계적으로 집계하고 정규화한 값입니다. detector가 여러 개면 모두 합쳐 하나로 요약합니다. | 상위 요약과 알림. "16:05에 시스템이 평소와 달랐다"를 알려 줍니다. |
-| `record_score` | detector 하나, entity 하나의 이상 확률을 0~100으로 바꾼 값입니다. `detector_index`, `actual`, `typical`이 함께 기록됩니다. | 어떤 detector에서 무엇이 얼마나 벗어났는지 조사할 때 |
-| `influencer_score` | 그 entity가 이상에 기여한 정도입니다. 특정 detector에 묶이지 않습니다. | 원인 entity 찾기. detector가 여러 개일 때 특히 유용합니다. |
+| bucket `anomaly_score` | 그 bucket 안의 record들이 얼마나 이상한지를 통계적으로 모아 정규화한 값입니다. detector가 여러 개면 전부 합쳐 하나로 요약합니다. | 전체 요약과 alert. "16:05에 시스템이 평소와 달랐다"를 알려 줍니다. |
+| `record_score` | detector 하나, entity 하나가 얼마나 이상한지를 0~100으로 바꾼 값입니다. `detector_index`, `actual`, `typical`이 함께 남습니다. | 어떤 detector에서 무엇이 얼마나 벗어났는지 볼 때 |
+| `influencer_score` | 그 entity가 이상에 얼마나 기여했는지입니다. 특정 detector에 묶이지 않습니다. | 원인 entity 찾기. detector가 여러 개일 때 특히 쓸모가 많습니다. |
 
-Kibana Anomaly Explorer에서 timeline은 bucket 점수를, influencer swim lane과 top influencers는 influencer 점수를, 이상 목록은 record 점수를 씁니다.
-그래서 같은 시점이라도 화면마다 숫자가 조금씩 다를 수 있습니다.
+Kibana Anomaly Explorer에서 timeline은 bucket score를, influencer swim lane과 Top influencers는 influencer score를, Anomalies 표는 record score를 씁니다.
+그래서 같은 시점인데도 화면마다 숫자가 조금씩 다를 수 있습니다.
 
-결과의 timestamp는 bucket의 시작 시각입니다. 15분 bucket 11:45~12:00의 결과는 11:45로 기록됩니다.
+결과의 timestamp는 bucket이 시작하는 시각입니다. 15분 bucket 11:45~12:00의 결과는 11:45로 찍힙니다.
 
-:::tip["어느 entity가 원인인가"를 물을 때]
-bucket 점수는 시간대 전체의 요약입니다. 원인 후보를 고를 때는 그 bucket의 influencer 결과를 `influencer_score` 순으로 봅니다.
-여러 job에서 동시에 높게 나오는 entity가 근본 원인일 가능성이 높고, 한 job에만 나오는 entity는 영향을 받은 쪽인 경우가 많습니다.
+![Anomaly Explorer. 왼쪽에 clientip와 response.keyword별 Top influencers가, 오른쪽에 Overall과 client IP별 swim lane이 보입니다.](../../../../assets/ml-ad/explorer-overview.jpg)
+
+위 화면은 [실습](../08-hands-on-lab/)에서 만든 job입니다. 왼쪽 Top influencers에서 client IP 하나(99점)와 응답코드 404(98점)가 눈에 띄고, 오른쪽 swim lane에서는 그 IP가 딱 한 시간대에만 빨갛게 나옵니다.
+"언제"는 Overall 줄이, "누가"는 influencer가 알려 주는 셈입니다.
+
+:::tip[원인 entity를 고를 때]
+bucket score는 그 시간대 전체를 요약한 값이라 "누가"에 대한 답은 주지 않습니다. 원인 후보를 고를 때는 그 bucket의 influencer 결과를 `influencer_score` 순으로 보세요.
+여러 job에서 동시에 높게 나오는 entity는 근본 원인일 가능성이 크고, 한 job에만 나오는 entity는 영향을 받은 쪽인 경우가 많습니다.
 :::
 
 ## Score가 정해지는 방식
 
-모델은 먼저 관측값이 나올 확률을 계산하고, 확률이 낮을수록 높은 점수를 줍니다.
-점수는 절대값이 아니라 그 job이 지금까지 본 이상 중 상대적인 순위입니다. 100에 가까울수록 job이 지금까지 본 가장 큰 이상이라는 뜻입니다.
+모델은 먼저 관측값이 나올 확률을 계산하고, 확률이 낮을수록 score를 높게 줍니다.
+score는 절대값이 아닙니다. 그 job이 지금까지 본 이상들 사이에서의 상대적인 위치이고, 100에 가까울수록 지금까지 본 것 중 가장 큰 이상이라는 뜻입니다.
 
-처음 기록되는 점수에는 세 가지 요인이 영향을 줍니다.
+처음 매겨지는 score에는 세 가지가 영향을 줍니다.
 
 | 요인 | 내용 |
 | --- | --- |
-| single bucket impact | 해당 bucket 값의 확률입니다. 짧은 spike나 dip의 점수를 주로 결정합니다. |
-| multi-bucket impact | 현재와 직전 11개, 즉 12개 bucket을 함께 봅니다. 현재 값이 정상 범위여도 직전 구간이 이상했으면 높게 나옵니다. Kibana에서는 점 대신 `+` 표시로 보입니다. |
-| anomaly characteristics impact | 이상의 길이와 크기를 과거 평균과 비교합니다. 기본 동작은 긴 이상을 짧은 spike보다 높게 평가합니다. 짧은 이상은 데이터 오류인 경우가 많기 때문입니다. |
+| single bucket impact | 해당 bucket 값이 나올 확률입니다. 짧은 spike나 dip의 score는 대부분 이걸로 정해집니다. |
+| multi-bucket impact | 현재 bucket과 직전 11개, 모두 12개 bucket을 같이 봅니다. 지금 값이 정상 범위 안이어도 직전 구간이 이상했다면 높게 나옵니다. Kibana에서는 점 대신 `+` 모양으로 표시됩니다. |
+| anomaly characteristics impact | 이상이 얼마나 길고 큰지를 과거 평균과 비교합니다. 기본적으로 오래 이어지는 이상을 짧은 spike보다 높게 칩니다. 짧은 이상은 데이터 오류인 경우가 많기 때문입니다. |
 
-![기대 범위 안에서 움직이던 시계열에 한 bucket짜리 spike와 길게 이어지는 이상이 함께 나타난 개념 도식](../../../../assets/ml-ad/spike-vs-sustained.png)
+![model bounds 안에서 움직이던 시계열에 한 bucket짜리 spike와 길게 이어지는 이상이 함께 나타난 개념도](../../../../assets/ml-ad/spike-vs-sustained.png)
 
-점수를 낮추는 요인도 두 가지 있습니다.
+score를 깎는 요인도 두 가지 있습니다.
 
-- **high variance penalty**: 원래 변동이 큰 시간대(예: 매일 자정 배치)에서는 기대 범위가 넓어 점수가 낮아집니다.
-- **incomplete bucket penalty**: 평소보다 데이터가 덜 들어온 bucket은 신뢰도가 낮아 점수가 낮아집니다. 수집 지연이 원인인 경우가 많습니다.
+- **high variance**: 원래 변동이 큰 시간대(매일 자정에 도는 배치 같은)는 model bounds가 넓어서 score가 낮아집니다.
+- **incomplete bucket**: 평소보다 데이터가 덜 들어온 bucket은 믿기 어려워서 score가 낮아집니다. ingest 지연이 원인인 경우가 많습니다.
 
-이 요인들은 record 결과의 `anomaly_score_explanation` field와 Kibana의 Anomaly explanation 영역에서 확인할 수 있습니다.
+이 요인들은 record 결과의 `anomaly_score_explanation` field와, Kibana Anomalies 표에서 행을 펼치면 나오는 Anomaly explanation에서 볼 수 있습니다.
 
 | field | 내용 |
 | --- | --- |
 | `anomaly_type` | `spike` 또는 `dip` |
 | `anomaly_length` | 이상이 이어진 bucket 수 |
 | `single_bucket_impact`, `multi_bucket_impact`, `anomaly_characteristics_impact` | 위 세 요인의 영향 |
-| `high_variance_penalty`, `incomplete_bucket_penalty` | 점수 감소 요인이 적용됐는지 여부 |
-| `typical_value`, `lower_confidence_bound`, `upper_confidence_bound` | 기대값과 95% 신뢰 구간 |
+| `high_variance_penalty`, `incomplete_bucket_penalty` | score를 깎는 요인이 적용됐는지 여부 |
+| `typical_value`, `lower_confidence_bound`, `upper_confidence_bound` | typical 값과 95% 신뢰구간 |
+
+![Anomalies 표에서 404 응답코드 행을 펼친 모습. actual 101, typical 1.17, record score 98.8이고, 오른쪽 Anomaly explanation에 Single bucket impact와 High variance interval: Yes가 표시됩니다.](../../../../assets/ml-ad/anomaly-explanation.jpg)
+
+위 예에서는 평소 한 시간에 1건 남짓이던 404가 101건 나와서 single bucket impact가 최대치로 찍혔습니다. 동시에 High variance interval이 Yes라서 score가 조금 깎였습니다.
 
 ## Renormalization
 
-더 큰 이상이 나오면 과거 점수가 낮아집니다. 이를 renormalization이라고 합니다.
-그래서 처음 기록된 점수(`initial_record_score`, `initial_anomaly_score`)와 현재 점수(`record_score`, `anomaly_score`)가 따로 있습니다.
+더 큰 이상이 나오면 예전 score가 내려갑니다. 이걸 renormalization이라고 부릅니다.
+그래서 처음 매겨진 score(`initial_record_score`, `initial_anomaly_score`)와 지금 score(`record_score`, `anomaly_score`)가 따로 있습니다.
 
-- 결과 index를 직접 조회해 알림이나 리포트를 만든다면 initial 점수를 기준으로 삼아야 합니다. 그래야 나중에 점수가 낮아져 기록이 빠지는 일을 피할 수 있습니다.
-- "어제 90이던 점수가 오늘 55가 됐다"는 질문의 대부분은 renormalization입니다. 설정을 의심하기 전에 두 점수를 나란히 봅니다.
-- 조정 범위는 `renormalization_window_days`로 정해집니다.
+결과 index를 직접 조회해서 alert나 리포트를 만든다면 initial score를 기준으로 삼으세요. 그래야 나중에 score가 내려가서 기록이 빠지는 일이 없습니다.
+
+"어제 90이던 score가 오늘 55가 됐다"는 질문은 대부분 renormalization 때문입니다. 설정을 의심하기 전에 두 score를 나란히 놓고 보세요.
+얼마나 먼 과거까지 다시 계산할지는 `renormalization_window_days`로 정해집니다.
 
 ## Severity 구간
 
-Kibana는 점수에 따라 이상을 다음과 같이 표시합니다. 구간 경계는 Kibana 소스 코드([`anomaly_threshold.ts`](https://github.com/elastic/kibana/blob/main/x-pack/platform/packages/shared/ml/anomaly_utils/anomaly_threshold.ts))의 값입니다.
+Kibana는 score에 따라 이상을 아래처럼 나눠 표시합니다. 구간 경계는 Kibana 소스 코드([`anomaly_threshold.ts`](https://github.com/elastic/kibana/blob/main/x-pack/platform/packages/shared/ml/anomaly_utils/anomaly_threshold.ts))에 정의된 값이고, Anomaly Explorer의 Anomaly score 범례(0-3, 3-25, 25-50, 50-75, 75-100)도 같습니다.
 
-| 점수 | 표기 | 운영 활용 예 |
+| score | 표기 | 운영에서 이렇게 쓸 수 있습니다 |
 | --- | --- | --- |
-| 75 이상 | critical | 즉시 알림. alert rule의 기본 임계값이 75입니다. |
-| 50~75 | major | 주간 리뷰 또는 낮은 우선순위 알림 |
-| 25~50 | minor | 추세 리뷰, 튜닝 후보 수집 |
-| 3~25 | warning | 평상시 노이즈 수준 |
-| 3 미만 | low | 리뷰 대상 아님 |
+| 75 이상 | critical | 바로 alert. alert rule의 기본 임계값이 75입니다. |
+| 50~75 | major | 주간 리뷰나 우선순위 낮은 alert |
+| 25~50 | minor | 추세를 보거나 튜닝할 거리를 모을 때 |
+| 3~25 | warning | 평소 noise 수준 |
+| 3 미만 | low | 볼 필요 없음 |
 
-:::note
-점수가 낮은 이상도 여러 job에서 같은 시각에 함께 나오면 의미가 있습니다. 한 job의 높은 점수만 보지 말고, [overall buckets](../06-operations/#job을-나눴을-때-묶어-보기)로 동시에 나타나는 이상을 함께 봅니다.
-:::
+score가 낮은 이상도 여러 job에서 같은 시각에 함께 나오면 의미가 있습니다. job 하나의 높은 score만 보지 말고, [overall buckets](../06-operations/#job을-나눴을-때-묶어-보기)로 동시에 나타나는 이상도 같이 보세요.
 
 ## Detector가 여러 개인 job 읽기
 
-- overall swim lane은 job 전체의 bucket 점수입니다. influencer swim lane의 단순 합이 아니라서, influencer 쪽에 이상이 있어도 overall 칸이 비어 있을 수 있습니다.
-- top influencers 목록은 각 influencer의 bucket별 최고 점수를 모든 detector에 걸쳐 모으고, 점수 합계도 함께 보여 줍니다. 여러 증상에 동시에 등장하는 entity가 위로 올라옵니다.
-- Anomalies 표는 기본적으로 detector와 entity별로 가장 높은 이상만 보여 줍니다. 모두 보려면 Interval을 Show all로 바꿉니다.
-- 차트에서는 어느 detector가 이상을 잡았는지 구분돼 보입니다. 차트의 View Series를 누르면 그 시계열을 Single Metric Viewer에서 엽니다.
-- API로 볼 때는 record 결과의 `detector_index`로 detector를 구분합니다. `detector_index`는 `analysis_config`에 넣은 순서(0부터)입니다.
+overall swim lane은 job 전체의 bucket score입니다. influencer swim lane을 단순히 더한 값이 아니라서, influencer 쪽에는 이상이 있어도 overall 칸은 비어 있을 수 있습니다.
+
+Top influencers 목록은 influencer마다 bucket별 최고 score를 모든 detector에 걸쳐 모으고, 합계도 같이 보여 줍니다. 여러 증상에 한꺼번에 등장하는 entity가 위로 올라옵니다.
+
+Anomalies 표는 기본적으로 detector와 entity별로 가장 높은 이상만 보여 줍니다. 전부 보고 싶다면 Interval을 Show all로 바꾸세요.
+
+![detector 3개짜리 job의 Anomalies 표. Detector 열에 detector_description이 그대로 보여서 어느 detector가 잡았는지 바로 구분됩니다.](../../../../assets/ml-ad/explorer-anomalies.jpg)
+
+Detector 열에는 detector마다 적어 둔 `detector_description`("client IP별 URL 다양성", "응답코드별 요청 수", "전체 요청 급감")이 그대로 나옵니다. description이 없으면 이 자리에 function과 field 이름만 나와서, detector가 많을수록 알아보기 어렵습니다.
+
+API로 볼 때는 record 결과의 `detector_index`로 detector를 구분합니다. `detector_index`는 `analysis_config`에 넣은 순서대로 0부터 매겨집니다.
 
 ## Kibana에서 보는 곳
 
-| 화면 | 보는 것 |
+| 화면 | 여기서 보는 것 |
 | --- | --- |
-| Machine Learning → Anomaly Detection → Anomaly Explorer | 여러 job의 전체 흐름. timeline swim lane, influencer swim lane, top influencers, Anomalies 표, 알림 rule이 있으면 Alerts 패널 |
-| Machine Learning → Anomaly Detection → Single Metric Viewer | 시계열 하나의 실제 값과 기대 범위(95% 신뢰 구간). 음영은 model plot이 켜진 job에서만 보입니다. |
-| Anomalies 표에서 행 펼치기 → Anomaly explanation | 이상 유형, 영향 요인, 점수 감소 요인 |
-| Anomalies 표 → Actions → Raw data | 해당 구간의 원본 문서를 Discover에서 엽니다. |
+| Machine Learning → Anomaly Detection → Anomaly Explorer | 여러 job의 전체 흐름. timeline swim lane, influencer swim lane, Top influencers, Anomalies 표, alert rule이 있다면 Alerts 패널 |
+| Machine Learning → Anomaly Detection → Single Metric Viewer | 시계열 하나의 실제 값과 model bounds(95% 신뢰구간). 음영은 model plot을 켠 job에서만 보입니다. |
+| Anomalies 표에서 행 펼치기 → Anomaly explanation | 이상 유형, 영향을 준 요인, score를 깎은 요인 |
+| Anomalies 표 → Actions → Raw data | 그 구간의 원본 문서를 Discover에서 엽니다. |
+
+![Single Metric Viewer. 회색 음영이 model bounds이고, 오른쪽 청록색 구간이 forecast입니다.](../../../../assets/ml-ad/smv-forecast.jpg)
 
 ## ES|QL로 결과 조회하기
 
 Elastic Cloud Serverless에서는 `.ml-anomalies` reserved view로 bucket, record, influencer 결과를 ES|QL로 조회할 수 있습니다(GA).
-Elastic Stack(자체 구축, Elastic Cloud Hosted)은 공식 문서에 "Planned"로 표기되어 있으니, 그 환경에서는 결과 API나 `.ml-anomalies-*` index 검색을 씁니다.
+Elastic Stack(직접 구축, Elastic Cloud Hosted)은 공식 문서에 "Planned"로 표시돼 있습니다. 이 환경에서는 결과 API나 `.ml-anomalies-*` index 검색을 쓰세요.
 
 ```sql
 FROM .ml-anomalies
