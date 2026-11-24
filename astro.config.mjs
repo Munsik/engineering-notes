@@ -20,6 +20,7 @@ export default defineConfig({
         baseUrl: 'https://github.com/Munsik/engineering-notes/edit/main/',
       },
       lastUpdated: true,
+      customCss: ['./src/styles/custom.css'],
       sidebar: [
         {
           label: 'Machine Learning',
