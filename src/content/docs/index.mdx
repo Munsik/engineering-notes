@@ -1,0 +1,36 @@
+---
+title: Engineering Notes
+description: 엔터프라이즈 환경에서 기술을 프로덕션에 올릴 때 필요한 판단 기준과 운영 경험을 정리합니다.
+template: splash
+hero:
+  tagline: 기능 설명이 아니라, 그 기능을 프로덕션에서 쓰기 위해 내려야 하는 결정을 기록합니다.
+  actions:
+    - text: Anomaly Detection in Production
+      link: /engineering-notes/ml/anomaly-detection/
+      icon: right-arrow
+    - text: 이 사이트의 원칙
+      link: /engineering-notes/about/principles/
+      icon: document
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## 컬렉션
+
+<CardGrid>
+  <Card title="Anomaly Detection in Production" icon="seti:graphql">
+    데이터 선택부터 detector 설계, bucket span, 메모리 산정, false positive 관리, 운영과 장애 대응까지.
+    Elasticsearch Machine Learning을 실제 서비스에 올릴 때 마주치는 결정을 순서대로 다룹니다.
+    [컬렉션 보기](/engineering-notes/ml/anomaly-detection/)
+  </Card>
+  <Card title="준비 중" icon="puzzle">
+    Elasticsearch 보안 구성, Observability 데이터 설계, 검색과 RAG 아키텍처를 차례로 다룰 예정입니다.
+  </Card>
+</CardGrid>
+
+## 이런 글을 씁니다
+
+- **Deep Dive**: 하나의 설계 결정을 실험 결과와 함께 깊게 파고듭니다.
+- **Practical Guide**: 실제로 적용하는 절차를 재현 가능한 설정과 함께 정리합니다.
+- **Engineering Perspective**: 현장에서 겪은 시행착오와 그로부터 얻은 판단 기준을 공유합니다.
