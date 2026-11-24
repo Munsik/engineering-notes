@@ -20,8 +20,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Anomaly Detection in Production" icon="seti:graphql">
-    데이터 선택부터 detector 설계, bucket span, 메모리 산정, false positive 관리, 운영과 장애 대응까지.
-    Elasticsearch Machine Learning을 실제 서비스에 올릴 때 마주치는 결정을 순서대로 다룹니다.
+    job과 detector를 어떻게 나눌지부터 bucket span, 메모리, 결과 읽는 법, noise 처리, 운영까지 다룹니다.
+    Elastic 제공 job을 뜯어본 시나리오 12가지와, Kibana 샘플 데이터로 직접 돌려 보는 실습도 있습니다.
     [컬렉션 보기](/engineering-notes/ml/anomaly-detection/)
   </Card>
   <Card title="준비 중" icon="puzzle">
@@ -31,6 +31,4 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## 이런 글을 씁니다
 
-- **Deep Dive**: 하나의 설계 결정을 실험 결과와 함께 깊게 파고듭니다.
-- **Practical Guide**: 실제로 적용하는 절차를 재현 가능한 설정과 함께 정리합니다.
-- **Engineering Perspective**: 현장에서 겪은 시행착오와 그로부터 얻은 판단 기준을 공유합니다.
+글은 크게 세 가지입니다. 설계 결정 하나를 실험 결과와 함께 파고드는 Deep Dive, 실제 적용 절차를 그대로 따라 할 수 있게 정리한 Practical Guide, 그리고 현장에서 부딪히며 얻은 판단 기준을 적은 Engineering Perspective입니다.

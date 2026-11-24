@@ -1,16 +1,7 @@
 # Anomaly Detection Labs
 
-[Anomaly Detection in Production](https://munsik.github.io/engineering-notes/ml/anomaly-detection/) 컬렉션의 실험 코드와 설정입니다.
+[Anomaly Detection in Production](https://munsik.github.io/engineering-notes/ml/anomaly-detection/) 컬렉션의 실습 자료입니다.
+실습 내용과 Dev Tools 코드는 [08. 실습](https://munsik.github.io/engineering-notes/ml/anomaly-detection/08-hands-on-lab/) 페이지에 있습니다.
 
-글마다 폴더를 하나씩 둡니다. 폴더 이름은 글의 파일 이름과 같습니다.
-
-```
-labs/anomaly-detection/
-  03-bucket-span/
-    README.md        실험 목적, 기준 버전, 실행 순서, 결과 요약
-    generate_data.py synthetic data 생성
-    jobs/            비교에 쓴 job, datafeed 설정 (JSON)
-    results/         측정 결과
-```
-
-실제 고객 데이터는 쓰지 않습니다. 모든 데이터는 synthetic data로 만듭니다.
+데이터는 Kibana 샘플 Web logs(`kibana_sample_data_logs`)만 씁니다.
+본문의 결과 수치와 Kibana 화면은 Elastic Cloud Hosted 9.5.5에서 실습을 그대로 돌려서 얻은 것입니다.
