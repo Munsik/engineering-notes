@@ -1,6 +1,9 @@
 /*
- * Layout: keep the right-hand table of contents at a fixed width and give the
- * remaining space to the main content (Starlight's default gives it to the TOC).
+ * Layout
+ * - The right-hand table of contents has a user-adjustable width (--en-toc-width).
+ *   Drag the line between the content and the TOC to change it; the value is kept
+ *   in localStorage and applied on every page (see public/toc-resizer.js).
+ * - The main content fills the remaining space, up to --sl-content-width.
  */
 :root {
 	--en-toc-width: 15rem;
@@ -8,7 +11,7 @@
 
 @media (min-width: 72rem) {
 	:root {
-		--sl-content-width: 64rem;
+		--sl-content-width: 80rem;
 	}
 
 	.right-sidebar-container {
@@ -22,5 +25,57 @@
 
 	[data-has-toc] .main-pane {
 		--sl-content-margin-inline: auto;
+	}
+
+	/* Drag handle on the left edge of the TOC */
+	.en-toc-resizer {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: 9px;
+		margin-left: -4px;
+		cursor: col-resize;
+		z-index: 10;
+		touch-action: none;
+	}
+
+	.en-toc-resizer::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 4px;
+		width: 1px;
+		background: transparent;
+		transition: background-color 0.15s, width 0.15s, left 0.15s;
+	}
+
+	.en-toc-resizer:hover::after,
+	.en-toc-resizer:focus-visible::after,
+	html.en-resizing .en-toc-resizer::after {
+		left: 3px;
+		width: 3px;
+		background: var(--sl-color-accent);
+	}
+
+	.en-toc-resizer:focus-visible {
+		outline: none;
+	}
+
+	html.en-resizing,
+	html.en-resizing * {
+		cursor: col-resize !important;
+		user-select: none !important;
+	}
+
+	.right-sidebar-container {
+		position: relative;
+	}
+}
+
+@media (max-width: 71.99rem) {
+	.en-toc-resizer {
+		display: none;
 	}
 }

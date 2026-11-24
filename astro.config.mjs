@@ -21,6 +21,15 @@ export default defineConfig({
       },
       lastUpdated: true,
       customCss: ['./src/styles/custom.css'],
+      head: [
+        {
+          // Apply the saved TOC width before the first paint so pages do not jump.
+          tag: 'script',
+          content:
+            "try{var w=localStorage.getItem('en-toc-width');if(w)document.documentElement.style.setProperty('--en-toc-width',w+'px')}catch(e){}",
+        },
+        { tag: 'script', attrs: { src: '/engineering-notes/toc-resizer.js', defer: true } },
+      ],
       sidebar: [
         {
           label: 'Machine Learning',
