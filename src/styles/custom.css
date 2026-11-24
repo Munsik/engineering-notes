@@ -1,0 +1,26 @@
+/*
+ * Layout: keep the right-hand table of contents at a fixed width and give the
+ * remaining space to the main content (Starlight's default gives it to the TOC).
+ */
+:root {
+	--en-toc-width: 15rem;
+}
+
+@media (min-width: 72rem) {
+	:root {
+		--sl-content-width: 64rem;
+	}
+
+	.right-sidebar-container {
+		width: var(--en-toc-width);
+		flex-shrink: 0;
+	}
+
+	[data-has-sidebar][data-has-toc] .main-pane {
+		width: calc(100% - var(--en-toc-width));
+	}
+
+	[data-has-toc] .main-pane {
+		--sl-content-margin-inline: auto;
+	}
+}
