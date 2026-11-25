@@ -27,6 +27,6 @@ export const defaultOgImage = {
 // - bing: Bing Webmaster Tools (Google Search Console에서 가져오기를 쓰면 비워 둬도 됩니다)
 export const siteVerification = {
   google: '2pl5m_SjU5RhIo0jw9i_N8PWLIQ3N9_WcV-Vv1PSINU',
-  naver: '',
+  naver: 'd1bd8afb784550cdfd18389bff1f6a027221ef1c',
   bing: '',
 };
