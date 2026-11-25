@@ -67,3 +67,46 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 - [ ] 템플릿 `기준과 전제`에 "배포 형태" 항목 추가
 - [ ] About의 "개인의 경험과 의견에 기반" 문구가 각 컬렉션 개요에서도 한 번 보이도록 할지 결정
 - [ ] `about/principles.md`에 "공개 출처만 근거로 쓴다"는 문장이 필요한지 검토 (현재는 공식 문서와 소스, 직접 실행 결과를 근거로 쓴다고 되어 있음)
+
+## 0-5. 검색 유입과 AI agent 대응
+
+상태: `부분 결정` (2026-11-25)
+
+방향: Google은 생성형 AI 검색(AI Overviews, AI Mode)도 일반 Search 색인과 순위 체계 위에서 동작한다고 밝혔습니다. 그래서 따로 "AI용 최적화"를 하기보다 색인 가능성, 페이지 제목과 설명, 구조화 데이터, 원본 글의 품질을 먼저 챙깁니다. llms.txt와 Markdown 원문은 Google 순위에는 영향이 없지만, Claude, ChatGPT, Cursor 같은 agent가 사이트를 읽을 때 쓰도록 제공합니다.
+
+근거:
+- Google Search Central, [Optimizing your website for generative AI features on Google Search](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) (2026-05 공개, 2026-06 llms.txt 안내 보강)
+- web.dev, [Build agent-friendly websites](https://web.dev/articles/ai-agent-site-ux)
+- Chrome, [Lighthouse agentic browsing audits](https://developer.chrome.com/docs/lighthouse/agentic-browsing): llms.txt는 domain root에서만 찾습니다
+
+구현한 것(build할 때 자동으로 만들어짐):
+
+| 대상 | 내용 | 파일 |
+| --- | --- | --- |
+| 페이지 제목 | 컬렉션 글은 `글 제목 \| 컬렉션 topic`. 홈은 사이트 범위를 붙임. 화면 H1은 그대로 | `src/route-middleware.ts`, `src/site-collections.mjs`의 `topic` |
+| 구조화 데이터 | 홈 WebSite, 컬렉션 개요 CollectionPage(글 목록 포함), 글 TechArticle, About ProfilePage, 하위 페이지 BreadcrumbList | `src/route-middleware.ts` |
+| 날짜 | datePublished(git에서 처음 추가된 commit), dateModified(마지막 commit). sitemap lastmod와 RSS pubDate도 같은 값 | `src/lib/git-dates.mjs` |
+| 공유 미리보기 | 기본 og:image(1200x630), twitter:image | `public/og-default.png`, `src/site-seo.mjs` |
+| sitemap | lastmod 포함 | `astro.config.mjs` |
+| RSS | `/rss.xml`, head에 자동 발견 링크 | `src/pages/rss.xml.js` |
+| AI agent | `/llms.txt`(컬렉션별 글 목록), `/llms-full.txt`, 컬렉션별 `/<컬렉션>/llms-full.txt`, 글마다 `.md` 원문, HTML head의 `rel="alternate" type="text/markdown"` | `src/lib/agent-markdown.mjs`, `src/pages/` |
+| 소유권 확인 | Google, 네이버, Bing의 HTML 태그 값을 넣는 자리. 빈 값이면 태그를 만들지 않음 | `src/site-seo.mjs` |
+
+새 컬렉션을 공개할 때: `src/site-collections.mjs`에 `{ dir, axis, topic }` 한 줄을 넣으면 sidebar, 홈 카드, 페이지 제목, llms.txt, RSS가 함께 바뀝니다.
+
+글을 쓸 때 지킬 것:
+- `description`은 이 글이 답하는 질문과 범위를 한 문장으로 씁니다. 검색 결과 설명과 llms.txt 목록에 그대로 나갑니다.
+- 제목은 짧게 두어도 됩니다. 검색 결과 제목에는 컬렉션 topic이 자동으로 붙습니다.
+- 글 첫 문단에서 문제와 결론을 먼저 말합니다. 사람에게도, 글을 잘라 읽는 AI 검색에도 같은 이유로 유리합니다(해석).
+
+사용자가 할 일:
+- [ ] Google Search Console에 URL 접두어 속성 `https://munsik.github.io/engineering-notes/` 등록, HTML 태그 값을 `src/site-seo.mjs`의 `google`에 넣고 배포, 확인 후 `sitemap-index.xml` 제출
+- [ ] Search Console에서 생성형 AI 기능 포함 설정이 켜져 있는지 확인
+- [ ] 네이버 서치어드바이저 등록, `naver` 값 입력, sitemap과 `rss.xml` 제출 (github.io 하위 경로 사이트 등록 가능 여부는 등록 화면에서 확인 필요)
+- [ ] Bing Webmaster Tools에서 Search Console 가져오기로 등록 (값 입력 불필요)
+- [ ] 배포 후 Rich Results Test로 글 한 개와 컬렉션 개요 한 개의 구조화 데이터 확인
+
+남은 결정:
+- root 파일: GitHub Pages 프로젝트 사이트라 `munsik.github.io/robots.txt`, `munsik.github.io/llms.txt`를 이 저장소에서 만들 수 없습니다. 지금 root에는 robots.txt가 없어(404) 모든 crawler가 허용된 상태입니다. root에 llms.txt를 두려면 `Munsik/munsik.github.io` 저장소를 만들어 root `llms.txt`와 `robots.txt`(Sitemap 줄 포함)를 두면 됩니다. 이 저장소를 만들면 `munsik.github.io/`에 페이지가 생기므로 `/engineering-notes/`로 넘기는 index.html도 같이 둡니다. 커스텀 도메인을 쓰기로 하면 이 문제는 함께 정리됩니다.
+- 영문판: 지금은 locale을 추가하지 않습니다. Starlight는 번역이 없는 페이지를 기본 언어 내용으로 채워 `/en/` 아래에 만들기 때문에, 영문 글이 없을 때 locale부터 넣으면 한국어 내용이 영어 주소로 하나 더 생깁니다. 첫 영문 글을 낼 때 `en` locale을 추가하고, 그 시점에 fallback 페이지 처리와 hreflang을 같이 확인합니다. 영문으로 먼저 옮길 후보는 Segment의 생애, Merge와 force merge, 09 제조 AIOps입니다(해석: 영어권 검색 수요가 있고 실측과 소스 근거가 차별점).
+- 글별 공유 이미지: 지금은 모든 페이지가 같은 og:image를 씁니다. LinkedIn 공유가 많아지면 글 제목이 들어간 이미지를 build할 때 만드는 방식을 검토합니다.
