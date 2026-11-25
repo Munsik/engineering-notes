@@ -3,7 +3,7 @@
 도입 초기 sizing과, 운영 중 비용 압박이 왔을 때 가장 먼저 부딪히는 질문을 다룹니다.
 1-1, 1-2는 shard 내부 구조(segment, merge)를 먼저 설명합니다. 뒤의 세 글(1-3, 1-4, 1-5)은 이 내용을 전제로 하고, `labs/_datagen/`의 같은 synthetic 로그 데이터셋을 이어서 씁니다.
 
-- 폴더: `src/content/docs/data/` (0-1 A안: 기존 AD URL은 유지하고 새 컨렉션은 문제 축 폴더에 둠)
+- 폴더: `src/content/docs/data/` (0-1 A안: 기존 AD URL은 유지하고 새 컬렉션은 문제 축 폴더에 둠)
 - labs: `labs/data/`
 - sidebar: `astro.config.mjs`에 "데이터 설계" 그룹(`autogenerate: { directory: 'data' }`)을 최상위 첫 번째로 추가했습니다(01, 02 발행과 함께, 2026-11-25).
 
