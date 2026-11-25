@@ -6,6 +6,14 @@ sidebar:
   order: 2
 ---
 
+bucket span은 탐지 해상도와 alert가 올 수 있는 가장 빠른 시점을 함께 정하고, job을 만든 뒤에는 바꿀 수 없습니다.
+데이터 준비가 덜 된 채 시작하면 학습 초반의 결과와 늦게 들어온 데이터 때문에 오탐이 쌓이고, 운영팀이 alert를 믿지 않게 됩니다.
+이 장은 bucket span을 고르는 기준과, 학습을 시작하기 전에 데이터 쪽에서 해 둘 일을 다룹니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. 제공 job의 bucket span은 GitHub elastic/kibana main 브랜치의 설정을 봤습니다.
+:::
+
 ## Bucket span
 
 bucket span은 분석 해상도이자, alert가 아무리 빨라도 그보다 빨리 올 수는 없는 하한선입니다.
@@ -43,7 +51,7 @@ aggregation datafeed를 쓴다면 bucket span이 date histogram의 interval로 �
 공식 문서가 말하는 경험칙은 주기성이 있는 데이터라면 3주 이상, 없다면 bucket 수백 개입니다. 주간 패턴을 배우려면 적어도 3주는 지나야 한다는 얘기입니다.
 forecast까지 쓸 생각이라면 예측하려는 기간만큼의 과거 데이터도 있어야 합니다.
 
-학습 초반의 결과는 믿기 어렵습니다. alert는 학습 기간이 충분히 지난 뒤에 켜세요.
+학습 초반의 결과는 믿기 어렵습니다. alert는 학습 기간이 충분히 지난 뒤, [과거 데이터로 검증](../06-operations/#alert를-켜기-전에-검증하기)을 마치고 켜세요.
 
 ## Datafeed에서 미리 걸러 내기
 
@@ -64,6 +72,8 @@ Elastic Security의 인증 job이 이렇게 합니다. query에서 Elastic Agent
 }
 ```
 
+비율(0~1) 값을 정수 %로 바꾸는 것처럼 계산이 필요한 field는 datafeed의 `runtime_mappings`로 만들 수 있습니다. 원본 index를 건드리지 않아도 됩니다. [09장 사용률 변환](../09-manufacturing-aiops/#사용률-변환)이 이렇게 해서 custom rule 임계값을 읽기 쉽게 만듭니다.
+
 ## 늦게 들어오는 데이터
 
 datafeed가 이미 지나간 시간대에 뒤늦게 색인된 문서는 분석되지 않습니다.
@@ -76,7 +86,7 @@ delayed data check는 기본적으로 2시간과 bucket span 8배 중 더 긴 �
 이 메시지가 보이면 `query_delay`부터 늘려 보세요. 그래도 계속 나온다면 ingest 지연의 원인을 찾아야 합니다. 트래픽 burst, ingest pipeline 설정, 서버 시계가 맞지 않는 경우가 흔합니다.
 
 :::tip
-`query_delay`는 실제 ingest 지연의 상위 백분위(예: P95)에 여유를 조금 더한 값으로 잡으면 무난합니다. 지연 분포는 문서의 시간 field와 `event.ingested`의 차이로 볼 수 있습니다.
+`query_delay`는 실제 ingest 지연의 상위 백분위(예: P95)에 여유를 조금 더한 값으로 잡으면 무난하다고 봅니다(해석). 지연 분포는 문서의 시간 field와 `event.ingested`의 차이로 볼 수 있습니다.
 :::
 
 ## Sparse 데이터와 aggregation 입력
@@ -93,6 +103,8 @@ aggregation datafeed를 쓰면 data node가 데이터를 먼저 요약해서 넘
 - interval은 metric과 sum 계열이면 bucket span의 1/10, count와 rare면 bucket span과 같게 두는 것이 권장값입니다.
 - field cardinality가 1,000을 넘으면 `composite` aggregation을 씁니다.
 - `chunking_config.mode`는 aggregation이 있으면 `manual`, 없으면 `auto`가 권장값입니다.
+
+APM metric index를 `composite` aggregation으로 읽는 실제 예는 [09장 A2 핵심 MES 트랜잭션](../09-manufacturing-aiops/#a2-핵심-mes-트랜잭션-mes-apm-key-tx)에 있습니다.
 
 ## 참고 문서
 

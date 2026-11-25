@@ -6,9 +6,119 @@ sidebar:
   order: 6
 ---
 
+anomaly detection job은 조용히 실패합니다. datafeed가 멈추거나 메모리 한도에 걸려도 결과가 안 나올 뿐이라, 따로 챙기지 않으면 "이상 없음"과 구분이 안 됩니다.
+그리고 검증 없이 alert부터 걸면 처음 몇 주의 오탐이 그대로 알림이 되어, 운영팀이 job을 믿지 않게 됩니다.
+이 장은 job을 실제 운영에 붙일 때 검증, alert, 변경, 장애 대응을 어떤 순서로 가져갈지 다룹니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. 기능마다 GA 버전이 다른 경우는 본문에 따로 적었습니다.
+:::
+
+## Alert를 켜기 전에 검증하기
+
+job을 만들자마자 alert를 걸면, 학습 초반의 결과와 아직 정리하지 않은 noise가 그대로 알림이 됩니다. 알림을 몇 번 무시하기 시작하면 나중에 진짜 이상이 와도 묻힙니다.
+그래서 alert를 켜기 전에 "이 job이 쓸 만한가"를 먼저 확인합니다.
+아래 순서는 제가 쓰는 방법입니다(해석). 각 단계에서 쓰는 기능은 모두 공식 기능입니다.
+
+### 1. 성공 기준을 먼저 적기
+
+job을 돌리기 전에 아래 세 가지를 적어 둡니다. 결과를 보고 나서 기준을 정하면, 나온 결과에 기준을 맞추게 됩니다.
+
+| 기준 | 적을 내용 |
+| --- | --- |
+| 꼭 잡아야 할 사건 | 과거 장애나 보안 사건 중 이 job이 잡았어야 하는 것. 날짜와 구간까지 |
+| 받을 수 있는 알림 양 | 받는 팀이 하루나 일주일에 실제로 확인할 수 있는 건수 |
+| 얼마나 빨리 알아야 하는지 | bucket span보다 빨리 알 수는 없습니다([02](../02-bucket-span-and-data/#bucket-span)). 이 기준이 bucket span보다 짧다면 설계부터 다시 봅니다. |
+
+### 2. 과거 데이터로 돌려 보기
+
+datafeed를 시작할 때 `start`를 과거 시점으로 주면, 그 시점부터 데이터를 순서대로 학습하면서 결과를 만듭니다. `end`를 주면 그 시점까지만 분석하고, datafeed와 job이 자동으로 멈추고 닫힙니다.
+`start`는 사건 구간보다 충분히 앞에 둡니다. 주기성이 있는 데이터라면 사건 전에 3주 이상 학습할 기간이 있어야 합니다([02](../02-bucket-span-and-data/#학습에-필요한-데이터-양)).
+
+```json
+POST _ml/anomaly_detectors/<job_id>/_open
+
+POST _ml/datafeeds/datafeed-<job_id>/_start
+{ "start": "2026-08-01T00:00:00+09:00", "end": "2026-11-01T00:00:00+09:00" }
+```
+
+학습 초반 구간의 결과는 평가에서 뺍니다. 그리고 과거 데이터로 돌린 결과는 실시간 결과와 완전히 같지는 않습니다. 실시간에서는 늦게 들어오는 데이터([02](../02-bucket-span-and-data/#늦게-들어오는-데이터))와 확정 전 결과(interim)가 더해지기 때문입니다.
+
+### 3. 알려진 사건과 맞춰 보기
+
+Single Metric Viewer에서 사건 구간을 드래그해 설명을 달면 user annotation으로 남습니다. 이 annotation은 Anomaly Explorer의 timeline 아래에도 나와서, 사건과 이상을 나란히 볼 수 있습니다.
+
+사건마다 확인할 것은 네 가지입니다.
+
+- 사건 구간에 이상이 나왔는가
+- score는 얼마였는가. renormalization 때문에 지금 score는 내려가 있을 수 있으니 처음 매겨진 score를 봅니다([04](../04-reading-results/#renormalization)).
+- 사건보다 먼저 나왔는가, 늦게 나왔는가
+- 실제 원인 entity가 influencer 상위에 있었는가
+
+```json
+GET .ml-anomalies-*/_search
+{
+  "size": 20,
+  "sort": [{ "initial_record_score": "desc" }],
+  "_source": ["timestamp", "detector_index", "partition_field_value", "by_field_value",
+              "over_field_value", "actual", "typical", "initial_record_score", "record_score"],
+  "query": {
+    "bool": {
+      "filter": [
+        { "term": { "job_id": "<job_id>" } },
+        { "term": { "result_type": "record" } },
+        { "range": { "timestamp": { "gte": "2026-10-12T21:00:00+09:00", "lt": "2026-10-13T03:00:00+09:00" } } }
+      ]
+    }
+  }
+}
+```
+
+### 4. 알림 양 세기
+
+alert rule을 만드는 화면에서 Test를 누르면, 고른 기간 동안 alert가 몇 건 났을지 미리 볼 수 있습니다. 기간별 분포를 보고 싶다면 결과 index를 직접 집계합니다.
+아래는 Bucket result type, 기본 임계값 75를 기준으로 주별 건수를 세는 예입니다. Record나 Influencer로 alert를 만들 거라면 `result_type`과 score field를 그에 맞게 바꿉니다.
+
+```json
+GET .ml-anomalies-*/_search
+{
+  "size": 0,
+  "query": {
+    "bool": {
+      "filter": [
+        { "term": { "job_id": "<job_id>" } },
+        { "term": { "result_type": "bucket" } },
+        { "term": { "is_interim": false } },
+        { "range": { "initial_anomaly_score": { "gte": 75 } } },
+        { "range": { "timestamp": { "gte": "2026-08-22T00:00:00+09:00" } } }
+      ]
+    }
+  },
+  "aggs": {
+    "per_week": { "date_histogram": { "field": "timestamp", "calendar_interval": "week", "time_zone": "Asia/Seoul" } }
+  }
+}
+```
+
+이 건수는 rule 조건이 그대로 걸렸을 때의 상한에 가깝습니다. 실제 alert 수는 Alert delay, Flapping Detection, check interval 설정에 따라 줄어듭니다.
+
+### 5. 판단하고 고치기
+
+| 결과 | 먼저 볼 것 |
+| --- | --- |
+| 사건을 못 잡았다 | function 방향과 split이 맞는지, 사건이 bucket span보다 짧지 않았는지([01](../01-job-design/#판단-기준), [02](../02-bucket-span-and-data/#bucket-span)). [실습](../08-hands-on-lab/)의 `low_request_rate`처럼, 줄어드는 쪽만 보는 `low_count`는 요청이 크게 튄 구간을 표시하지 않습니다. |
+| 사건은 잡았지만 알림이 너무 많다 | noise 원인부터 나누고([05](../05-noise-and-exceptions/#noise-유형별-대응)), 그다음에 severity와 Alert delay를 조정 |
+| 사건은 잡았지만 score가 낮다 | 같은 시각 다른 job에도 이상이 있었는지 overall buckets로 확인. 여러 job이 함께 낮게 튀는 패턴이라면 job 하나의 임계값보다 묶어서 보는 쪽이 맞습니다([묶어 보기](#job을-나눴을-때-묶어-보기)). |
+| 학습 초반에만 오탐이 몰린다 | 정상입니다. 평가 기간을 학습 기간 이후로 옮깁니다. |
+
+detector 구성이나 bucket span을 바꿔야 한다면 job을 clone해서 새로 만들고, 같은 기간으로 다시 돌려 앞의 결과와 비교합니다. 기존 job을 계속 쓸 거라면 [모델 복구와 재실행](../05-noise-and-exceptions/#모델-복구와-재실행)의 reset으로 처음부터 다시 돌릴 수 있습니다.
+
+검증이 끝나면 datafeed를 실시간(`end` 없이)으로 다시 시작하고, 아래 alert rule을 겁니다.
+
 ## Alert 설계
 
 Kibana의 Stack Management → Rules에서 **Anomaly detection** rule과 **Anomaly detection jobs health** rule을 같이 만드세요.
+alert를 받은 뒤 조사와 판단까지 Workflow로 이어 가는 구성은 [09장 Alert에서 Workflow로](../09-manufacturing-aiops/#alert에서-workflow로-ai-분석과-사람의-판단)에 있습니다.
 alert rule 하나만 있으면 datafeed가 멈추거나 메모리 한도에 걸려도, 결과가 안 나오니 "이상 없음"처럼 조용해 보입니다.
 
 ### Anomaly detection rule
@@ -102,7 +212,7 @@ job이 failed 상태가 되면 datafeed를 force 옵션으로 멈추고, job도 
 
 모델이 망가졌다면 snapshot을 되돌리거나(revert) job을 reset합니다. [모델 복구와 재실행](../05-noise-and-exceptions/#모델-복구와-재실행)을 참고하세요.
 
-탐지가 얼마나 정확한지는 실제 장애 이력과 anomaly 결과가 얼마나 겹치는지로 봅니다. record 결과의 score, 95% 신뢰구간, actual 값을 집계해서 숫자로 따져 볼 수도 있습니다.
+운영 중에도 탐지 품질은 [Alert를 켜기 전에 검증하기](#alert를-켜기-전에-검증하기)와 같은 방식으로 다시 점검합니다. 새로 생긴 장애를 사건 목록에 더해 가면 됩니다.
 
 ## 알아 둘 제약사항
 
@@ -124,7 +234,7 @@ job이 failed 상태가 되면 datafeed를 force 옵션으로 멈추고, job도 
 | 1. 데이터 | 시간 field가 색인돼 있는지, ingest 지연 분포, split field cardinality, 학습에 쓸 기간, datafeed에서 뺄 데이터 |
 | 2. Job 설계 | job과 detector를 나누는 기준([01](../01-job-design/#판단-기준)), function과 split, bucket span, influencer, estimate API로 메모리 가늠 |
 | 3. 학습 | 최소 데이터 양, 주기성이 있으면 3주 이상, 학습 중에는 alert 끄기 |
-| 4. 결과 검토 | 임계값을 넘는 이상 건수, 상위 이상과 실제 장애 대조, 최대 메모리 사용량, noise 유형 분류 |
+| 4. 결과 검토 | [과거 데이터로 검증](#alert를-켜기-전에-검증하기): 알려진 사건과 대조, 임계값을 넘는 이상 건수, 최대 메모리 사용량, noise 유형 분류 |
 | 5. 튜닝 | datafeed query, filter list, custom rule, calendar, 방향을 정한 function, `exclude_frequent` 적용 후 다시 평가. detector를 바꿔야 하면 clone |
 | 6. Alert | severity, Alert delay, check interval, job health rule을 함께 설정 |
 | 7. 운영 | 메모리 상태 점검, 결과와 snapshot retention, 이벤트와 DST calendar 갱신, 설정 변경 이력 관리 |

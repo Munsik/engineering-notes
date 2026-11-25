@@ -9,6 +9,11 @@ sidebar:
 Elastic은 Kibana에 꽤 많은 anomaly detection job을 미리 만들어 넣어 두었습니다(supplied configuration). 데이터가 맞으면 버튼 한 번으로 만들 수 있는 job들입니다.
 아래는 그 설정을 GitHub에서 하나씩 열어 보고 정리한 것입니다. 무엇을 보려는 job인지, detector와 split을 왜 그렇게 골랐는지, noise는 어떻게 처리하는지를 같이 적었습니다.
 field 이름과 숫자는 각자 환경에 맞게 바꿔서 쓰세요.
+여기 나온 job들을 한 업무 환경에 맞게 골라 조합하고, alert 이후의 대응까지 이은 예는 [09장 공장 생산망 AIOps](../09-manufacturing-aiops/)에 있습니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 제공 job 설정은 GitHub [elastic/kibana](https://github.com/elastic/kibana/tree/main/x-pack/platform/plugins/shared/ml/server/models/data_recognizer/modules) main 브랜치를 2026년 11월에 봤습니다. 화면은 Elastic Cloud Hosted 9.5.5에서 [실습](../08-hands-on-lab/)을 돌려 얻은 것입니다.
+:::
 
 | # | 시나리오 | 구성 |
 | --- | --- | --- |

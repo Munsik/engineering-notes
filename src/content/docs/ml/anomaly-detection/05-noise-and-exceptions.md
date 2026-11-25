@@ -6,6 +6,14 @@ sidebar:
   order: 5
 ---
 
+noise를 다루지 못하면 받는 사람이 alert를 무시하기 시작하고, 그러면 진짜 이상도 같이 묻힙니다.
+반대로 noise를 지우는 방법을 잘못 고르면 결과는 깨끗해 보여도 모델은 계속 잘못 배우거나, 봐야 할 이상까지 사라집니다.
+이 장은 noise의 원인을 나누고, 원인마다 맞는 방법을 고르는 기준을 다룹니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 공식 문서와 API reference는 2026년 11월에 다시 확인했습니다.
+:::
+
 ## Noise 유형별 대응
 
 흔히 noise라고 뭉뚱그려 부르지만, 원인은 제각각입니다. 원인부터 나누면 쓸 방법이 정해집니다.
@@ -55,6 +63,7 @@ Kibana에서는 Anomalies 표 행의 Actions → Configure job rules에서 rule�
 | 하우스키핑 process가 가끔 실행됨 | process 이름 filter list를 scope에 연결, `skip_result` (Elastic Security 문서의 예) |
 | 건수가 적은 응답코드가 조금 흔들림 | condition `actual lt N`, `skip_result` |
 | 부하 테스트 서버가 늘 이상하게 보여 다른 결과까지 흐려짐 | 해당 host filter list를 scope에 연결, `skip_result`와 `skip_model_update` |
+| 폐기했거나 장기 정지한 장비의 수집 단절 | 장비 이름 filter list를 scope에 연결, `skip_result`. [09장 H6](../09-manufacturing-aiops/#h6-수집-단절-mes-host-telemetry-gap)의 예 |
 
 ```json
 POST _ml/anomaly_detectors/<job_id>/_update
@@ -91,7 +100,7 @@ event마다 `skip_result`, `skip_model_update`, `force_time_shift`(초 단위)�
 
 calendar는 소급되지 않습니다. job이 그 구간을 분석하기 전에 등록해 둬야 합니다.
 
-매주 하는 정기 점검처럼 반복되는 패턴은 알고리즘이 이미 배우기 때문에 event로 넣을 필요가 없습니다. 길거나 잦은 event를 많이 넣으면 오히려 학습이 늦어집니다.
+매주 하는 정기 점검처럼 반복되는 패턴은 알고리즘이 이미 배우기 때문에 event로 넣을 필요가 없습니다. 길거나 잦은 event를 많이 넣으면 오히려 학습이 늦어지고, 놓치는 이상이 생길 수 있다고 공식 문서도 적고 있습니다.
 
 iCalendar(`.ics`) 파일을 가져오면 반복 이벤트는 첫 번째 것만 들어옵니다. 그리고 calendar와 filter list는 Kibana의 모든 space에서 보입니다.
 
@@ -106,6 +115,8 @@ POST _ml/calendars/planned-maintenance/events
   ]
 }
 ```
+
+calendar 하나를 job group에 연결해 두면, 나중에 그 group에 들어온 job에도 같은 event가 걸립니다. [09장](../09-manufacturing-aiops/#계획-정지-calendar)은 job 13개를 group 하나로 묶어 calendar를 연결하고, 담당자가 "계획 정지"라고 판단하면 workflow가 이 calendar에 event를 자동으로 넣게 만들었습니다.
 
 Kibana에서는 Machine Learning → Anomaly Detection → Settings에서 Calendars, DST Calendars, Filter Lists를 관리합니다.
 
