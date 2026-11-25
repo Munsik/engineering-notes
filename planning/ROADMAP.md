@@ -65,6 +65,7 @@ Engineering Notes
 - [ ] 0-2. 컬렉션별 `index.md`(draft) 뼈대 만들기 `미착수`
 - [ ] 0-3. `labs/` 디렉터리 규칙과 공통 docker compose 환경 만들기 `미착수`
 - [ ] 0-4. `templates/use-case.md`에 출처 등급과 경험 서술 안내 반영 `미착수`
+- [ ] 0-5. 검색 유입과 AI agent 대응: 구조화 데이터, sitemap lastmod, RSS, llms.txt, .md 원문 구현. Search Console 등록과 root 파일, 영문판은 남음 `부분 결정`
 
 ### 1. 설계 ([상세](collections/01-data-design.md))
 
