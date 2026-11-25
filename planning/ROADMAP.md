@@ -11,8 +11,8 @@ Elastic을 도입하고 운영하는 사람이 실제로 마주치는 순서대�
 Engineering Notes
 │
 ├─ 1. 데이터를 얼마나, 어디에, 어떤 모양으로 둘 것인가   (설계)
-│   ├─ 1-1. Shard 안의 Lucene: segment가 생기고 사라지기까지 (초안)
-│   ├─ 1-2. Merge와 force merge: 언제 하고 언제 하지 말아야 하나 (초안)
+│   ├─ 1-1. Shard 안의 Lucene: segment가 생기고 사라지기까지 (발행)
+│   ├─ 1-2. Merge와 force merge: 언제 하고 언제 하지 말아야 하나 (발행)
 │   ├─ 1-3. 로그 저장 용량은 무엇과 비교해 몇 % 줄어드는가
 │   ├─ 1-4. Shard 수와 크기, bulk 형태를 어떻게 정할 것인가
 │   └─ 1-5. 오래된 데이터는 어디에 두고 어떻게 꺼내 볼 것인가
@@ -48,7 +48,7 @@ Engineering Notes
 
 | 단계 | 대상 | 이유 |
 | --- | --- | --- |
-| 0 | 사이트 구조와 공통 규칙 | 새 컬렉션을 넣을 자리와 URL 정책을 먼저 정해야 글을 옮길 일이 없음 |
+| 0 | 사이트 구조와 공통 규칙 | 새 컨렉션을 넣을 자리와 URL 정책을 먼저 정해야 글을 옮길 일이 없음 |
 | 1 | 1-1, 1-2, 1-3, 1-4, 1-5 | 1-1, 1-2가 shard 내부 구조를 먼저 설명하고, 나머지는 같은 synthetic 로그 데이터셋과 labs 환경을 이어서 씀. 이후 단계의 기반 |
 | 2 | 3-1, 3-2, 5-1 10편 | 1단계 labs 환경을 재사용. 운영 관점 독자에게 가장 수요가 큼 |
 | 3 | 2-1, 2-2, 3-3, 5-2 | 수집과 보호 장치. Fleet labs는 별도 환경이 필요 |
@@ -57,19 +57,19 @@ Engineering Notes
 
 ## TO-DO 요약
 
-상세 계획은 각 컬렉션 문서에 있습니다. 공통 진행 항목은 [ARTICLE-CHECKLIST.md](ARTICLE-CHECKLIST.md)를 따릅니다.
+상세 계획은 각 컨렉션 문서에 있습니다. 공통 진행 항목은 [ARTICLE-CHECKLIST.md](ARTICLE-CHECKLIST.md)를 따릅니다.
 
 ### 0. 사이트 구조 ([상세](collections/00-site-structure.md))
 
-- [ ] 0-1. 최상위 sidebar와 URL 정책: 기존 AD URL 유지, 새 컬렉션은 문제 축 폴더 `부분 결정`
-- [ ] 0-2. 컬렉션별 `index.md`(draft) 뼈대 만들기 `미착수`
+- [ ] 0-1. 최상위 sidebar와 URL 정책: 기존 AD URL 유지, 새 컨렉션은 문제 축 폴더. "데이터 설계" 그룹 추가 완료 `부분 결정`
+- [ ] 0-2. 컨렉션별 `index.md`(draft) 뼈대 만들기 `미착수`
 - [ ] 0-3. `labs/` 디렉터리 규칙과 공통 docker compose 환경 만들기 `미착수`
 - [ ] 0-4. `templates/use-case.md`에 출처 등급과 경험 서술 안내 반영 `미착수`
 
 ### 1. 설계 ([상세](collections/01-data-design.md))
 
-- [ ] 1-1. Shard 안의 Lucene: segment가 생기고 사라지기까지 `초안` (`data/01-segments.md`, draft)
-- [ ] 1-2. Merge와 force merge: 언제 하고 언제 하지 말아야 하나 `초안` (`data/02-merge-and-force-merge.md`, draft)
+- [x] 1-1. Shard 안의 Lucene: segment가 생기고 사라지기까지 `발행` (`data/01-segments.md`)
+- [x] 1-2. Merge와 force merge: 언제 하고 언제 하지 말아야 하나 `발행` (`data/02-merge-and-force-merge.md`)
 - [ ] 1-3. 로그 저장 용량은 무엇과 비교해 몇 % 줄어드는가 `미착수`
 - [ ] 1-4. Shard 수와 크기, bulk 형태를 어떻게 정할 것인가 `미착수`
 - [ ] 1-5. 오래된 데이터는 어디에 두고 어떻게 꺼내 볼 것인가 `미착수`

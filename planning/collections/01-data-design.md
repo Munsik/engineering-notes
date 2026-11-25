@@ -3,32 +3,32 @@
 도입 초기 sizing과, 운영 중 비용 압박이 왔을 때 가장 먼저 부딪히는 질문을 다룹니다.
 1-1, 1-2는 shard 내부 구조(segment, merge)를 먼저 설명합니다. 뒤의 세 글(1-3, 1-4, 1-5)은 이 내용을 전제로 하고, `labs/_datagen/`의 같은 synthetic 로그 데이터셋을 이어서 씁니다.
 
-- 폴더: `src/content/docs/data/` (0-1 A안: 기존 AD URL은 유지하고 새 컬렉션은 문제 축 폴더에 둠)
+- 폴더: `src/content/docs/data/` (0-1 A안: 기존 AD URL은 유지하고 새 컨렉션은 문제 축 폴더에 둠)
 - labs: `labs/data/`
-- 공개할 때 할 일: `astro.config.mjs` sidebar에 "데이터 설계" 그룹(`autogenerate: { directory: 'data' }`)을 추가합니다. 글이 모두 draft인 동안 그룹을 넣으면 공개 사이트에 빈 그룹 이름만 보여서 지금은 넣지 않았습니다.
+- sidebar: `astro.config.mjs`에 "데이터 설계" 그룹(`autogenerate: { directory: 'data' }`)을 최상위 첫 번째로 추가했습니다(01, 02 발행과 함께, 2026-11-25).
 
 ---
 
 ## 1-1. Shard 안의 Lucene: segment가 생기고 사라지기까지
 
-상태: `초안` (draft)
+상태: `발행` (2026-11-25)
 파일: `data/01-segments.md`, `labs/data/segments-and-merge/`
 
 - 답하는 질문: 넣은 문서가 왜 바로 검색되지 않나, update만 했는데 디스크가 왜 늘어나나, merge 뒤에도 `store.size`가 왜 그대로인가, refresh와 flush와 commit은 무엇이 다른가
 - 실측(ECH 9.5.5): `refresh_interval` 미설정/`1s`/`30s`/`-1` 비교(2회), 반복 update와 `only_expunge_deletes`(replica 0개, 1개), `_disk_usage`
 - 소스로 확인한 것: `flush_threshold_age` 1m, indexing buffer 압박 시 segment 쓰기, 유휴 shard flush 5m, compound file 기준, `__soft_deletes`
-- 남은 일: 검토, 공개 시 `draft` 제거와 컬렉션 개요 갱신
+- 발행 전 사실검증: 공식 문서, 9.5.5 소스, 로컬 9.5.5 재현으로 다시 확인하고 반영(2026-11-25)
 
 ## 1-2. Merge와 force merge: 언제 하고 언제 하지 말아야 하나
 
-상태: `초안` (draft)
+상태: `발행` (2026-11-25)
 파일: `data/02-merge-and-force-merge.md`, `labs/data/segments-and-merge/`
 
 - 답하는 질문: merge policy는 무엇이 다른가, merge가 indexing을 늦추는 조건, force merge를 해도 되는 때와 하면 안 되는 때, 디스크와 snapshot 영향
 - 실측(ECH 9.5.5): `@timestamp` 유무와 dynamic `@timestamp`에 따른 policy 차이(2회), close/open 후 변화, force merge 중 `store.size` 최대 2.46배에서 2.96배(replica 0개, 1개), force merge 후 snapshot 전체 재업로드, segment 40개 대 1개 kNN 지연(384차원 3만 건에서는 차이 1ms 안쪽)
 - 남은 확인: 디스크의 실제 segment 파일 목록(로컬 Elasticsearch 필요), 큰 vector 인덱스에서 segment 수에 따른 kNN 지연
 - 소스로 확인한 것: policy 판정 조건과 시점, Tiered와 LogByteSize 기본값(9.5에서 `segments_per_tier` 10에서 8, `floor_segment` 2MB에서 16MB), merge IO throttle 범위, indexing throttle 방식
-- 남은 일: 검토, 공개 시 `draft` 제거와 컬렉션 개요 갱신
+- 발행 전 사실검증: 공식 문서, 9.5.5 소스, 로컬 9.5.5 재현으로 다시 확인하고 반영(2026-11-25)
 
 ---
 
