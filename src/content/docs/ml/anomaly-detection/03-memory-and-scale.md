@@ -8,6 +8,11 @@ sidebar:
 
 job이 늘어나거나 split field의 cardinality가 커지면 제일 먼저 부딪히는 게 메모리입니다.
 모델은 job이 열려 있는 동안 ML node 메모리에 올라가 있는데, 한도에 닿으면 에러 없이 탐지 품질만 떨어지기 때문에, 따로 지켜보지 않으면 알아채기 어렵습니다.
+업무 쪽에서 보면 "이상이 없었다"와 "새로 생긴 entity를 보지 못했다"가 구분되지 않는다는 뜻입니다. 그래서 메모리는 규모를 키우기 전에 먼저 정해 둡니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
+:::
 
 ## 규모를 키울 때 먼저 볼 설정
 
@@ -45,7 +50,7 @@ GET _ml/anomaly_detectors/<job_id>/_stats
 ## 메모리 추정
 
 job을 만들기 전에 estimate API로 메모리가 얼마나 필요할지 가늠해 봅니다.
-`overall_cardinality`에는 field의 전체 고유 값 개수를, `max_bucket_cardinality`에는 bucket 하나 안에서 나올 수 있는 최대 고유 값 개수를 넣습니다. 잘 모르겠으면 둘 다 전체 값으로 넣어 넉넉하게 보면 됩니다.
+`overall_cardinality`에는 field의 전체 고유 값 개수를, `max_bucket_cardinality`에는 bucket 하나 안에서 나올 수 있는 최대 고유 값 개수를 넣습니다. 잘 모르겠으면 둘 다 전체 값으로 넣어 넉넉하게 보는 편이 안전합니다(해석).
 
 ```json
 POST _ml/anomaly_detectors/_estimate_model_memory
@@ -64,9 +69,13 @@ POST _ml/anomaly_detectors/_estimate_model_memory
 
 추정값은 어디까지나 출발점입니다. 실제 사용량은 학습이 진행되면서 달라지니, PoC에서 `peak_model_bytes`를 보고 여유를 두고 정하세요.
 
+추정값이 cardinality 가정에 얼마나 민감한지는 [09장 메모리 추정](../09-manufacturing-aiops/#메모리-추정)의 실측에서 볼 수 있습니다. 같은 로그 job이라도 bucket당 `trace.id` 개수를 얼마로 넣느냐에 따라 추정값이 job에 잡아 둔 한도를 넘기도 합니다.
+
+Elastic Stack 9.5부터(GA) Kibana의 Anomaly Detection Jobs 화면에서 닫힌 job을 편집하면, 현재 `model_memory_limit`이 추정값과 다를 때 추정값을 보여 주고 Apply로 바로 바꿀 수 있습니다. job을 다시 만들 필요는 없지만, 먼저 datafeed를 멈추고 job을 닫아야 합니다([설정을 바꾸는 순서](../06-operations/#설정을-바꾸는-순서)).
+
 ## ML node 구성
 
-직접 구축한 환경이라면 ML 전용 node를 두는 걸 권합니다. ML node에서 다른 프로세스가 돌지 않는다면 `xpack.ml.max_machine_memory_percent`를 기본값 30%보다 올려도 됩니다.
+직접 구축한 환경이라면 ML 전용 node를 두는 걸 권합니다. ML node에서 다른 프로세스가 돌지 않는다면 `xpack.ml.max_machine_memory_percent`를 기본값 30%보다 올려도 됩니다. 공식 문서는 다른 소프트웨어가 없는 메모리 24GB 이상 전용 node라면 90%까지 올리는 예를 듭니다.
 
 Elastic Cloud에서는 ML node autoscaling을 켜 두면 필요한 만큼 node가 늘었다 줄었다 합니다.
 

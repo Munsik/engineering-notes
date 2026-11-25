@@ -1,0 +1,187 @@
+# Anomaly Detection in Production: 08. 실습 Dev Tools 요청 모음
+# 설명: https://munsik.github.io/engineering-notes/ml/anomaly-detection/08-hands-on-lab/
+# 데이터: Kibana 샘플 Web logs (kibana_sample_data_logs)
+# 사용법: Kibana Dev Tools Console에 붙여 넣고 Lab 순서대로 실행합니다.
+#        <...>로 표시된 값과 날짜는 샘플 데이터를 추가한 날짜에 맞게 바꿉니다.
+#        Lab 1(Kibana 샘플 job 3개)과 Lab 6(alert rule)은 Kibana 화면에서 진행합니다.
+
+# ============================================================
+# Lab 0. 데이터 확인
+# ============================================================
+GET kibana_sample_data_logs/_search
+{
+  "size": 0,
+  "aggs": {
+    "min_t": { "min": { "field": "timestamp" } },
+    "max_t": { "max": { "field": "timestamp" } },
+    "codes": { "cardinality": { "field": "response.keyword" } },
+    "ips":   { "cardinality": { "field": "clientip" } },
+    "urls":  { "cardinality": { "field": "url.keyword" } }
+  }
+}
+
+
+# ============================================================
+# Lab 2. Advanced job 하나에 detector 3개
+# ============================================================
+POST _ml/anomaly_detectors/_estimate_model_memory
+{
+  "analysis_config": {
+    "bucket_span": "1h",
+    "detectors": [
+      { "function": "count", "partition_field_name": "response.keyword" },
+      { "function": "high_distinct_count", "field_name": "url.keyword", "over_field_name": "clientip" },
+      { "function": "low_count" }
+    ],
+    "influencers": ["clientip", "response.keyword"]
+  },
+  "overall_cardinality":    { "response.keyword": <codes>, "clientip": <ips> },
+  "max_bucket_cardinality": { "response.keyword": <codes>, "clientip": <ips> }
+}
+
+PUT _ml/anomaly_detectors/lab-weblogs-advanced
+{
+  "description": "실습: 샘플 module의 세 관점을 detector 3개로 묶은 advanced job",
+  "groups": ["lab"],
+  "analysis_config": {
+    "bucket_span": "1h",
+    "detectors": [
+      { "detector_description": "응답코드별 요청 수",
+        "function": "count", "partition_field_name": "response.keyword" },
+      { "detector_description": "client IP별 URL 다양성 (population)",
+        "function": "high_distinct_count", "field_name": "url.keyword", "over_field_name": "clientip" },
+      { "detector_description": "전체 요청 급감",
+        "function": "low_count" }
+    ],
+    "influencers": ["clientip", "response.keyword"]
+  },
+  "analysis_limits": { "model_memory_limit": "64mb" },
+  "data_description": { "time_field": "timestamp" },
+  "model_plot_config": { "enabled": false },
+  "results_index_name": "lab-weblogs-advanced"
+}
+
+PUT _ml/datafeeds/datafeed-lab-weblogs-advanced
+{
+  "job_id": "lab-weblogs-advanced",
+  "indices": ["kibana_sample_data_logs"],
+  "query": { "bool": { "filter": [ { "term": { "event.dataset": "sample_web_logs" } } ] } }
+}
+
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_open
+
+POST _ml/datafeeds/datafeed-lab-weblogs-advanced/_start
+{ "start": "<Lab 0의 min_t>", "end": "<Lab 0의 max_t>" }
+
+
+# ============================================================
+# Lab 3. 결과 조회와 비교
+# ============================================================
+# job 상태와 model memory
+GET _ml/anomaly_detectors/lab-weblogs-advanced/_stats
+
+# record: detector_index로 어느 detector가 잡았는지 구분 (0, 1, 2)
+GET _ml/anomaly_detectors/lab-weblogs-advanced/results/records
+{ "record_score": 50, "exclude_interim": true, "sort": "record_score", "desc": true, "page": { "size": 10 } }
+
+# influencer: detector를 가로질러 모은 원인 entity
+GET _ml/anomaly_detectors/lab-weblogs-advanced/results/influencers
+{ "influencer_score": 50, "sort": "influencer_score", "desc": true, "page": { "size": 10 } }
+
+# 비교 1: advanced job 하나의 bucket score
+GET _ml/anomaly_detectors/lab-weblogs-advanced/results/buckets
+{ "anomaly_score": 50, "exclude_interim": true, "sort": "anomaly_score", "desc": true, "page": { "size": 5 } }
+
+# 비교 2: 샘플 job 3개를 overall buckets로 묶어 보기
+GET _ml/anomaly_detectors/low_request_rate,response_code_rates,url_scanning/results/overall_buckets
+{ "top_n": 1, "overall_score": 50, "exclude_interim": true }
+
+
+# ============================================================
+# Lab 4. Noise 대응: filter와 custom rule
+# ============================================================
+# 원래 그런 줄 아는 client를 filter list로 등록
+PUT _ml/filters/lab-trusted-clients
+{ "description": "알려진 정상 client", "items": ["<정상 IP 1>", "<정상 IP 2>"] }
+
+# datafeed를 멈추고 job을 닫은 뒤 고칩니다
+POST _ml/datafeeds/datafeed-lab-weblogs-advanced/_stop
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_close
+
+# detector 0(응답코드별 count): 20건 미만이면 결과 생략
+# detector 1(population): 정상 client는 결과 생략 (over field scope)
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_update
+{
+  "detectors": [
+    { "detector_index": 0,
+      "custom_rules": [ { "actions": ["skip_result"],
+        "conditions": [ { "applies_to": "actual", "operator": "lt", "value": 20 } ] } ] },
+    { "detector_index": 1,
+      "custom_rules": [ { "actions": ["skip_result"],
+        "scope": { "clientip": { "filter_id": "lab-trusted-clients", "filter_type": "include" } } } ] }
+  ]
+}
+
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_open
+
+
+# ============================================================
+# Lab 5. Calendar
+# ============================================================
+PUT _ml/calendars/lab-maintenance
+{ "description": "실습: 계획된 점검", "job_ids": ["lab"] }
+
+POST _ml/calendars/lab-maintenance/events
+{
+  "events": [
+    { "description": "planned maintenance",
+      "start_time": "2026-12-01T01:00:00Z", "end_time": "2026-12-01T03:00:00Z" }
+  ]
+}
+
+GET _ml/calendars/lab-maintenance/events
+
+
+# ============================================================
+# Lab 7. Forecast 확인
+# ============================================================
+# 샘플 job: forecast가 만들어짐
+POST _ml/anomaly_detectors/low_request_rate/_open
+POST _ml/anomaly_detectors/low_request_rate/_forecast
+{ "duration": "7d" }
+
+# population 전용 job: 에러
+POST _ml/anomaly_detectors/url_scanning/_open
+POST _ml/anomaly_detectors/url_scanning/_forecast
+{ "duration": "7d" }
+
+# population detector가 섞인 job
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_open
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_forecast
+{ "duration": "7d" }
+
+
+# ============================================================
+# Lab 8. Snapshot 복구와 reset
+# ============================================================
+GET _ml/anomaly_detectors/lab-weblogs-advanced/model_snapshots
+
+POST _ml/datafeeds/datafeed-lab-weblogs-advanced/_stop
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_close
+
+POST _ml/anomaly_detectors/lab-weblogs-advanced/model_snapshots/<snapshot_id>/_revert
+{ "delete_intervening_results": true }
+
+# 설정은 그대로 두고 결과와 모델만 지운 뒤 처음부터 다시 학습
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_reset
+
+
+# ============================================================
+# Lab 9. 정리
+# ============================================================
+POST _ml/datafeeds/datafeed-lab-weblogs-advanced/_stop
+POST _ml/anomaly_detectors/lab-weblogs-advanced/_close
+DELETE _ml/datafeeds/datafeed-lab-weblogs-advanced
+DELETE _ml/anomaly_detectors/lab-weblogs-advanced
+DELETE _ml/calendars/lab-maintenance
+DELETE _ml/filters/lab-trusted-clients

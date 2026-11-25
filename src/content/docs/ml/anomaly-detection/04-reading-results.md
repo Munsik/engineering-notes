@@ -6,6 +6,13 @@ sidebar:
   order: 4
 ---
 
+결과를 잘못 읽으면 두 가지 일이 생깁니다. 원인 entity를 엉뚱하게 고르거나, score가 내려간 것을 설정 문제로 오해해서 멀쩡한 job을 고칩니다.
+alert 임계값도 결국 이 score를 기준으로 정합니다. 그래서 score가 어떻게 매겨지는지부터 알아야 합니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. 화면은 Elastic Cloud Hosted 9.5.5에서 [실습](../08-hands-on-lab/)을 돌려 얻은 것입니다.
+:::
+
 ## 결과는 세 층으로 나옵니다
 
 | 결과 | 뜻 | 주로 어디에 쓰나 |
@@ -26,7 +33,8 @@ Kibana Anomaly Explorer에서 timeline은 bucket score를, influencer swim lane�
 
 :::tip[원인 entity를 고를 때]
 bucket score는 그 시간대 전체를 요약한 값이라 "누가"에 대한 답은 주지 않습니다. 원인 후보를 고를 때는 그 bucket의 influencer 결과를 `influencer_score` 순으로 보세요.
-여러 job에서 동시에 높게 나오는 entity는 근본 원인일 가능성이 크고, 한 job에만 나오는 entity는 영향을 받은 쪽인 경우가 많습니다.
+여러 job에서 동시에 높게 나오는 entity는 근본 원인일 가능성이 크고, 한 job에만 나오는 entity는 영향을 받은 쪽인 경우가 많습니다(해석).
+[09장](../09-manufacturing-aiops/#같은-traceid가-여러-job에-나왔는지-확인)은 같은 `trace.id`가 로그 job과 APM job에 함께 나오는지로 이걸 확인합니다.
 :::
 
 ## Score가 정해지는 방식
@@ -77,6 +85,8 @@ score를 깎는 요인도 두 가지 있습니다.
 
 Kibana는 score에 따라 이상을 아래처럼 나눠 표시합니다. 구간 경계는 Kibana 소스 코드([`anomaly_threshold.ts`](https://github.com/elastic/kibana/blob/main/x-pack/platform/packages/shared/ml/anomaly_utils/anomaly_threshold.ts))에 정의된 값이고, Anomaly Explorer의 Anomaly score 범례(0-3, 3-25, 25-50, 50-75, 75-100)도 같습니다.
 
+오른쪽 열은 제가 쓰는 방식입니다(해석).
+
 | score | 표기 | 운영에서 이렇게 쓸 수 있습니다 |
 | --- | --- | --- |
 | 75 이상 | critical | 바로 alert. alert rule의 기본 임계값이 75입니다. |
@@ -89,7 +99,7 @@ score가 낮은 이상도 여러 job에서 같은 시각에 함께 나오면 의
 
 ## Detector가 여러 개인 job 읽기
 
-overall swim lane은 job 전체의 bucket score입니다. influencer swim lane을 단순히 더한 값이 아니라서, influencer 쪽에는 이상이 있어도 overall 칸은 비어 있을 수 있습니다.
+overall swim lane은 job 전체의 bucket score이고, influencer swim lane은 influencer score입니다. 서로 다른 결과에서 나온 값이라 같은 시간대라도 색과 숫자가 다를 수 있습니다. influencer swim lane을 더한다고 overall 값이 되지는 않습니다.
 
 Top influencers 목록은 influencer마다 bucket별 최고 score를 모든 detector에 걸쳐 모으고, 합계도 같이 보여 줍니다. 여러 증상에 한꺼번에 등장하는 entity가 위로 올라옵니다.
 
@@ -114,8 +124,7 @@ API로 볼 때는 record 결과의 `detector_index`로 detector를 구분합니�
 
 ## ES|QL로 결과 조회하기
 
-Elastic Cloud Serverless에서는 `.ml-anomalies` reserved view로 bucket, record, influencer 결과를 ES|QL로 조회할 수 있습니다(GA).
-Elastic Stack(직접 구축, Elastic Cloud Hosted)은 공식 문서에 "Planned"로 표시돼 있습니다. 이 환경에서는 결과 API나 `.ml-anomalies-*` index 검색을 쓰세요.
+`.ml-anomalies` reserved view로 bucket, record, influencer 결과를 ES|QL로 조회할 수 있습니다. Elastic Cloud Serverless는 GA이고, Elastic Stack(직접 구축, Elastic Cloud Hosted)은 9.6부터 GA입니다. 9.5 이하에서는 결과 API나 `.ml-anomalies-*` index 검색을 쓰세요. cross-cluster search로는 이 view를 조회할 수 없습니다.
 
 ```sql
 FROM .ml-anomalies

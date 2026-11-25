@@ -9,6 +9,11 @@ sidebar:
 Elastic은 Kibana에 꽤 많은 anomaly detection job을 미리 만들어 넣어 두었습니다(supplied configuration). 데이터가 맞으면 버튼 한 번으로 만들 수 있는 job들입니다.
 아래는 그 설정을 GitHub에서 하나씩 열어 보고 정리한 것입니다. 무엇을 보려는 job인지, detector와 split을 왜 그렇게 골랐는지, noise는 어떻게 처리하는지를 같이 적었습니다.
 field 이름과 숫자는 각자 환경에 맞게 바꿔서 쓰세요.
+여기 나온 job들을 한 업무 환경에 맞게 골라 조합하고, alert 이후의 대응까지 이은 예는 [09장 공장 생산망 AIOps](../09-manufacturing-aiops/)에 있습니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 제공 job 설정은 GitHub [elastic/kibana](https://github.com/elastic/kibana/tree/main/x-pack/platform/plugins/shared/ml/server/models/data_recognizer/modules) main 브랜치를 2026년 11월에 봤습니다. 화면은 Elastic Cloud Hosted 9.5.5에서 [실습](../08-hands-on-lab/)을 돌려 얻은 것입니다.
+:::
 
 | # | 시나리오 | 구성 |
 | --- | --- | --- |
@@ -79,7 +84,7 @@ field 이름과 숫자는 각자 환경에 맞게 바꿔서 쓰세요.
 | bucket span 등 | 15m, memory 32mb, model plot 켬, 결과 index `custom-apm` |
 | 왜 이렇게 | 네 지표가 entity 키도, bucket span도, aggregation 입력도 같아서 한 job에 두는 게 자연스럽습니다. 처리량은 급증도 급감도 의미가 있어 양쪽을 보는 `mean`을 쓰고, 지연과 실패율은 높아지는 쪽만 봅니다. |
 | noise와 주의 | 서비스가 늘면 partition 수만큼 메모리가 늘어납니다. detector를 하나 더 넣고 싶어도 기존 job에는 못 넣어서 새 job을 만들어야 합니다. |
-| 참고한 제공 job | `apm_tx_metrics`(apm_transaction module) |
+| 참고한 제공 job | `apm_tx_metrics`(apm_transaction module). `low_count` detector는 Elastic Stack 9.6부터 새로 만든 APM job에 들어갑니다. 그 전에 만든 job에는 detector가 3개이고, 넣으려면 job을 지우고 다시 만들어야 합니다. |
 
 ```json
 "detectors": [
@@ -203,7 +208,7 @@ DNS 질의 이름에 데이터를 실어서 빼돌리면, 질의 문자열의 �
 | custom rule | `actual`이 350보다 작으면 `skip_result` |
 | influencer | `destination.ip`, `host.name`, `host.id`, `dns_question_etld`, `dns.question.type`, `dns.question.name`, `source.ip` |
 | bucket span 등 | 15m, memory 256mb |
-| 왜 이렇게 | population 분석으로 도메인끼리 비교하고, 정보량이 일정 수준이 안 되는 결과는 rule로 지웁니다. Elastic Security 문서도 noise를 줄이는 예로 이 job의 임계값 조정을 듭니다. |
+| 왜 이렇게 | population 분석으로 도메인끼리 비교하고, 정보량이 일정 수준이 안 되는 결과는 rule로 지웁니다. Elastic Security 문서도 결과를 줄이는 방법으로 DNS tunneling job에 `actual` 조건 rule을 거는 예를 듭니다(문서의 예는 이전 이름인 `packetbeat_dns_tunneling` job 기준). |
 | 참고한 제공 job | `dns_tunneling_ea`(security_network) |
 
 ## 로그 메시지 패턴 급증

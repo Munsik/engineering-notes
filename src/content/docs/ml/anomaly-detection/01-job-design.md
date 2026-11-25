@@ -6,6 +6,36 @@ sidebar:
   order: 1
 ---
 
+job 설계는 대부분 되돌릴 수 없습니다. detector 구성과 bucket span은 job을 만든 뒤에는 바꿀 수 없어서, 처음에 잘못 정하면 job을 다시 만들고 학습 기간을 처음부터 기다려야 합니다.
+이 장은 그 전에 정해야 할 것들을 다룹니다. 그보다 먼저, anomaly detection이 이 문제에 맞는 도구인지부터 따져 봅니다.
+
+:::note[기준]
+Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
+:::
+
+## 이 문제에 맞는 도구인가
+
+공식 문서는 anomaly detection에 맞는 데이터의 조건으로 세 가지를 듭니다. 시계열 데이터여야 하고, 시스템이나 업무의 상태를 보여 주는 핵심 지표여야 하며, Elasticsearch에 있어서 datafeed로 실시간으로 읽을 수 있으면 가장 좋습니다([Getting started](https://www.elastic.co/docs/explore-analyze/machine-learning/anomaly-detection/ml-getting-started)).
+
+여기에 하나를 더 따져 봐야 합니다. 같은 문제를 고정 임계값 rule이나 SLO로 더 단순하게 풀 수 있는지입니다.
+아래 표는 공식 문서의 기준이 아니라 제가 현장에서 쓰는 판단 기준입니다(해석).
+
+| 상황 | 더 맞는 방법 | 이유 |
+| --- | --- | --- |
+| 정상 범위를 숫자로 정할 수 있다(디스크 사용률 90% 이상, 인증서 만료 7일 전) | 임계값 rule | 기준이 분명하면 학습이 필요 없고, 왜 울렸는지 설명하기도 쉽습니다. |
+| 규정이나 계약으로 정해진 기준이 있다 | 임계값 rule | 감사나 보고에서 "어떤 기준으로 탐지했는가"에 고정값으로 답해야 합니다. anomaly score는 job이 지금까지 본 이상들 사이의 상대값이라 이 용도에 맞지 않습니다([04](../04-reading-results/#score가-정해지는-방식)). |
+| 사용자 영향 기준의 목표(가용성, 응답 시간)를 관리하고 싶다 | SLO | 목표 대비 error budget이 얼마나 빨리 줄어드는지(burn rate)로 판단하는 게 맞습니다. |
+| 시간대와 요일에 따라 정상 값이 달라 고정값을 정할 수 없다 | anomaly detection | 주기성을 알아서 배웁니다. |
+| entity가 많아서 사람이 entity마다 기준을 정할 수 없다(호스트 수백 대, 설비, 사용자) | anomaly detection | `partition`으로 entity마다, `over`로 집단 대비로 봅니다. |
+| 무엇이 이상인지 미리 정의할 수 없다(처음 보는 로그 패턴, 드문 process) | anomaly detection | `rare`와 categorization이 이 용도입니다. |
+| 학습할 과거 데이터가 거의 없다(새 서비스, 수집을 막 시작함) | 당분간 임계값 rule | 주기성이 있는 데이터는 3주 이상 학습해야 결과를 믿을 만합니다([02](../02-bucket-span-and-data/#학습에-필요한-데이터-양)). |
+| 특정 사건이 한 번이라도 나오면 바로 알아야 한다(특정 에러 코드, 특정 계정 로그인) | 조건 rule | 한 건 발생 자체가 사건이라면 확률 모델이 필요 없습니다. |
+
+실제로는 하나만 고르는 경우가 드뭅니다. 기준이 분명한 부분은 임계값 rule로, 기준을 정하기 어려운 부분은 anomaly detection으로 나눠 맡깁니다.
+[09장](../09-manufacturing-aiops/)도 업무상 의미 없는 낮은 사용률은 custom rule로 걸러 내고, 그 위에서 평소와 다른 변화만 anomaly detection으로 봅니다.
+
+처음 시작한다면 핵심 지표 하나로 single metric job부터 만들어 결과를 보고, 그다음에 multi-metric job이나 split을 늘리는 순서를 공식 문서도 권합니다.
+
 ## 구성 요소
 
 Anomaly detection은 시계열을 일정한 시간 단위(bucket)로 잘라 요약한 다음, 그 값이 과거 패턴에서 얼마나 벗어났는지를 확률로 따집니다.
@@ -94,6 +124,8 @@ API 문서는 `over_field_name`이 있는 job에 forecast를 요청하면 에러
 
 ### 판단 기준
 
+아래는 위 제약을 바탕으로 정리한 제 판단 기준입니다(해석).
+
 | 상황 | 권장 |
 | --- | --- |
 | 같은 서비스나 호스트의 증상 지표(지연, 처리량, 에러율, 건수)를 같은 bucket span으로 볼 때 | 한 job에 detector 여러 개. [APM 시나리오](../07-scenarios/#apm-서비스-핵심-지표-4종)가 좋은 예입니다. |
@@ -102,6 +134,8 @@ API 문서는 `over_field_name`이 있는 job에 forecast를 요청하면 에러
 | forecast가 필요한 지표와 population 분석을 같이 하고 싶을 때 | job을 나누는 편이 깔끔합니다. 한 job에 두면 population detector만 빠진 forecast가 만들어져서, 무엇이 예측됐는지 헷갈리기 쉽습니다. |
 | 데이터 소스(index)나 필터 조건이 다를 때 | job을 나눕니다. datafeed는 job당 하나뿐입니다. |
 | alert를 받는 팀이나 심각도 기준이 다를 때 | job을 나누거나 job group으로 묶어 관리합니다. |
+
+여러 영역의 job을 이 기준으로 나누고 group으로 다시 묶은 예는 [09장 결정 기록](../09-manufacturing-aiops/#결정-기록)에 있습니다.
 | split field의 cardinality가 아주 클 때 | population을 검토하거나, datafeed query로 범위를 나눠 job을 쪼갭니다. |
 
 :::tip
@@ -131,17 +165,19 @@ population 분석은 entity가 수십만, 수백만이어도 entity마다 시계
 `by`나 `partition` 값이 없는 문서는 기본적으로 분석에서 빠집니다. `use_null: true`를 주면 값이 없는 문서도 별도 시계열로 분석합니다.
 Elastic이 제공하는 로그 job은 이 옵션으로 dataset 정보가 빠진 로그까지 지켜봅니다.
 
-이름이 `by`, `count`, `over`인 field는 split에 쓸 수 없습니다. 그리고 Kibana wizard는 split field의 cardinality가 1,000을 넘으면 메모리 경고를 띄웁니다.
+이름이 `by`, `count`, `over`인 field는 `by_field_name`이나 `over_field_name`에 쓸 수 없습니다. 그리고 Kibana wizard는 split field의 cardinality가 1,000을 넘으면 메모리 경고를 띄웁니다.
 
 ## Influencer
 
 공식 문서는 influencer를 보통 3개 이하로 두라고 권합니다. 많아지면 결과가 복잡해지고 분석에 약간의 부담이 생깁니다.
 
 다만 Elastic Security가 제공하는 job은 조사에 필요한 host, user, source IP, process 정보를 같이 남기려고 influencer를 7~8개씩 둡니다.
-보안처럼 조사할 때 맥락이 중요한 용도라면 늘려도 괜찮습니다. 대신 PoC에서 메모리와 결과 양을 꼭 확인하세요.
+보안처럼 조사할 때 맥락이 중요한 용도라면 늘려도 괜찮다고 봅니다(해석). 대신 PoC에서 메모리와 결과 양을 꼭 확인하세요.
 
 influencer는 detector에서 쓰지 않은 field여도 됩니다. 다만 datafeed가 query로 읽는다면 detector field와 같은 문서에 있어야 하고, aggregation으로 읽는다면 aggregation 안에 포함돼 있어야 반영됩니다.
 필요하면 datafeed의 `runtime_mappings`로 influencer용 field를 만들 수도 있습니다.
+
+서로 다른 job의 결과를 같은 influencer 값(`trace.id`)으로 이어서 원인을 좇는 설계는 [09장 Influencer와 상관 분석](../09-manufacturing-aiops/#influencer와-상관-분석)에 정리했습니다.
 
 influencer는 특정 값을 가진 데이터를 빼고 다시 평가했을 때 이상이 사라지는지를 보는 식으로 계산됩니다. 그래서 통계적으로 의미 있는 influencer만 결과에 남습니다.
 
