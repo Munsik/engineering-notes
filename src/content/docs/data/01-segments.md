@@ -1,7 +1,6 @@
 ---
 title: "Shard 안의 Lucene: segment가 생기고 사라지기까지"
 description: shard 안에서 segment가 만들어지고, 검색 가능해지고, 디스크에 commit되고, 삭제 표시를 거쳐 사라지기까지를 Lucene 수준에서 따라가고 ECH 9.5.5 실측으로 확인합니다.
-draft: true
 sidebar:
   label: 01. Segment의 생애
   order: 1
