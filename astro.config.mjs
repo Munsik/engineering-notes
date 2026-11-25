@@ -35,6 +35,10 @@ export default defineConfig({
       ],
       sidebar: [
         {
+          label: '데이터 설계',
+          items: [{ autogenerate: { directory: 'data' } }],
+        },
+        {
           label: 'Machine Learning',
           items: [
             {
