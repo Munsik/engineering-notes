@@ -150,7 +150,7 @@ JSON 본문에는 주석이 없어서 Kibana Dev Tools에 그대로 붙여 넣�
 
 ### 사용률 변환
 
-CPU, 메모리, 디스크 사용률은 원본에 `0.8123`처럼 0~1 비율로 저장됩니다. 현장에서는 결과 화면과 알림에 `81`처럼 정수 %로 보이길 원하는 경우가 많아서, datafeed의 runtime field로 **0~100 정수로 바꿔 분석**합니다. 소수점 첫째 자리에서 반올림하므로 `0.8123`은 `81`, `0.8150`은 `82`가 됩니다. 원본 인덱스는 바뀌지 않습니다([runtime fields in datafeeds](https://www.elastic.co/docs/explore-analyze/machine-learning/anomaly-detection/ml-configuring-transform)).
+CPU, 메모리, 디스크 사용률은 원본에 `0.8123`처럼 0에서 1 사이 비율로 저장됩니다. 현장에서는 결과 화면과 알림에 `81`처럼 정수 %로 보이길 원하는 경우가 많아서, datafeed의 runtime field로 **0에서 100 사이 정수로 바꿔 분석**합니다. 소수점 첫째 자리에서 반올림하므로 `0.8123`은 `81`, `0.8150`은 `82`가 됩니다. 원본 인덱스는 바뀌지 않습니다([runtime fields in datafeeds](https://www.elastic.co/docs/explore-analyze/machine-learning/anomaly-detection/ml-configuring-transform)).
 
 ```java
 if (!doc.containsKey('SOURCE_FIELD') || doc['SOURCE_FIELD'].size() == 0) { return; }
