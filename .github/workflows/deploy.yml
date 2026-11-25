@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # 작업 계획(planning/)만 바꾼 push는 사이트를 다시 배포하지 않습니다.
+    paths-ignore:
+      - 'planning/**'
   workflow_dispatch:
 
 permissions:
