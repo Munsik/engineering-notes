@@ -230,7 +230,7 @@ segment는 고칠 수 없기 때문에 "지운다"는 것은 표시를 붙이는
 - 1회차 update 직후에는 옛 버전 20만 건이 모두 `docs.deleted`로 남았고, 디스크는 정확히 두 배가 됐습니다.
 - 이후에는 merge가 삭제 문서를 꾸준히 걷어 냈습니다. 그래도 `store.size`는 처음의 2.6배에서 3.2배 사이를 오갔습니다. 대부분은 앞 절에서 본 "commit point가 잡고 있는 merge 전 파일"입니다. force merge는 끝난 뒤 flush를 하기 때문에 그 파일이 정리되면서 34.1MB로 떨어졌습니다.
 - `only_expunge_deletes`를 실행해도 삭제 문서 1만 6천 건이 남았습니다. 그 segment의 삭제 비율이 8%라서 기준값 10%(`index.merge.policy.expunge_deletes_allowed`) 아래였기 때문입니다. 기준을 0으로 낮추자 모두 사라졌습니다. 이 인덱스는 `ts` 필드를 쓴 TieredMergePolicy 인덱스라서 10% 기준이 적용됐습니다. `@timestamp` 인덱스는 이 기준이 없어 동작이 다릅니다([다음 글](../02-merge-and-force-merge/#지운-문서만-정리하기-only_expunge_deletes) 참고).
-이때 기록된 retention lease는 최신 작업보다 3만 4천 건 정도 뒤에 있었지만(`retaining_seq_no` 1,166,000, 전체 작업 약 120만 건) 공간 회수를 막지 않았습니다.
+마지막 update 직후 기록한 retention lease는 최신 작업보다 3만 4천 건 정도 뒤에 있었습니다(`retaining_seq_no` 1,166,000, 전체 작업 약 120만 건). 기준을 0으로 낮춰 다시 실행할 때는 lease가 최신 작업(1,200,000)까지 따라와 있었고, 삭제 문서가 모두 정리됐습니다.
 
 결과 원본은 [`results/B_update.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/B_update.csv)에 있습니다.
 

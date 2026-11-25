@@ -206,7 +206,7 @@ segment 19개, 163MB인 인덱스를 force merge 전후로 snapshot했습니다.
 `only_expunge_deletes=true`는 삭제 문서가 있는 segment만 다시 씁니다. 어떤 segment를 고르는지는 merge policy마다 다릅니다(소스 `MergePolicyConfig.java`, Lucene `LogMergePolicy.java`).
 
 - **TieredMergePolicy**: 삭제 비율이 `index.merge.policy.expunge_deletes_allowed`(기본 10%) 이하인 segment는 건너뜁니다. segment를 1개로 합치지 않습니다.
-- **LogByteSizeMergePolicy**(`@timestamp` 인덱스): 이 기준이 없습니다. 삭제 문서가 한 건이라도 있는 segment를 모두 다시 쓰고, 그런 segment가 나란히 있으면 하나로 합칩니다. merge 크기 상한도 보지 않습니다.
+- **LogByteSizeMergePolicy**(`@timestamp` 인덱스): 이 기준이 없습니다. 삭제 문서가 한 건이라도 있는 segment를 모두 다시 쓰고, 그런 segment가 나란히 있으면 한 번에 최대 `merge_factor`(32)개까지 하나로 합칩니다. merge 크기 상한도 보지 않습니다.
 
 로컬 9.5.5 단일 노드에서 segment 4개(각각 문서 2%를 삭제)로 확인했습니다. `ts` 인덱스는 segment 4개와 삭제 문서가 그대로 남았고, `@timestamp` 인덱스는 segment 1개로 합쳐지면서 삭제 문서가 모두 사라졌습니다(실측). 재현 요청은 [`labs/data/segments-and-merge/expunge-by-policy.console`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/expunge-by-policy.console)에 있습니다.
 
