@@ -100,10 +100,11 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 - 글 첫 문단에서 문제와 결론을 먼저 말합니다. 사람에게도, 글을 잘라 읽는 AI 검색에도 같은 이유로 유리합니다(해석).
 
 사용자가 할 일:
-- [ ] Google Search Console에 URL 접두어 속성 `https://munsik.github.io/engineering-notes/` 등록, HTML 태그 값을 `src/site-seo.mjs`의 `google`에 넣고 배포, 확인 후 `sitemap-index.xml` 제출
-- [ ] Search Console에서 생성형 AI 기능 포함 설정이 켜져 있는지 확인
+- [x] Google Search Console에 URL 접두어 속성 `https://munsik.github.io/engineering-notes/` 등록, HTML 태그 값을 `src/site-seo.mjs`의 `google`에 넣고 배포, 확인 후 `sitemap-index.xml` 제출 (2026-11-25. 홈과 컬렉션 개요 2개 색인 요청)
+- [x] Search Console에서 생성형 AI 기능 포함 설정이 켜져 있는지 확인 (포함, munsik.github.io에서 상속)
 - [ ] 네이버 서치어드바이저 등록, `naver` 값 입력, sitemap과 `rss.xml` 제출 (github.io 하위 경로 사이트 등록 가능 여부는 등록 화면에서 확인 필요)
-- [ ] Bing Webmaster Tools에서 Search Console 가져오기로 등록 (값 입력 불필요)
+- [x] Bing Webmaster Tools에서 Search Console 가져오기로 등록 (2026-11-25. sitemap 2개 Success, 16개 URL 제출)
+- [ ] Search Console sitemap 상태가 "가져올 수 없음"에서 바뀌었는지 며칠 뒤 확인 (Bing은 같은 sitemap을 정상으로 읽음)
 - [ ] 배포 후 Rich Results Test로 글 한 개와 컬렉션 개요 한 개의 구조화 데이터 확인
 
 남은 결정:

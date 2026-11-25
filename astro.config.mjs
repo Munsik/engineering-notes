@@ -79,9 +79,6 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/Munsik/engineering-notes' },
         { icon: 'linkedin', label: 'LinkedIn', href: 'https://www.linkedin.com/in/munsik-kim-69a9ab144' },
       ],
-      editLink: {
-        baseUrl: 'https://github.com/Munsik/engineering-notes/edit/main/',
-      },
       lastUpdated: true,
       // 페이지마다 <title>, 공유 미리보기, JSON-LD를 붙입니다. 규칙은 파일 안에 적었습니다.
       routeMiddleware: './src/route-middleware.ts',
