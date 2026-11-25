@@ -30,6 +30,7 @@ Elastic이 Kibana에 기본으로 넣어 둔 job들의 실제 설정을 뜯어�
 | 06 | [운영 체크리스트](06-operations/) | alert rule과 job health rule, 여러 job 묶어 보기, datafeed 운영, 장애 대응, 제약사항 |
 | 07 | [실무 시나리오 12가지](07-scenarios/) | Elastic 제공 job으로 보는 detector 구성과 noise 처리 |
 | 08 | [실습](08-hands-on-lab/) | Kibana 샘플 데이터로 job 3개와 advanced job 1개를 만들어 비교 |
+| 09 | [Use case: 공장 생산망 AIOps](09-manufacturing-aiops/) | MES 로그, APM, 호스트 metrics에 job 13개 설계, trace.id influencer, alert에서 Workflow를 호출해 AI 분석과 사람의 승인까지 |
 
 ## 자주 받는 질문
 

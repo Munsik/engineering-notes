@@ -1,0 +1,22 @@
+# mfg-anomaly-triage가 failed 상태로 끝나면 당직 채널로 알립니다.
+# 기준: workflows.failed trigger는 Elastic Stack 9.5부터 GA (9.4 preview)
+name: mfg-workflow-failure-alert
+description: 생산망 이상 분석 workflow가 실패하면 당직 채널로 알립니다.
+enabled: true
+tags: ["anomaly-detection", "aiops", "manufacturing", "error-handler"]
+
+triggers:
+  - type: workflows.failed
+    on:
+      condition: "event.workflow.name : 'mfg-anomaly-triage'"
+
+steps:
+  - name: notify_failure
+    type: slack
+    connector-id: mfg-ops-slack
+    with:
+      message: |
+        [workflow 실패] {{ event.workflow.name }}
+        실패 step: {{ event.error.stepName }}
+        오류: {{ event.error.message }}
+        실행 화면: {{ kibanaUrl }}/app/workflows/{{ event.workflow.id }}?executionId={{ event.execution.id }}&tab=executions

@@ -1,0 +1,425 @@
+# ---------------------------------------------------------------------------
+# 공장 생산망 anomaly detection alert 1차 분석 workflow
+#
+# 기준: Elastic Stack 9.5 이상 (waitForApproval은 9.5 preview)
+#       9.4에서는 waitForInput 응답 경로에서 `.response`를 빼고,
+#       waitForApproval은 waitForInput(승인 boolean 하나)으로 바꿉니다.
+# 연결: Anomaly detection rule(대상 group: mes-all)의 Actions에
+#       Run Workflow action으로 이 workflow를 붙여야 실행됩니다.
+# 설명: https://munsik.github.io/engineering-notes/ml/anomaly-detection/09-manufacturing-aiops/
+# ---------------------------------------------------------------------------
+name: mfg-anomaly-triage
+description: >-
+  생산망 anomaly detection alert를 받아 같은 시간대의 관련 이상을 모으고,
+  AI로 영향 범위를 1차 분류한 뒤, 담당자 판단을 받아 후속 조치까지 이어 갑니다.
+enabled: true
+tags: ["anomaly-detection", "aiops", "manufacturing", "hitl"]
+
+consts:
+  results_index: ".ml-anomalies-*"
+  job_group: "mes-all"
+  calendar_id: "mes-planned-downtime"
+  log_index: "logs-mes-*"
+
+settings:
+  # waitForInput(4h)과 waitForApproval(1h) 대기 시간까지 포함한 전체 상한입니다.
+  timeout: "8h"
+
+triggers:
+  - type: alert
+
+steps:
+  # -------------------------------------------------------------------------
+  # 3단계: alert에서 필요한 값만 꺼내고 근거 수집
+  # -------------------------------------------------------------------------
+  - name: resolve
+    type: data.set
+    with:
+      job_id: "{{ event.alerts[0].kibana.alert.job_id | default: 'unknown' }}"
+      anomaly_time: "{{ event.alerts[0].kibana.alert.anomaly_timestamp | default: event.alerts[0].kibana.alert.start }}"
+      reason: "{{ event.alerts[0].kibana.alert.reason | default: '' }}"
+      explorer_url: "{{ event.alerts[0].kibana.alert.url | default: '' }}"
+      top_records: "${{ event.alerts[0].kibana.alert.top_records }}"
+      top_influencers: "${{ event.alerts[0].kibana.alert.top_influencers }}"
+      window_start: "{{ 'now' | date: '%s' | minus: 7200 | date: '%Y-%m-%dT%H:%M:%S' }}.000Z"
+      execution_url: "{{ kibanaUrl }}/app/workflows/{{ workflow.id }}?executionId={{ execution.id }}&tab=executions"
+
+  - name: related_records
+    type: elasticsearch.search
+    with:
+      index: "{{ consts.results_index }}"
+      size: 20
+      sort:
+        - record_score: desc
+      _source:
+        - job_id
+        - timestamp
+        - record_score
+        - function
+        - field_name
+        - partition_field_value
+        - by_field_value
+        - over_field_value
+        - actual
+        - typical
+      query:
+        bool:
+          filter:
+            - term:
+                result_type: record
+            - range:
+                record_score:
+                  gte: 25
+            - range:
+                timestamp:
+                  gte: "now-2h"
+
+  - name: cross_domain
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: "/_ml/anomaly_detectors/{{ consts.job_group }}/results/overall_buckets"
+      body:
+        top_n: 2
+        bucket_span: "15m"
+        overall_score: 50
+        exclude_interim: true
+        start: "{{ steps.resolve.output.window_start }}"
+
+  - name: trace_candidates
+    type: elasticsearch.search
+    with:
+      index: "{{ consts.results_index }}"
+      size: 10
+      sort:
+        - influencer_score: desc
+      _source:
+        - job_id
+        - timestamp
+        - influencer_field_value
+        - influencer_score
+      query:
+        bool:
+          filter:
+            - term:
+                result_type: influencer
+            - term:
+                influencer_field_name: trace.id
+            - range:
+                influencer_score:
+                  gte: 50
+            - range:
+                timestamp:
+                  gte: "now-2h"
+
+  - name: log_evidence
+    type: elasticsearch.esql.query
+    on-failure:
+      continue: true
+    with:
+      format: json
+      query: |
+        FROM {{ consts.log_index }}
+        | WHERE @timestamp >= NOW() - 30 minutes AND log.level IN ("W", "E")
+        | STATS events = COUNT(*) BY service.name, log.level
+        | SORT events DESC
+        | LIMIT 20
+
+  # -------------------------------------------------------------------------
+  # 4단계: AI 1차 분석 (structured output). 실패해도 흐름은 계속됩니다.
+  # -------------------------------------------------------------------------
+  - name: triage
+    type: ai.prompt
+    connector-id: mfg-llm
+    timeout: "2m"
+    on-failure:
+      retry:
+        max-attempts: 2
+        delay: "10s"
+      continue: true
+    with:
+      temperature: 0.1
+      systemPrompt: |
+        당신은 제조 생산망(MES, 설비 인터페이스, DB)의 운영을 돕는 SRE 분석가입니다.
+        아래에 주어진 근거만 사용하세요. 근거에 없는 내용은 추측하지 말고 "근거 없음"이라고 쓰세요.
+        결정은 사람이 합니다. 당신은 결정에 필요한 근거와 선택지를 정리합니다.
+      prompt: |
+        ## 발생한 alert
+        사유: {{ steps.resolve.output.reason }}
+        job: {{ steps.resolve.output.job_id }}
+        이상 시각: {{ steps.resolve.output.anomaly_time }}
+        상위 record: {{ steps.resolve.output.top_records | json }}
+        상위 influencer: {{ steps.resolve.output.top_influencers | json }}
+
+        ## 최근 2시간 상위 anomaly record (record_score 25 이상)
+        {{ steps.related_records.output.hits.hits | json }}
+
+        ## 영역 교차 점수 (overall buckets, top_n=2, 50 이상)
+        {{ steps.cross_domain.output | json }}
+
+        ## 원인 trace 후보 (trace.id influencer, 50 이상)
+        {{ steps.trace_candidates.output.hits.hits | json }}
+
+        ## 최근 30분 서비스별 W/E 로그 건수
+        {{ steps.log_evidence.output | json }}
+
+        위 근거로 다음을 판단하세요.
+        - category: 영향 범위
+          - planned_or_benign: 계획 작업이나 운영상 의미 없는 변화
+          - single_request: 특정 요청(trace) 하나에 몰린 문제
+          - service_degradation: 서비스나 의존성 수준의 성능 저하
+          - line_stop_risk: 생산 트랜잭션 급감, 설비 메시지 끊김 등 라인 정지 위험
+          - needs_review: 근거가 부족하거나 엇갈림
+        - summary: 한두 문장 요약
+        - suspected_cause: 가장 유력한 원인 후보
+        - evidence: 판단에 쓴 근거 (job, entity, 시각, 수치를 포함)
+        - affected_entities: 영향을 받은 서비스, 호스트, 설비, trace.id
+        - recommended_actions: 사람이 고를 수 있는 다음 조치
+        - confidence: low, medium, high
+      schema:
+        type: object
+        properties:
+          category:
+            type: string
+            enum: ["planned_or_benign", "single_request", "service_degradation", "line_stop_risk", "needs_review"]
+          summary:
+            type: string
+          suspected_cause:
+            type: string
+          evidence:
+            type: array
+            items:
+              type: string
+          affected_entities:
+            type: array
+            items:
+              type: string
+          recommended_actions:
+            type: array
+            items:
+              type: string
+          confidence:
+            type: string
+            enum: ["low", "medium", "high"]
+        required: ["category", "summary", "evidence", "confidence"]
+
+  # AI 단계가 실패했으면 needs_review로 내려서 사람이 보게 합니다.
+  - name: decide
+    type: data.set
+    with:
+      category: "{{ steps.triage.output.content.category | default: 'needs_review' }}"
+      confidence: "{{ steps.triage.output.content.confidence | default: 'low' }}"
+      summary: "{{ steps.triage.output.content.summary | default: steps.resolve.output.reason }}"
+      suspected_cause: "{{ steps.triage.output.content.suspected_cause | default: '근거 없음' }}"
+      ai_failed: "{% if steps.triage.error %}true{% else %}false{% endif %}"
+
+  # -------------------------------------------------------------------------
+  # 5단계: Case 기록
+  # -------------------------------------------------------------------------
+  - name: create_case
+    type: cases.createCase
+    with:
+      title: "[생산망 이상] {{ steps.decide.output.summary | truncate: 80 }}"
+      description: |
+        {{ steps.resolve.output.reason }}
+
+        - AI 분류: {{ steps.decide.output.category }} (신뢰도 {{ steps.decide.output.confidence }})
+        - 원인 후보: {{ steps.decide.output.suspected_cause }}
+        - Anomaly Explorer: {{ steps.resolve.output.explorer_url }}
+        - Workflow 실행: {{ steps.resolve.output.execution_url }}
+      owner: observability
+      severity: "{% if steps.decide.output.category == 'line_stop_risk' %}critical{% elsif steps.decide.output.category == 'service_degradation' %}high{% else %}medium{% endif %}"
+      tags: ["anomaly-detection", "ai-triage", "{{ steps.decide.output.category }}"]
+
+  - name: attach_alert
+    type: cases.addAlerts
+    with:
+      case_id: "{{ steps.create_case.output.case.id }}"
+      alerts:
+        - alertId: "{{ event.alerts[0]._id }}"
+          index: "{{ event.alerts[0]._index }}"
+          rule:
+            id: "{{ event.rule.id }}"
+            name: "{{ event.rule.name }}"
+
+  - name: add_analysis
+    type: cases.addComment
+    with:
+      case_id: "{{ steps.create_case.output.case.id }}"
+      comment: |
+        {% if steps.decide.output.ai_failed == 'true' %}
+        ## AI 1차 분석 실패
+        AI 단계가 실패해서 needs_review로 분류했습니다. 근거는 Anomaly Explorer에서 직접 확인해 주세요.
+        {% else %}
+        ## AI 1차 분석 ({{ steps.decide.output.category }}, 신뢰도 {{ steps.decide.output.confidence }})
+
+        {{ steps.decide.output.summary }}
+
+        **근거**
+        {% for e in steps.triage.output.content.evidence %}
+        - {{ e }}
+        {% endfor %}
+
+        **영향 대상**
+        {% for a in steps.triage.output.content.affected_entities %}
+        - {{ a }}
+        {% endfor %}
+
+        **권장 조치**
+        {% for r in steps.triage.output.content.recommended_actions %}
+        - {{ r }}
+        {% endfor %}
+        {% endif %}
+
+        _AI 분석은 근거 정리용입니다. 조치는 담당자 결정 후 실행합니다._
+
+  # -------------------------------------------------------------------------
+  # 6~9단계: 분기, 사람의 판단, 후속 조치
+  # -------------------------------------------------------------------------
+  - name: route
+    type: switch
+    expression: "{{ steps.decide.output.category }}"
+    cases:
+      - match: planned_or_benign
+        steps:
+          - name: note_benign
+            type: cases.addComment
+            with:
+              case_id: "{{ steps.create_case.output.case.id }}"
+              comment: "계획 작업 또는 운영상 의미 없는 변화로 분류되어 당직자 호출 없이 기록만 남겼습니다."
+      - match: single_request
+        steps:
+          - name: notify_single_request
+            type: slack
+            connector-id: mfg-ops-slack
+            with:
+              message: |
+                [정보] 특정 요청에 몰린 이상입니다. 라인 전체 대응은 필요하지 않은 것으로 보입니다.
+                {{ steps.decide.output.summary }}
+                Case: {{ kibanaUrl }}/app/observability/cases/{{ steps.create_case.output.case.id }}
+    default:
+      - name: notify_oncall
+        type: slack
+        connector-id: mfg-ops-slack
+        with:
+          message: |
+            [판단 필요] 생산망 이상: {{ steps.decide.output.category }} (신뢰도 {{ steps.decide.output.confidence }})
+            {{ steps.decide.output.summary }}
+            원인 후보: {{ steps.decide.output.suspected_cause }}
+            Case: {{ kibanaUrl }}/app/observability/cases/{{ steps.create_case.output.case.id }}
+            대응 결정(4시간 안에): {{ steps.resolve.output.execution_url }}
+
+      - name: review
+        type: waitForInput
+        timeout: 4h
+        with:
+          message: |
+            ## 대응을 결정해 주세요
+
+            **AI 분류:** {{ steps.decide.output.category }} (신뢰도 {{ steps.decide.output.confidence }})
+
+            **요약:** {{ steps.decide.output.summary }}
+
+            **원인 후보:** {{ steps.decide.output.suspected_cause }}
+
+            **근거**
+            {% for e in steps.triage.output.content.evidence %}
+            - {{ e }}
+            {% endfor %}
+
+            **권장 조치**
+            {% for r in steps.triage.output.content.recommended_actions %}
+            - {{ r }}
+            {% endfor %}
+          schema:
+            type: object
+            properties:
+              decision:
+                type: string
+                title: "대응 결정"
+                enum: ["escalate", "monitor", "false_positive", "planned_maintenance"]
+              maintenance_until:
+                type: string
+                title: "계획 정지 종료 시각 (planned_maintenance일 때, 예: 2026-12-06T20:00:00+09:00)"
+              notes:
+                type: string
+                title: "메모"
+            required: ["decision"]
+
+      - name: record_decision
+        type: cases.addComment
+        with:
+          case_id: "{{ steps.create_case.output.case.id }}"
+          comment: |
+            **담당자 결정:** {{ steps.review.output.response.decision }}
+            **메모:** {{ steps.review.output.response.notes | default: '-' }}
+            **응답자:** {{ steps.review.output.respondedBy }}
+            **AI 분류와 비교:** {{ steps.decide.output.category }} → {{ steps.review.output.response.decision }}
+
+      - name: on_escalate
+        type: if
+        condition: 'steps.review.output.response.decision : "escalate"'
+        steps:
+          - name: notify_escalation
+            type: slack
+            connector-id: mfg-ops-slack
+            with:
+              message: |
+                [에스컬레이션] {{ steps.decide.output.summary }}
+                결정: {{ steps.review.output.respondedBy }}
+                Case: {{ kibanaUrl }}/app/observability/cases/{{ steps.create_case.output.case.id }}
+
+          # 라인 정지 위험일 때만, 영향이 큰 조치를 한 번 더 승인받습니다.
+          # 승인 링크를 외부로 보내지 않도록 channels는 두지 않습니다.
+          - name: approve_restart
+            type: waitForApproval
+            if: 'steps.decide.output.category : "line_stop_risk"'
+            timeout: 1h
+            with:
+              message: |
+                ## 설비 I/F 어댑터 재시작을 실행할까요?
+
+                {{ steps.decide.output.summary }}
+
+                영향 대상: {{ steps.triage.output.content.affected_entities | join: ", " }}
+              approveLabel: "재시작 실행"
+              rejectLabel: "실행 안 함"
+
+          - name: restart_adapter
+            type: http
+            if: "steps.approve_restart.output.response.approved : true"
+            connector-id: mfg-ops-api
+            with:
+              method: POST
+              url: "https://ops-api.example.internal/eqp-adapter/restart"
+              body:
+                case_id: "{{ steps.create_case.output.case.id }}"
+                requested_by: "{{ steps.approve_restart.output.respondedBy }}"
+
+          - name: record_restart
+            type: cases.addComment
+            if: "steps.approve_restart.output.response.approved : true"
+            with:
+              case_id: "{{ steps.create_case.output.case.id }}"
+              comment: "설비 I/F 어댑터 재시작을 요청했습니다. 승인: {{ steps.approve_restart.output.respondedBy }}"
+
+      - name: on_planned_maintenance
+        type: if
+        condition: 'steps.review.output.response.decision : "planned_maintenance"'
+        steps:
+          - name: register_calendar_event
+            type: elasticsearch.request
+            with:
+              method: POST
+              path: "/_ml/calendars/{{ consts.calendar_id }}/events"
+              body:
+                events:
+                  - description: "workflow {{ execution.id }}: {{ steps.review.output.response.notes | default: '계획 정지' }}"
+                    start_time: "{{ now | date_to_xmlschema }}"
+                    end_time: "{{ steps.review.output.response.maintenance_until }}"
+
+          - name: record_calendar
+            type: cases.addComment
+            with:
+              case_id: "{{ steps.create_case.output.case.id }}"
+              comment: "계획 정지로 판단되어 ML calendar `{{ consts.calendar_id }}`에 {{ steps.review.output.response.maintenance_until }}까지 이벤트를 등록했습니다."
