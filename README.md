@@ -13,6 +13,7 @@ src/content/docs/        사이트 본문 (Markdown/MDX)
   about/                 소개, 원칙
 labs/                    글에 쓴 실험 코드와 설정 (synthetic data, job 설정)
 templates/               새 글 작성용 템플릿
+planning/                작업 계획과 TO-DO 목록 (사이트에 배포되지 않음)
 ```
 
 ## 글 쓰기
@@ -20,7 +21,8 @@ templates/               새 글 작성용 템플릿
 1. `templates/use-case.md`를 복사해 해당 컬렉션 폴더에 둡니다. 템플릿의 섹션은 필수 목차가 아니므로, 주제에 필요 없는 섹션은 지웁니다. 글이 무엇을 담는지는 [이 사이트의 원칙](src/content/docs/about/principles.md)을 따릅니다.
 2. 작성 중에는 frontmatter에 `draft: true`를 둡니다. draft 글은 배포 빌드에서 빠집니다.
 3. 공개할 때 `draft: true`를 지우고 컬렉션 개요(`index.md`)의 상태를 바꿉니다.
-4. 흐름도는 ` ```mermaid ` 코드 블록으로 씁니다. [astro-mermaid](https://github.com/joesaby/astro-mermaid)가 브라우저에서 다이어그램으로 그리고, 라이트/다크 테마를 따라갑니다.
+4. 다음에 쓸 글과 진행 상태는 [planning/ROADMAP.md](planning/ROADMAP.md)에서 관리합니다. 출처 기준은 [planning/SOURCES.md](planning/SOURCES.md)를 따릅니다.
+5. 흐름도는 ` ```mermaid ` 코드 블록으로 씁니다. [astro-mermaid](https://github.com/joesaby/astro-mermaid)가 브라우저에서 다이어그램으로 그리고, 라이트/다크 테마를 따라갑니다.
 
 ## 로컬 실행
 
