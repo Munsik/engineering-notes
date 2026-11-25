@@ -1,5 +1,9 @@
-index,time_field,expected_policy,merges,merged_docs,merged_mb,merge_io_throttled_s,searchable_segments_after
-segments-lab-refresh-1s,@timestamp (mapped at creation),LogByteSize,2,796000,134.2,22.3,19
-segments-lab-policy-ts-field,ts,Tiered,12,2458193,405.4,67.0,5
-segments-lab-policy-dynamic-ts,@timestamp (dynamic),Tiered until reopen,12,1779573,542.3,68.5,5
-"segments-lab-policy-dynamic-ts (after close/open, +600k docs)",@timestamp (dynamic),LogByteSize,1,402000,124.1,19.5,22
+run,index,time_field,policy,merges,merged_docs,merged_mb,merge_io_throttled_s,searchable_segments_after
+1,refresh-1s,@timestamp (mapped at creation),LogByteSize,2,796000,134.2,22.3,19
+2,refresh-1s-r2,@timestamp (mapped at creation),LogByteSize,2,775188,130.9,21.7,21
+1,policy-ts-field,ts,Tiered,12,2458193,405.4,67.0,5
+2,policy-ts-field-r2,ts,Tiered,10,1822110,301.4,49.4,10
+1,policy-dynamic-ts,@timestamp (dynamic),Tiered until reopen,12,1779573,542.3,68.5,5
+2,policy-dynamic-ts-r2,@timestamp (dynamic),Tiered until reopen,11,1693043,516.9,67.5,4
+1,policy-dynamic-ts after close/open +600k,@timestamp (dynamic),LogByteSize,1,402000,124.1,19.5,22
+2,policy-dynamic-ts-r2 after close/open +600k,@timestamp (dynamic),LogByteSize,1,405768,125.0,19.8,21

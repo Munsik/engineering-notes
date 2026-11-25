@@ -15,7 +15,7 @@
 파일: `data/01-segments.md`, `labs/data/segments-and-merge/`
 
 - 답하는 질문: 넣은 문서가 왜 바로 검색되지 않나, update만 했는데 디스크가 왜 늘어나나, merge 뒤에도 `store.size`가 왜 그대로인가, refresh와 flush와 commit은 무엇이 다른가
-- 실측(ECH 9.5.5): `refresh_interval` 미설정/`1s`/`30s`/`-1` 비교, 반복 update와 `only_expunge_deletes`, `_disk_usage`
+- 실측(ECH 9.5.5): `refresh_interval` 미설정/`1s`/`30s`/`-1` 비교(2회), 반복 update와 `only_expunge_deletes`(replica 0개, 1개), `_disk_usage`
 - 소스로 확인한 것: `flush_threshold_age` 1m, indexing buffer 압박 시 segment 쓰기, 유휴 shard flush 5m, compound file 기준, `__soft_deletes`
 - 남은 일: 검토, 공개 시 `draft` 제거와 컬렉션 개요 갱신
 
@@ -25,7 +25,8 @@
 파일: `data/02-merge-and-force-merge.md`, `labs/data/segments-and-merge/`
 
 - 답하는 질문: merge policy는 무엇이 다른가, merge가 indexing을 늦추는 조건, force merge를 해도 되는 때와 하면 안 되는 때, 디스크와 snapshot 영향
-- 실측(ECH 9.5.5): `@timestamp` 유무와 dynamic `@timestamp`에 따른 policy 차이, close/open 후 변화, force merge 중 `store.size` 최대 2.96배, force merge 후 snapshot 전체 재업로드
+- 실측(ECH 9.5.5): `@timestamp` 유무와 dynamic `@timestamp`에 따른 policy 차이(2회), close/open 후 변화, force merge 중 `store.size` 최대 2.46배에서 2.96배(replica 0개, 1개), force merge 후 snapshot 전체 재업로드, segment 40개 대 1개 kNN 지연(384차원 3만 건에서는 차이 1ms 안쪽)
+- 남은 확인: 디스크의 실제 segment 파일 목록(로컬 Elasticsearch 필요), 큰 vector 인덱스에서 segment 수에 따른 kNN 지연
 - 소스로 확인한 것: policy 판정 조건과 시점, Tiered와 LogByteSize 기본값(9.5에서 `segments_per_tier` 10에서 8, `floor_segment` 2MB에서 16MB), merge IO throttle 범위, indexing throttle 방식
 - 남은 일: 검토, 공개 시 `draft` 제거와 컬렉션 개요 갱신
 

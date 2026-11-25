@@ -109,10 +109,11 @@ const SETTLE = 15000;
 // ---------- 실험 A: refresh_interval ----------
 // 같은 문서 100만 건을 refresh_interval만 바꿔 적재합니다.
 // default(미설정)는 인덱스를 만들고 40초 기다려 search idle 상태가 된 뒤 적재합니다.
-window.expRefresh = async () => {
+// suffix를 주면 같은 실험을 다른 인덱스 이름으로 반복합니다(예: '-r2').
+window.expRefresh = async ({ suffix = '' } = {}) => {
   const out = {};
   for (const [name, ri] of [['default', null], ['1s', '1s'], ['30s', '30s'], ['off', '-1']]) {
-    const index = 'segments-lab-refresh-' + name;
+    const index = 'segments-lab-refresh-' + name + suffix;
     const settings = { number_of_shards: 1, number_of_replicas: 0 };
     if (ri) settings.refresh_interval = ri;
     await es('PUT', '/' + index, { settings, mappings: LAB_MAPPING });
@@ -139,17 +140,21 @@ window.expRefresh = async () => {
 };
 
 // ---------- 실험 B: 같은 문서를 반복 update ----------
-window.expUpdate = async () => {
-  const index = 'segments-lab-update';
-  await es('PUT', '/' + index, { settings: { number_of_shards: 1, number_of_replicas: 0, refresh_interval: '1s' }, mappings: LAB_MAPPING_TS });
+// replicas: 1로 주면 replica가 있는 조건에서 같은 실험을 합니다.
+window.expUpdate = async ({ suffix = '', replicas = 0 } = {}) => {
+  const index = 'segments-lab-update' + suffix;
+  await es('PUT', '/' + index, { settings: { number_of_shards: 1, number_of_replicas: replicas, refresh_interval: '1s' }, mappings: LAB_MAPPING_TS });
+  if (replicas > 0) await es('GET', '/_cluster/health/' + index + '?wait_for_status=green&timeout=60s');
   const rounds = [];
   for (let round = 0; round <= 5; round++) {
     const res = await bulkLoad(index, 200000, 2000, { seed: 100 + round, ids: true, tsField: 'ts', version: round });
     await sleep(SETTLE);
     const st = await idxStats(index);
-    rounds.push({ round, ms: res.ms, docs: st.docs, deleted: st.deleted, store: st.store, segments: st.searchable, merges: st.merges_total, merges_docs: st.merges_docs });
+    const total = await es('GET', '/' + index + '/_stats/store?filter_path=indices.*.total.store.size_in_bytes');
+    rounds.push({ round, ms: res.ms, docs: st.docs, deleted: st.deleted, store: st.store, store_total: Object.values(total.body.indices)[0].total.store.size_in_bytes, segments: st.searchable, merges: st.merges_total, merges_docs: st.merges_docs });
     console.log(rounds[rounds.length - 1]);
   }
+  const leases = (await es('GET', '/' + index + '/_stats?level=shards&filter_path=indices.*.shards.*.retention_leases,indices.*.shards.*.seq_no')).body;
   await es('POST', '/' + index + '/_forcemerge?only_expunge_deletes=true');
   await sleep(SETTLE);
   const expungeDefault = await idxStats(index);
@@ -157,7 +162,7 @@ window.expUpdate = async () => {
   await es('POST', '/' + index + '/_forcemerge?only_expunge_deletes=true');
   await sleep(SETTLE);
   const expungeAll = await idxStats(index);
-  return { rounds, expungeDefault, expungeAll };
+  return { rounds, leases, expungeDefault, expungeAll };
 };
 
 // ---------- 실험 C: force merge 전후 ----------
@@ -193,26 +198,27 @@ window.expForceMergePeak = async (index = 'segments-lab-policy-dynamic-ts') => {
   const t0 = performance.now();
   const samples = [];
   for (;;) {
-    const s = await es('GET', `/${index}/_stats/store,merge?filter_path=indices.*.primaries`);
-    const p = Object.values(s.body.indices)[0].primaries;
-    samples.push([Math.round(performance.now() - t0), p.store.size_in_bytes, p.merges.current]);
+    const s = await es('GET', `/${index}/_stats/store,merge?filter_path=indices.*.primaries,indices.*.total`);
+    const ix = Object.values(s.body.indices)[0];
+    // [경과 ms, primary store, primary+replica store, 실행 중 merge 수(primary)]
+    samples.push([Math.round(performance.now() - t0), ix.primaries.store.size_in_bytes, ix.total.store.size_in_bytes, ix.primaries.merges.current]);
     const t = await es('GET', `/_tasks/${fm.body.task}`);
     if (t.body.completed === true) break;
     await sleep(150);
   }
   await sleep(5000);
-  return { before, ms: Math.round(performance.now() - t0), peak: Math.max(...samples.map((x) => x[1])), samples, after: await idxStats(index) };
+  return { before, ms: Math.round(performance.now() - t0), peak: Math.max(...samples.map((x) => x[1])), peakTotal: Math.max(...samples.map((x) => x[2])), samples, after: await idxStats(index) };
 };
 
 // ---------- 실험 D: merge policy 분기 ----------
 // 실험 A의 segments-lab-refresh-1s(@timestamp를 처음부터 매핑)와 비교합니다.
-window.expPolicy = async () => {
+window.expPolicy = async ({ suffix = '' } = {}) => {
   const out = {};
   for (const [name, body, gopts] of [
     ['ts-field', { mappings: LAB_MAPPING_TS }, { tsField: 'ts' }],
     ['dynamic-ts', {}, {}], // 매핑 없이 만들고 @timestamp를 dynamic mapping으로 받음
   ]) {
-    const index = 'segments-lab-policy-' + name;
+    const index = 'segments-lab-policy-' + name + suffix;
     await es('PUT', '/' + index, Object.assign({ settings: { number_of_shards: 1, number_of_replicas: 0, refresh_interval: '1s' } }, body));
     const timeline = [];
     const t0 = performance.now();
@@ -230,7 +236,7 @@ window.expPolicy = async () => {
     console.log(name, out[name]);
   }
   // dynamic-ts를 close/open 해서 shard engine을 다시 연 뒤 60만 건을 더 넣습니다.
-  const index = 'segments-lab-policy-dynamic-ts';
+  const index = 'segments-lab-policy-dynamic-ts' + suffix;
   await es('POST', '/' + index + '/_close');
   await es('POST', '/' + index + '/_open?wait_for_active_shards=1');
   await sleep(5000);
@@ -250,7 +256,92 @@ window.expPolicy = async () => {
   return out;
 };
 
+// ---------- 실험 E: segment 수와 kNN 검색 지연 ----------
+// 384차원 vector 3만 건을 refresh_interval 1s로 넣고, segment가 여러 개인 상태와
+// force merge로 1개가 된 상태에서 같은 query vector 200개의 took을 비교합니다.
+window.randomUnitVector = (r, dims) => {
+  const v = Array.from({ length: dims }, () => r() * 2 - 1);
+  const n = Math.sqrt(v.reduce((a, x) => a + x * x, 0));
+  return v.map((x) => Math.round((x / n) * 1e6) / 1e6);
+};
+window.knnLatency = async (index, queries, k = 10, numCandidates = 100) => {
+  const took = [];
+  for (const q of queries) {
+    const r = await es('POST', '/' + index + '/_search', { knn: { field: 'vec', query_vector: q, k, num_candidates: numCandidates }, _source: false, size: k });
+    took.push(r.body.took);
+  }
+  const s = [...took].sort((a, b) => a - b);
+  const pct = (p) => s[Math.min(s.length - 1, Math.floor((s.length * p) / 100))];
+  return { n: s.length, p50: pct(50), p90: pct(90), p99: pct(99), mean: Math.round((s.reduce((a, x) => a + x, 0) / s.length) * 10) / 10 };
+};
+window.expKnn = async ({ suffix = '', docs = 30000, dims = 384, batch = 250 } = {}) => {
+  const index = 'segments-lab-knn' + suffix;
+  await es('PUT', '/' + index, {
+    settings: { number_of_shards: 1, number_of_replicas: 0, refresh_interval: '1s' },
+    mappings: { properties: { vec: { type: 'dense_vector', dims, similarity: 'cosine' }, n: { type: 'integer' } } },
+  });
+  const mapping = (await es('GET', '/' + index + '/_mapping')).body;
+  const r = mkRng(2026);
+  const t0 = performance.now();
+  for (let s = 0; s < docs; s += batch) {
+    const nd = Array.from({ length: Math.min(batch, docs - s) }, (_, k) => JSON.stringify({ index: {} }) + '\n' + JSON.stringify({ n: s + k, vec: randomUnitVector(r, dims) })).join('\n') + '\n';
+    await es('POST', '/' + index + '/_bulk', nd, true);
+  }
+  const loadMs = Math.round(performance.now() - t0);
+  await sleep(SETTLE);
+  const qr = mkRng(7);
+  const queries = Array.from({ length: 200 }, () => randomUnitVector(qr, dims));
+  const warm = Array.from({ length: 20 }, () => randomUnitVector(qr, dims));
+  const before = await idxStats(index);
+  await knnLatency(index, warm);
+  const latBefore = await knnLatency(index, queries);
+  const fm = await es('POST', '/' + index + '/_forcemerge?max_num_segments=1&wait_for_completion=false');
+  const f0 = performance.now();
+  while ((await es('GET', '/_tasks/' + fm.body.task)).body.completed !== true) await sleep(1000);
+  const forceMergeMs = Math.round(performance.now() - f0);
+  await sleep(SETTLE);
+  const after = await idxStats(index);
+  await knnLatency(index, warm);
+  const latAfter = await knnLatency(index, queries);
+  return { mapping, loadMs, before, latBefore, forceMergeMs, after, latAfter };
+};
+
+// segment 수를 일부러 늘린 조건. 기본 merge policy로는 3만 건을 넣는 동안 segment가 2개로 합쳐져서
+// segments_per_tier를 64로 올리고 750건마다 refresh해 segment 40개를 만든 뒤 1개와 비교합니다.
+window.expKnnSegments = async ({ suffix = '-seg40', docs = 30000, dims = 384, batch = 250, refreshEvery = 3 } = {}) => {
+  const index = 'segments-lab-knn' + suffix;
+  const c = await es('PUT', '/' + index, { settings: { number_of_shards: 1, number_of_replicas: 0, refresh_interval: '-1', 'merge.policy.segments_per_tier': 64 }, mappings: { properties: { vec: { type: 'dense_vector', dims, similarity: 'cosine' }, n: { type: 'integer' } } } });
+  if (c.status !== 200) return { error: c.body };
+  const r = mkRng(2026);
+  const t0 = performance.now();
+  let b = 0;
+  for (let s = 0; s < docs; s += batch) {
+    const nd = Array.from({ length: Math.min(batch, docs - s) }, (_, k) => JSON.stringify({ index: {} }) + '\n' + JSON.stringify({ n: s + k, vec: randomUnitVector(r, dims) })).join('\n') + '\n';
+    await es('POST', '/' + index + '/_bulk', nd, true);
+    if (++b % refreshEvery === 0) await es('POST', '/' + index + '/_refresh');
+  }
+  await es('POST', '/' + index + '/_refresh');
+  const loadMs = Math.round(performance.now() - t0);
+  await sleep(SETTLE);
+  const qr = mkRng(7);
+  const queries = Array.from({ length: 200 }, () => randomUnitVector(qr, dims));
+  const warm = Array.from({ length: 20 }, () => randomUnitVector(qr, dims));
+  const before = await idxStats(index);
+  await knnLatency(index, warm);
+  const latBefore = await knnLatency(index, queries);
+  const fm = await es('POST', '/' + index + '/_forcemerge?max_num_segments=1&wait_for_completion=false');
+  const f0 = performance.now();
+  while ((await es('GET', '/_tasks/' + fm.body.task)).body.completed !== true) await sleep(1000);
+  const forceMergeMs = Math.round(performance.now() - f0);
+  await sleep(SETTLE);
+  const after = await idxStats(index);
+  await knnLatency(index, warm);
+  const latAfter = await knnLatency(index, queries);
+  const latAfter2 = await knnLatency(index, queries); // 같은 query를 한 번 더
+  return { loadMs, before, latBefore, forceMergeMs, after, latAfter, latAfter2 };
+};
+
 // ---------- 정리 ----------
 window.cleanup = () => es('DELETE', '/segments-lab-*');
 
-console.log('loaded: expRefresh(), expUpdate(), expPolicy(), expForceMergeSnapshot(), expForceMergePeak(), cleanup()');
+console.log('loaded: expRefresh(), expUpdate(), expPolicy(), expForceMergeSnapshot(), expForceMergePeak(), expKnn(), expKnnSegments(), cleanup()');

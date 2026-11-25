@@ -61,20 +61,20 @@ data stream은 만들 때부터 `@timestamp` 매핑이 있어야 하므로 이 �
 
 ### 실측: 같은 데이터, 다른 policy
 
-[01의 refresh 실험](../01-segments/#실측-refresh_interval에-따라-segment가-어떻게-생기나)과 같은 조건(100만 건, `refresh_interval: 1s`, 2,000건씩 bulk)에서 시간 필드만 바꿨습니다.
+[01의 refresh 실험](../01-segments/#실측-refresh_interval에-따라-segment가-어떻게-생기나)과 같은 조건(100만 건, `refresh_interval: 1s`, 2,000건씩 bulk)에서 시간 필드만 바꿨습니다. 두 번 돌렸고, 칸마다 "1회차 / 2회차"로 적었습니다.
 
 | 인덱스 | 시간 필드 | 적용된 policy | merge 횟수 | merge가 다시 쓴 문서 | merge가 다시 쓴 크기 | merge IO throttle | 적재 후 segment |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `refresh-1s` | `@timestamp` (만들 때 매핑) | LogByteSize | 2 | 79.6만 | 134MB | 22.3초 | 19 |
-| `policy-ts-field` | `ts` | Tiered | 12 | 245.8만 | 405MB | 67.0초 | 5 |
-| `policy-dynamic-ts` | `@timestamp` (dynamic) | Tiered | 12 | 178.0만 | 542MB | 68.5초 | 5 |
-| `policy-dynamic-ts`, close/open 후 60만 건 추가 | `@timestamp` (dynamic) | LogByteSize | 1 | 40.2만 | 124MB | 19.5초 | 22 |
+| `refresh-1s` | `@timestamp` (만들 때 매핑) | LogByteSize | 2 / 2 | 79.6만 / 77.5만 | 134MB / 131MB | 22.3초 / 21.7초 | 19 / 21 |
+| `policy-ts-field` | `ts` | Tiered | 12 / 10 | 245.8만 / 182.2만 | 405MB / 301MB | 67.0초 / 49.4초 | 5 / 10 |
+| `policy-dynamic-ts` | `@timestamp` (dynamic) | Tiered | 12 / 11 | 178.0만 / 169.3만 | 542MB / 517MB | 68.5초 / 67.5초 | 5 / 4 |
+| `policy-dynamic-ts`, close/open 후 60만 건 추가 | `@timestamp` (dynamic) | LogByteSize | 1 / 1 | 40.2만 / 40.6만 | 124MB / 125MB | 19.5초 / 19.8초 | 22 / 21 |
 
 `policy-dynamic-ts`는 dynamic mapping이 `message`에 `keyword` 하위 필드까지 만들어서 크기를 다른 인덱스와 바로 비교할 수 없습니다. merge 횟수와 segment 수만 보세요. 결과 원본은 [`results/D_policy.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/D_policy.csv)에 있습니다.
 
-- **Tiered는 segment를 적게 유지하는 대신 많이 다시 씁니다.** 100만 건을 넣는 동안 문서를 245만 번 다시 썼습니다. LogByteSize는 79.6만 번이었습니다. Tiered 쪽이 merge IO 제한에 걸린 시간도 세 배였습니다.
+- **Tiered는 segment를 적게 유지하는 대신 많이 다시 씁니다.** 100만 건을 넣는 동안 문서를 182만 번에서 246만 번 다시 썼습니다. LogByteSize는 두 번 모두 78만 번 안팎이었습니다. 다시 쓴 양이 2.3배에서 3.1배, merge IO 제한에 걸린 시간도 2.3배에서 3배였습니다. Tiered는 merge가 언제 일어나느냐에 따라 회차 사이 편차가 컸고, LogByteSize는 거의 같았습니다.
 - **LogByteSize는 작은 segment를 32개 가까이 모았다가 한 번에 합칩니다.** 적재 중 segment 수가 40개까지 올라갔다가 13개로 떨어지는 패턴이 나왔습니다. 검색할 segment가 많아지는 대신 쓰기 비용이 적습니다.
-- **dynamic `@timestamp` 인덱스는 Tiered처럼 움직였습니다.** merge 12회, 최종 segment 5개로 `ts` 인덱스와 같은 모양입니다. close/open으로 shard를 다시 연 뒤에는 60만 건을 더 넣는 동안 merge가 한 번만 일어나고 segment가 52개까지 쌓였습니다. LogByteSize로 바뀐 것입니다.
+- **dynamic `@timestamp` 인덱스는 Tiered처럼 움직였습니다.** merge 11회에서 12회로 `ts` 인덱스와 같은 모양입니다. close/open으로 shard를 다시 연 뒤에는 60만 건을 더 넣는 동안 merge가 한 번만 일어나고 segment가 51개에서 52개까지 쌓였습니다. 두 회차 모두 LogByteSize로 바뀌었습니다.
 
 ## Merge가 indexing을 늦추는 조건
 
@@ -137,6 +137,9 @@ POST my-index-000001/_forcemerge?max_num_segments=1
 - **searchable snapshot으로 넘기기 전**: ILM `searchable_snapshot` action은 기본으로 force merge를 먼저 합니다(`force_merge_index` 기본값 `true`). searchable snapshot 성능이 force merge 여부에 달려 있기 때문입니다. 9.2부터는 replica 0개짜리 clone을 만들어 그 위에서 force merge합니다(`force_merge_on_clone` 기본값 `true`). replica마다 같은 merge를 반복하지 않기 위해서입니다([Searchable snapshot action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-searchable-snapshot)).
 - **대량 적재가 끝난 kNN 인덱스**: segment 수가 kNN 검색 속도를 직접 좌우합니다. 공식 문서는 force merge 말고도 적재 중 `refresh_interval: -1`로 처음부터 큰 segment를 만드는 방법, `index.merge.policy.max_merged_segment`를 10GB에서 20GB로 올리는 방법을 같이 제시합니다([Tune approximate kNN search](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/approximate-knn-search)).
 
+작은 lab에서도 확인해 봤습니다. 384차원 vector 3만 건으로 segment 40개를 일부러 만든 뒤(`index.merge.policy.segments_per_tier: 64`), force merge 전후로 같은 kNN query 200개(`k: 10`, `num_candidates: 100`)의 `took`을 비교했습니다. 두 번 돌린 평균은 segment 40개일 때 3.4ms와 4.2ms, 1개일 때 3.0ms에서 3.1ms였습니다(실측). 이 규모에서는 차이가 1ms 안쪽이었습니다.
+데이터 전체가 50MB로 메모리에 다 들어가고 검색 자체가 몇 ms로 짧았기 때문으로 봅니다(해석). 공식 문서가 말하는 몇 배 차이는 vector가 많고 segment가 큰 인덱스에서 나오는 값으로 읽어야 합니다. 9.5.5에서 384차원 `dense_vector`를 옵션 없이 만들면 `bbq_hnsw`가 기본으로 적용됐습니다(매핑 응답 기준). 결과 원본은 [`results/E_knn.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/E_knn.csv)에 있습니다.
+
 ILM `forcemerge` action은 hot과 warm phase에서 쓸 수 있고, hot phase에서는 `rollover` action이 같이 있어야 합니다. `index_codec: best_compression`을 주면 ILM이 인덱스를 닫았다가 다시 연 뒤 force merge하므로 그동안 읽기와 쓰기가 모두 안 됩니다([ILM force merge action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-forcemerge)).
 
 ### 하면 안 되는 때
@@ -170,7 +173,9 @@ segment 22개, 478MB인 인덱스를 `max_num_segments=1`로 force merge하면�
 전체 14.8초 중 대부분은 새 segment를 쓰는 시간이었고, 사용량은 원래 크기의 두 배 근처까지 천천히 올랐습니다. 마지막 1초 동안 세 배 가까이 뛰었다가 바로 내려왔습니다.
 새 segment가 1GB 이하라서 Lucene이 다 쓴 파일을 다시 compound file(`.cfs`)로 묶는 단계가 있고, 그동안 옛 segment, 새 segment 파일, `.cfs`가 함께 있었던 것으로 봅니다(해석, compound 기준은 [01](../01-segments/#segment를-이루는-파일) 참고). 측정 원본은 [`results/C_peak_samples.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/C_peak_samples.csv)에 있습니다.
 
-공식 문서의 "최대 세 배"가 그대로 나왔습니다. 짧게 지나가서 모니터링 주기가 길면 안 보일 수도 있습니다. 여유 공간은 최대치로 잡아야 합니다.
+replica 1개인 다른 인덱스(copy당 segment 3개, primary 161.6MB)에서도 재 봤습니다. primary는 최대 397.9MB로 2.46배까지 올랐습니다. primary와 replica를 합친 크기는 최대 720.9MB였고, 끝난 뒤에는 322.9MB였습니다. primary와 replica가 각자 노드에서 같은 시간에 force merge를 하기 때문에 copy가 있는 노드 모두 디스크를 더 씁니다(실측).
+
+두 인덱스에서 2.46배와 2.96배가 나왔으니 공식 문서의 "최대 세 배"와 맞습니다. 짧게 지나가서 모니터링 주기가 길면 안 보일 수도 있습니다. 여유 공간은 최대치로 잡아야 합니다.
 
 #### snapshot 증분
 

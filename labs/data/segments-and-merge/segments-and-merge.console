@@ -5,7 +5,8 @@
 # ---------- 01. Segment의 생애 ----------
 
 # segment 목록과 상태(검색 가능, commit 여부, 삭제 문서)
-GET _cat/segments/<index>?v&h=segment,generation,docs.count,docs.deleted,size,committed,searchable,compound
+# replica가 있으면 primary와 replica의 segment가 모두 나오므로 prirep 열로 나눠 봅니다.
+GET _cat/segments/<index>?v&h=shard,prirep,segment,generation,docs.count,docs.deleted,size,committed,searchable,compound
 
 # 인덱스 단위 문서 수, 삭제 문서 수, 크기
 GET _cat/indices/<index>?v&h=index,docs.count,docs.deleted,store.size

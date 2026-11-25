@@ -1,3 +1,4 @@
-index,segments_before,store_mb_before,peak_store_mb,forcemerge_s,segments_after,store_mb_after
-segments-lab-refresh-1s,19,163.2,not captured (store stats cached),4.4,1,161.7
-segments-lab-policy-dynamic-ts,22,478.3,1416.5,14.8,1,471.5
+index,replicas,segments_per_copy_before,primary_store_mb_before,peak_primary_store_mb,peak_ratio,peak_total_store_mb,forcemerge_s,primary_store_mb_after
+segments-lab-refresh-1s,0,19,163.2,not captured (store stats cached),,,4.4,161.7
+segments-lab-policy-dynamic-ts,0,22,478.3,1416.5,2.96,,14.8,471.5
+segments-lab-policy-ts-field-r2,1,3,161.6,397.9,2.46,720.9,8.0,161.4

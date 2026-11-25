@@ -171,16 +171,16 @@ Elasticsearch에서 flush는 Lucene commit을 하고 새 translog generation을 
 ### 실측: refresh_interval에 따라 segment가 어떻게 생기나
 
 같은 synthetic 로그 100만 건(문서당 약 350바이트)을 `refresh_interval`만 바꿔 넣었습니다. client 하나가 2,000건씩 bulk로 보냈고, 적재에는 네 경우 모두 84초 정도 걸렸습니다.
-기본값(미설정) 인덱스는 만든 뒤 40초를 기다려서 search idle 상태에서 적재를 시작했습니다.
+기본값(미설정) 인덱스는 만든 뒤 40초를 기다려서 search idle 상태에서 적재를 시작했습니다. 같은 실험을 두 번 돌렸고, 표는 1회차 값과 2회차 값을 같이 적었습니다.
 
 | `refresh_interval` | 적재 중 refresh | 적재 직후 segment (검색 가능 / commit) | merge | 적재 직후 `store.size` |
 | --- | --- | --- | --- | --- |
-| 미설정, 검색 없음 | 2회 | 4개 (0 / 3) | 0회 | 159.9MB |
-| `1s` | 83회 | 45개 (19 / 27) | 2회 | 218.0MB |
-| `30s` | 5회 | 4개 (4 / 2) | 0회 | 161.6MB |
-| `-1` | 2회 | 2개 (0 / 1) | 0회 | 148.3MB |
+| 미설정, 검색 없음 | 2회 / 2회 | 4개 (0 / 3), 두 번 같음 | 0회 / 0회 | 159.9MB / 160.1MB |
+| `1s` | 83회 / 84회 | 45개 (19 / 27) / 47개 (21 / 27) | 2회 / 2회 | 218.0MB / 216.4MB |
+| `30s` | 5회 / 5회 | 4개 (4 / 2), 두 번 같음 | 0회 / 0회 | 161.6MB / 161.6MB |
+| `-1` | 2회 / 2회 | 2개 (0 / 1), 두 번 같음 | 0회 / 0회 | 148.3MB / 148.3MB |
 
-refresh 횟수는 `_stats`의 `refresh.external_total`입니다. 결과 원본은 [`results/A_refresh.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/A_refresh.csv)에 있습니다.
+refresh 횟수는 `_stats`의 `refresh.external_total`입니다. 두 번의 결과가 거의 같아서 아래 설명은 두 회차 모두에 해당합니다. 결과 원본은 [`results/A_refresh.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/A_refresh.csv)에 있습니다.
 
 결과에서 읽을 것은 세 가지입니다.
 
@@ -231,6 +231,12 @@ segment는 고칠 수 없기 때문에 "지운다"는 것은 표시를 붙이는
 
 결과 원본은 [`results/B_update.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/B_update.csv)에 있습니다.
 
+#### replica가 있을 때
+
+같은 실험을 replica 1개로 한 번 더 했습니다. 시점마다 남은 삭제 문서 수는 0에서 5만 건 사이로 오르내렸습니다. merge가 언제 끝났는지에 따라 달라지는 값이라 회차 사이 비교에는 의미가 없습니다.
+retention lease는 shard copy마다 하나씩 있었습니다. 마지막 update가 끝나고 15초 뒤에 보니 lease가 가장 최근 작업보다 9만 건 정도 뒤에 있었습니다(`retaining_seq_no` 1,110,000, `max_seq_no` 1,199,999). 그래도 `expunge_deletes_allowed: 0`으로 정리하자 삭제 문서가 모두 사라졌습니다.
+replica가 정상일 때는 lease가 공간 회수를 막지 않았습니다(실측). lease 때문에 공간이 안 돌아오는 경우는 replica가 내려가 있거나 CCR follower가 밀린 경우로 보면 됩니다(해석). 결과 원본은 [`results/B_update_replica1.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/B_update_replica1.csv)에 있습니다.
+
 ## Segment의 생애 한눈에 보기
 
 ```mermaid
@@ -261,12 +267,13 @@ stateDiagram-v2
 
 | 확인할 것 | 요청 | 이상 신호 |
 | --- | --- | --- |
-| segment 수와 상태 | `GET _cat/segments/<index>?v&h=segment,docs.count,docs.deleted,size,committed,searchable` | 같은 shard에 작은 segment가 수십 개 이상 계속 남아 있음 |
+| segment 수와 상태 | `GET _cat/segments/<index>?v&h=shard,prirep,segment,docs.count,docs.deleted,size,committed,searchable` | 같은 shard에 작은 segment가 수십 개 이상 계속 남아 있음 |
 | 삭제 문서 비율 | `GET _cat/indices/<index>?v&h=index,docs.count,docs.deleted,store.size` | `docs.deleted`가 `docs.count`의 20%를 넘는 상태가 오래 감 |
 | refresh 부담 | `GET <index>/_stats/refresh` | 쓰기가 많은 인덱스에서 `external_total`이 초 단위로 늘어남 |
 | flush와 translog | `GET <index>/_stats/flush,translog` | `translog.uncommitted_size_in_bytes`가 계속 큼. 재시작 시 복구가 길어짐 |
 | retention lease | `GET <index>/_stats?level=shards&filter_path=**.retention_leases` | `retaining_seq_no`가 오래 앞으로 가지 않음 |
 
+`_cat/segments`는 primary와 replica의 segment를 모두 나열합니다. replica가 있는 인덱스는 `prirep` 열로 나눠서 봅니다.
 20%는 TieredMergePolicy가 삭제 문서를 많다고 보는 기본 기준(`index.merge.policy.deletes_pct_allowed`, 소스 `MergePolicyConfig.java`)에서 가져온 값입니다.
 
 ## 다음 글

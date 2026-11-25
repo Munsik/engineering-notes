@@ -37,7 +37,7 @@ sizing을 하거나 비용 압박이 왔을 때 가장 먼저 부딪히는 질�
 | update만 했는데 디스크가 늘어나는 이유 | update는 옛 문서에 삭제 표시를 붙이고 새 문서를 추가합니다. 옛 문서는 merge가 그 segment를 다시 쓸 때까지 남습니다. | [01](01-segments/#삭제와-update) |
 | 대량 적재할 때 refresh를 꺼야 하나 | 공식 문서는 대량 적재 중 `-1`을 권합니다. 적재 중 아무도 검색하지 않는다면 기본값도 search idle 때문에 비슷하게 움직입니다. | [01](01-segments/#실측-refresh_interval에-따라-segment가-어떻게-생기나) |
 | force merge를 정기적으로 돌려도 되나 | 쓰기가 끝난 인덱스에만 합니다. 쓰기 중인 인덱스에 하면 일반 merge에서 빠지는 큰 segment가 생기고 snapshot이 매번 전체 크기로 올라갑니다. | [02](02-merge-and-force-merge/#하면-안-되는-때) |
-| force merge에 디스크가 얼마나 더 필요한가 | `max_num_segments=1`이면 shard 크기의 최대 세 배입니다. 실측에서도 2.96배까지 올랐습니다. | [02](02-merge-and-force-merge/#실측-force-merge-전후) |
+| force merge에 디스크가 얼마나 더 필요한가 | `max_num_segments=1`이면 shard 크기의 최대 세 배입니다. 실측에서는 2.5배에서 3배까지 올랐습니다. | [02](02-merge-and-force-merge/#실측-force-merge-전후) |
 | 로그 인덱스와 카탈로그 인덱스의 merge가 다른가 | `@timestamp`가 있는 인덱스는 옆 segment끼리만 합치는 LogByteSizeMergePolicy를, 없는 인덱스는 TieredMergePolicy를 씁니다. | [02](02-merge-and-force-merge/#merge-policy는-두-가지다) |
 
 ## 읽는 순서
