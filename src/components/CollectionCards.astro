@@ -1,0 +1,123 @@
+---
+// 홈의 컬렉션 카드입니다. src/site-collections.mjs 목록을 순서대로 그립니다.
+// 제목과 설명은 컬렉션 index.md의 title, description을, 글 수는 그 폴더의 공개된 글 수를 씁니다.
+// 컬렉션을 추가하거나 글을 발행할 때 이 파일은 고치지 않습니다.
+import { getCollection } from 'astro:content';
+import { Icon } from '@astrojs/starlight/components';
+import { siteCollections } from '../site-collections.mjs';
+
+const docs = await getCollection('docs');
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const isIndex = (id: string, dir: string) => id === dir || id === `${dir}/index`;
+
+const cards = siteCollections
+	.map(({ dir, axis }) => {
+		const index = docs.find((d) => isIndex(d.id, dir));
+		const articles = docs.filter(
+			(d) => d.id.startsWith(`${dir}/`) && !isIndex(d.id, dir) && !(import.meta.env.PROD && d.data.draft)
+		);
+		return { dir, axis, index, count: articles.length };
+	})
+	.filter(({ index }) => index && !(import.meta.env.PROD && index.data.draft));
+---
+
+<ul class="en-collections">
+	{
+		cards.map(({ dir, axis, index, count }) => (
+			<li>
+				<a class="en-collection" href={`${base}/${dir}/`}>
+					<span class="en-collection-axis">{axis}</span>
+					<span class="en-collection-title">{index!.data.title}</span>
+					<span class="en-collection-desc">{index!.data.description}</span>
+					<span class="en-collection-foot">
+						<span>글 {count}편</span>
+						<span class="en-collection-go">
+							컬렉션 보기
+							<Icon name="right-arrow" size="1rem" />
+						</span>
+					</span>
+				</a>
+			</li>
+		))
+	}
+</ul>
+
+<style>
+	.en-collections {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1rem;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	@media (min-width: 50rem) {
+		.en-collections {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	.en-collections > li {
+		margin: 0;
+	}
+
+	.en-collection {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		height: 100%;
+		padding: 1.25rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.5rem;
+		background-color: var(--sl-color-black);
+		color: var(--sl-color-gray-2);
+		text-decoration: none;
+		box-shadow: var(--sl-shadow-sm);
+	}
+
+	.en-collection:hover,
+	.en-collection:focus-visible {
+		border-color: var(--sl-color-text-accent);
+	}
+
+	.en-collection-axis {
+		align-self: flex-start;
+		padding: 0.125rem 0.5rem;
+		border-radius: 999px;
+		background-color: var(--sl-color-accent-low);
+		color: var(--sl-color-text-accent);
+		font-size: var(--sl-text-xs);
+		font-weight: 600;
+	}
+
+	.en-collection-title {
+		color: var(--sl-color-white);
+		font-size: var(--sl-text-h4);
+		font-weight: 600;
+		line-height: var(--sl-line-height-headings);
+	}
+
+	.en-collection-desc {
+		flex-grow: 1;
+		font-size: var(--sl-text-sm);
+	}
+
+	.en-collection-foot {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		margin-top: 0.25rem;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+	}
+
+	.en-collection-go {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--sl-color-text-accent);
+		font-weight: 600;
+	}
+</style>

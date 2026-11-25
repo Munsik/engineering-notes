@@ -2,6 +2,32 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import mermaid from 'astro-mermaid';
+import { readFileSync } from 'node:fs';
+import { siteCollections } from './src/site-collections.mjs';
+
+// 컬렉션 index.md의 frontmatter에서 title과 draft를 읽습니다.
+// sidebar 그룹 이름이 컬렉션 개요 페이지 제목과 항상 같도록 하기 위해서입니다.
+const isDev = process.argv.includes('dev');
+const collectionIndex = (dir) => {
+  const text = readFileSync(new URL(`./src/content/docs/${dir}/index.md`, import.meta.url), 'utf8');
+  const frontmatter = text.split('---')[1] ?? '';
+  const title = frontmatter.match(/^title:\s*(.+)$/m)?.[1].trim().replace(/^['"]|['"]$/g, '');
+  const draft = /^draft:\s*true\s*$/m.test(frontmatter);
+  return { title, draft };
+};
+
+// sidebar 규칙
+// - 최상위는 컬렉션입니다. 모든 컬렉션은 같은 깊이(컬렉션 > 개요, 01, 02 ...)로 보입니다.
+// - 그룹은 기본으로 접혀 있고, 지금 보고 있는 페이지가 속한 컬렉션만 펼쳐집니다.
+//   그래서 어느 페이지에서든 전체 컬렉션 목록이 한 화면에 보입니다.
+const collectionGroups = siteCollections
+  .map(({ dir }) => ({ dir, ...collectionIndex(dir) }))
+  .filter(({ draft }) => isDev || !draft)
+  .map(({ dir, title }) => ({
+    label: title,
+    collapsed: true,
+    items: [{ autogenerate: { directory: dir } }],
+  }));
 
 export default defineConfig({
   site: 'https://munsik.github.io',
@@ -34,21 +60,10 @@ export default defineConfig({
         { tag: 'script', attrs: { src: '/engineering-notes/toc-resizer.js', defer: true } },
       ],
       sidebar: [
-        {
-          label: '데이터 설계',
-          items: [{ autogenerate: { directory: 'data' } }],
-        },
-        {
-          label: 'Machine Learning',
-          items: [
-            {
-              label: 'Anomaly Detection in Production',
-              items: [{ autogenerate: { directory: 'ml/anomaly-detection' } }],
-            },
-          ],
-        },
+        ...collectionGroups,
         {
           label: 'About',
+          collapsed: true,
           items: [{ autogenerate: { directory: 'about' } }],
         },
       ],

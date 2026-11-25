@@ -4,10 +4,20 @@
 
 ## 0-1. 최상위 sidebar 재구성과 URL 정책
 
-상태: `부분 결정` (2026-11-25)
+상태: `결정` (2026-11-25)
 
-결정한 것: 기존 AD 컬렉션 URL(`/ml/anomaly-detection/...`)은 그대로 둔다(A안). 새 컬렉션은 문제 축 폴더에 둔다. 첫 컬렉션은 `data/`(sidebar "데이터 설계")이고, sidebar 그룹은 첫 글을 공개할 때 추가한다. 01, 02 발행과 함께 "데이터 설계" 그룹을 최상위 첫 번째로 추가했고, 홈 컬렉션 카드에도 넣었다(2026-11-25).
-남은 것: 기존 "Machine Learning" 그룹 label을 "탐지와 알림"으로 바꿀지, 나머지 그룹을 언제 추가할지.
+결정한 것: 기존 AD 컬렉션 URL(`/ml/anomaly-detection/...`)은 그대로 둔다(A안). 새 컬렉션은 문제 축 폴더에 둔다. 첫 컬렉션은 `data/`(sidebar "데이터 설계")다.
+
+sidebar와 홈의 공통 규칙(2026-11-25):
+
+- sidebar 최상위는 컬렉션이다. 모든 컬렉션이 같은 깊이에 있다. "Machine Learning" 같은 중간 단계는 두지 않는다. 문제 축 이름은 sidebar 그룹이 아니라 홈 카드의 작은 badge로 보여 준다. 그래서 "Machine Learning" label을 "탐지와 알림"으로 바꿀지는 더 고민하지 않는다.
+- 모든 컬렉션 그룹은 접힌 상태로 시작하고, 지금 읽는 글이 있는 컬렉션만 펼쳐진다. 어느 글에 있든 다른 컬렉션 이름이 화면 위쪽에 같이 보인다. About은 항상 맨 아래다.
+- 공개할 컬렉션 목록은 `src/site-collections.mjs` 한 곳에서 관리한다. sidebar와 홈 카드가 모두 이 목록을 따른다. 순서는 ROADMAP의 문제 축 순서다.
+- 컬렉션 이름과 설명은 각 컬렉션 `index.md`의 `title`, `description`을 그대로 쓴다. 홈 카드의 글 수는 build할 때 세고, draft는 세지 않는다.
+- 새 컬렉션을 공개할 때는 `index.md`를 발행하고 `src/site-collections.mjs`에 한 줄(`{ dir, axis }`)을 추가한다. `astro.config.mjs`와 홈 `index.mdx`는 고치지 않는다. `index.md`가 draft면 production build에서 sidebar와 홈 카드에서 자동으로 빠진다.
+- 홈 hero 버튼은 특정 컬렉션이 아니라 "컬렉션 보기"(홈의 컬렉션 목록으로 이동)로 둔다. 컬렉션이 늘어도 hero는 고치지 않는다.
+
+남은 것: 나머지 문제 축 컬렉션은 첫 글을 공개할 때 위 규칙대로 추가한다.
 
 현재 sidebar의 최상위 그룹은 `Machine Learning`이라는 제품 분류입니다. 이 사이트의 원칙은 "제품 기능별이 아니라 풀어야 할 문제별"이므로, 최상위 그룹을 문제 축으로 바꾸는 것을 검토합니다.
 
@@ -26,9 +36,9 @@
 
 - [ ] 외부에 공유된 기존 AD 글 링크가 있는지 확인
 - [ ] Astro `redirects`가 정적 빌드에서 만드는 결과물(meta refresh 페이지)을 로컬 빌드로 확인
-- [ ] A안 또는 B안 결정, 결정 이유를 이 문서에 기록
-- [x] `astro.config.mjs`의 `sidebar` 수정. 아직 글이 없는 그룹은 추가하지 않거나, 첫 글 발행 시점에 추가 ("데이터 설계" 추가)
-- [x] 홈(`src/content/docs/index.mdx`)의 소개 문구와 컬렉션 안내를 새 구조에 맞게 수정 (데이터 설계 카드 추가)
+- [x] A안 또는 B안 결정, 결정 이유를 이 문서에 기록 (A안. URL을 바꾸지 않고 sidebar 깊이만 맞춘다)
+- [x] `astro.config.mjs`의 `sidebar` 수정. 컬렉션 목록은 `src/site-collections.mjs`에서 읽는다
+- [x] 홈(`src/content/docs/index.mdx`)의 컬렉션 안내를 `CollectionCards` 컴포넌트로 바꿔 목록에서 자동 생성
 
 ## 0-2. 컬렉션 개요(`index.md`) 뼈대
 

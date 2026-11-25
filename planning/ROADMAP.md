@@ -61,7 +61,7 @@ Engineering Notes
 
 ### 0. 사이트 구조 ([상세](collections/00-site-structure.md))
 
-- [ ] 0-1. 최상위 sidebar와 URL 정책: 기존 AD URL 유지, 새 컬렉션은 문제 축 폴더. "데이터 설계" 그룹 추가 완료 `부분 결정`
+- [x] 0-1. 최상위 sidebar와 URL 정책: 기존 AD URL 유지, 새 컬렉션은 문제 축 폴더. sidebar 최상위는 컬렉션, 공개 목록은 `src/site-collections.mjs` 한 곳 `결정`
 - [ ] 0-2. 컬렉션별 `index.md`(draft) 뼈대 만들기 `미착수`
 - [ ] 0-3. `labs/` 디렉터리 규칙과 공통 docker compose 환경 만들기 `미착수`
 - [ ] 0-4. `templates/use-case.md`에 출처 등급과 경험 서술 안내 반영 `미착수`
