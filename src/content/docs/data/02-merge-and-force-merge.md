@@ -1,7 +1,6 @@
 ---
 title: "Merge와 force merge: 언제 하고 언제 하지 말아야 하나"
 description: Elasticsearch가 segment를 합치는 두 가지 merge policy, merge가 indexing을 늦추는 조건, force merge를 해도 되는 때와 하면 안 되는 때를 소스 코드와 ECH 9.5.5 실측으로 정리합니다.
-draft: true
 sidebar:
   label: 02. Merge와 force merge
   order: 2
