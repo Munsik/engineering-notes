@@ -26,7 +26,7 @@ export const defaultOgImage = {
 // - naver: 네이버 서치어드바이저
 // - bing: Bing Webmaster Tools (Google Search Console에서 가져오기를 쓰면 비워 둬도 됩니다)
 export const siteVerification = {
-  google: '',
+  google: '2pl5m_SjU5RhIo0jw9i_N8PWLIQ3N9_WcV-Vv1PSINU',
   naver: '',
   bing: '',
 };
