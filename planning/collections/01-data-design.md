@@ -18,7 +18,7 @@
 - logsdb를 켜면 디스크가 얼마나 줄어드나. 무엇과 비교한 숫자인가
 - best_compression, synthetic source, logsdb, columnar 모드는 각각 무엇을 줄이고 무엇을 잃나
 - 보관 기간을 늘리고 싶을 때 어떤 설정부터 바꿔야 하나
-- 우리 데이터에서 절감률을 미리 가늄하려면 무엇을 측정해야 하나
+- 우리 데이터에서 절감률을 미리 가늠하려면 무엇을 측정해야 하나
 
 ### 독자와 전제
 
@@ -109,11 +109,11 @@
 - primary shard는 몇 개로 잡아야 하나. 크기 기준은 무엇인가
 - bulk 요청은 몇 건, 몇 MB로 보내야 하나. 작게 자주 보내면 무엇이 비싸지나
 - tenant나 dataset마다 data stream을 나누면 shard가 얼마나 늘어나나
-- 특정 노드만 느리거나 바쁜 때 무엇부터 봐야 하나
+- 특정 노드만 느리거나 바쁠 때 무엇부터 봐야 하나
 
 ### 독자와 전제
 
-- 인덱스 설계를 정하는 도입 담당자, indexing 지연을 격는 운영자
+- 인덱스 설계를 정하는 도입 담당자, indexing 지연을 겪는 운영자
 - 기준: Elasticsearch 9.x, self-managed와 ECH 위주. Serverless의 자동 sharding은 차이만 짧게 언급
 
 ### 범위
