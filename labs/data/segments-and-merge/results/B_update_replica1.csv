@@ -1,0 +1,9 @@
+step,docs,docs_deleted,primary_store_mb,total_store_mb,listed_segments_all_copies,merges_total
+round 0,200000,0,31.6,63.2,16,2
+round 1,200000,0,91.6,183.2,6,7
+round 2,200000,50537,99.6,197.9,14,10
+round 3,200000,0,74.6,149.6,6,15
+round 4,200000,0,127.2,219.4,8,19
+round 5,200000,34000,98.5,199.8,11,22
+only_expunge_deletes (expunge_deletes_allowed=10),200000,10000,33.1,,11,23
+only_expunge_deletes (expunge_deletes_allowed=0),200000,0,31.6,,11,24

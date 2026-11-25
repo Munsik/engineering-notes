@@ -1,0 +1,61 @@
+# only_expunge_deletes가 merge policy에 따라 다르게 동작하는지 확인합니다.
+# 02. Merge와 force merge의 "지운 문서만 정리하기" 절에 쓴 재현입니다.
+# 로컬 Elasticsearch 9.5.5 단일 노드에서 실행했습니다.
+#
+# 순서
+# 1) 두 인덱스를 만듭니다. 시간 필드 이름만 다릅니다.
+#    ts 인덱스는 TieredMergePolicy, @timestamp 인덱스는 LogByteSizeMergePolicy가 적용됩니다.
+# 2) 인덱스마다 문서 2만 건씩 4번 넣고, 넣을 때마다 flush해서 segment 4개를 만듭니다.
+#    (_bulk 요청 본문은 lab.js의 genDocs()나 원하는 도구로 만듭니다. 문서마다 n 필드에 0부터 79999까지 번호를 넣습니다.)
+# 3) n이 50의 배수인 문서(2%)를 지웁니다. refresh_interval이 -1이므로 먼저 _refresh 해야 지울 문서가 검색됩니다.
+# 4) retention lease가 최신 작업까지 따라오도록 1분 정도 기다린 뒤 only_expunge_deletes를 실행합니다.
+# 5) _cat/segments로 결과를 비교합니다.
+
+PUT expunge-tiered
+{
+  "settings": { "number_of_shards": 1, "number_of_replicas": 0, "refresh_interval": "-1" },
+  "mappings": { "properties": { "ts": { "type": "date" }, "n": { "type": "integer" } } }
+}
+
+PUT expunge-timebased
+{
+  "settings": { "number_of_shards": 1, "number_of_replicas": 0, "refresh_interval": "-1" },
+  "mappings": { "properties": { "@timestamp": { "type": "date" }, "n": { "type": "integer" } } }
+}
+
+# 2) 2만 건 _bulk 후 flush를 4번 반복합니다(인덱스마다).
+POST expunge-tiered/_flush
+POST expunge-timebased/_flush
+
+# 3) 2% 삭제
+POST expunge-tiered/_refresh
+POST expunge-tiered/_delete_by_query?refresh=true
+{ "query": { "script": { "script": "doc['n'].value % 50 == 0" } } }
+
+POST expunge-timebased/_refresh
+POST expunge-timebased/_delete_by_query?refresh=true
+{ "query": { "script": { "script": "doc['n'].value % 50 == 0" } } }
+
+POST expunge-tiered/_flush
+POST expunge-timebased/_flush
+
+# 4) lease 확인. retaining_seq_no가 max_seq_no + 1까지 올라오면 실행합니다.
+GET expunge-*/_stats?level=shards&filter_path=**.retention_leases.leases.retaining_seq_no,**.seq_no.max_seq_no
+
+GET _cat/segments/expunge-*?v&h=index,segment,docs.count,docs.deleted,size
+
+POST expunge-tiered/_forcemerge?only_expunge_deletes=true
+POST expunge-timebased/_forcemerge?only_expunge_deletes=true
+
+# 5) 결과
+# 2026-11-25 실행 결과
+# expunge-tiered     segment 4개 그대로, 각 segment에 삭제 400건 남음(삭제 비율 2%가 기준 10% 미만)
+# expunge-timebased  segment 1개(78,400건), 삭제 0건
+GET _cat/segments/expunge-*?v&h=index,segment,docs.count,docs.deleted,size
+
+# 참고: 디스크 여유가 merge disk watermark(기본 95%) 아래면 merge가 대기열에서 시작하지 않고
+# _forcemerge 요청도 끝나지 않습니다. 작은 lab 디스크라면 아래처럼 기준을 낮춘 뒤 실행하고, 끝나면 되돌립니다.
+# PUT _cluster/settings
+# { "persistent": { "indices.merge.disk.watermark.high": "99%", "indices.merge.disk.watermark.high.max_headroom": "1gb" } }
+
+DELETE expunge-tiered,expunge-timebased

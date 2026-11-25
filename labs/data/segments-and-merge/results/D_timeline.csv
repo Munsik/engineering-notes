@@ -1,0 +1,105 @@
+run,index,docs_sent,elapsed_s,searchable_segments
+1,ts-field,50000,4,4
+1,ts-field,100000,8,8
+1,ts-field,150000,12,12
+1,ts-field,200000,17,8
+1,ts-field,250000,21,5
+1,ts-field,300000,25,9
+1,ts-field,350000,29,13
+1,ts-field,400000,34,10
+1,ts-field,450000,39,8
+1,ts-field,500000,44,13
+1,ts-field,550000,49,18
+1,ts-field,600000,54,16
+1,ts-field,650000,59,13
+1,ts-field,700000,64,11
+1,ts-field,750000,69,17
+1,ts-field,800000,74,22
+1,ts-field,850000,80,27
+1,ts-field,900000,85,17
+1,ts-field,950000,90,13
+1,ts-field,1000000,95,11
+1,dynamic-ts,50000,5,5
+1,dynamic-ts,100000,11,9
+1,dynamic-ts,150000,16,7
+1,dynamic-ts,200000,21,12
+1,dynamic-ts,250000,27,10
+1,dynamic-ts,300000,32,15
+1,dynamic-ts,350000,37,13
+1,dynamic-ts,400000,43,11
+1,dynamic-ts,450000,48,8
+1,dynamic-ts,500000,52,13
+1,dynamic-ts,550000,57,16
+1,dynamic-ts,600000,61,13
+1,dynamic-ts,650000,65,19
+1,dynamic-ts,700000,69,23
+1,dynamic-ts,750000,74,27
+1,dynamic-ts,800000,78,31
+1,dynamic-ts,850000,83,35
+1,dynamic-ts,900000,87,32
+1,dynamic-ts,950000,91,28
+1,dynamic-ts,1000000,95,25
+1,dynamic-ts after reopen,1050000,4,9
+1,dynamic-ts after reopen,1100000,9,13
+1,dynamic-ts after reopen,1150000,13,17
+1,dynamic-ts after reopen,1200000,18,21
+1,dynamic-ts after reopen,1250000,22,24
+1,dynamic-ts after reopen,1300000,26,28
+1,dynamic-ts after reopen,1350000,31,32
+1,dynamic-ts after reopen,1400000,35,36
+1,dynamic-ts after reopen,1450000,39,40
+1,dynamic-ts after reopen,1500000,44,44
+1,dynamic-ts after reopen,1550000,48,48
+1,dynamic-ts after reopen,1600000,53,52
+2,ts-field,50000,4,4
+2,ts-field,100000,8,8
+2,ts-field,150000,13,12
+2,ts-field,200000,17,8
+2,ts-field,250000,21,5
+2,ts-field,300000,25,9
+2,ts-field,350000,29,13
+2,ts-field,400000,33,10
+2,ts-field,450000,38,14
+2,ts-field,500000,42,11
+2,ts-field,550000,46,15
+2,ts-field,600000,50,19
+2,ts-field,650000,55,16
+2,ts-field,700000,59,12
+2,ts-field,750000,63,9
+2,ts-field,800000,67,13
+2,ts-field,850000,71,17
+2,ts-field,900000,76,8
+2,ts-field,950000,80,12
+2,ts-field,1000000,84,9
+2,dynamic-ts,50000,4,3
+2,dynamic-ts,100000,9,7
+2,dynamic-ts,150000,13,11
+2,dynamic-ts,200000,17,8
+2,dynamic-ts,250000,22,12
+2,dynamic-ts,300000,26,9
+2,dynamic-ts,350000,30,13
+2,dynamic-ts,400000,35,17
+2,dynamic-ts,450000,39,21
+2,dynamic-ts,500000,44,18
+2,dynamic-ts,550000,48,8
+2,dynamic-ts,600000,52,12
+2,dynamic-ts,650000,57,16
+2,dynamic-ts,700000,61,21
+2,dynamic-ts,750000,66,18
+2,dynamic-ts,800000,70,15
+2,dynamic-ts,850000,74,12
+2,dynamic-ts,900000,79,16
+2,dynamic-ts,950000,83,20
+2,dynamic-ts,1000000,88,17
+2,dynamic-ts after reopen,1050000,4,7
+2,dynamic-ts after reopen,1100000,9,11
+2,dynamic-ts after reopen,1150000,13,15
+2,dynamic-ts after reopen,1200000,17,19
+2,dynamic-ts after reopen,1250000,22,23
+2,dynamic-ts after reopen,1300000,26,27
+2,dynamic-ts after reopen,1350000,30,31
+2,dynamic-ts after reopen,1400000,35,35
+2,dynamic-ts after reopen,1450000,39,39
+2,dynamic-ts after reopen,1500000,44,43
+2,dynamic-ts after reopen,1550000,48,47
+2,dynamic-ts after reopen,1600000,52,51
