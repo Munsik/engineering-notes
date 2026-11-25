@@ -23,10 +23,10 @@ export const defaultOgImage = {
 // 검색엔진 소유권 확인 값입니다. 각 서비스에서 받은 "HTML 태그" 방식의 content 값만 넣습니다.
 // 빈 값이면 meta 태그를 만들지 않습니다.
 // - google: Google Search Console, URL 접두어 속성 https://munsik.github.io/engineering-notes/
-// - naver: 네이버 서치어드바이저
+// - naver: 네이버 서치어드바이저. 호스트 단위(https://munsik.github.io)로만 등록되므로 이 사이트에 넣어도 확인되지 않습니다(planning 0-5 참고)
 // - bing: Bing Webmaster Tools (Google Search Console에서 가져오기를 쓰면 비워 둬도 됩니다)
 export const siteVerification = {
   google: '2pl5m_SjU5RhIo0jw9i_N8PWLIQ3N9_WcV-Vv1PSINU',
-  naver: 'd1bd8afb784550cdfd18389bff1f6a027221ef1c',
+  naver: '',
   bing: '',
 };
