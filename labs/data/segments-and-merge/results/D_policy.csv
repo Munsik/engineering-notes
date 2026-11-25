@@ -1,0 +1,5 @@
+index,time_field,expected_policy,merges,merged_docs,merged_mb,merge_io_throttled_s,searchable_segments_after
+segments-lab-refresh-1s,@timestamp (mapped at creation),LogByteSize,2,796000,134.2,22.3,19
+segments-lab-policy-ts-field,ts,Tiered,12,2458193,405.4,67.0,5
+segments-lab-policy-dynamic-ts,@timestamp (dynamic),Tiered until reopen,12,1779573,542.3,68.5,5
+"segments-lab-policy-dynamic-ts (after close/open, +600k docs)",@timestamp (dynamic),LogByteSize,1,402000,124.1,19.5,22

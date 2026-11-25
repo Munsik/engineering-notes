@@ -1,0 +1,73 @@
+index,docs_sent,elapsed_s,searchable_segments
+refresh-1s (@timestamp),50000,4,n/a
+refresh-1s (@timestamp),100000,8,n/a
+refresh-1s (@timestamp),150000,12,n/a
+refresh-1s (@timestamp),200000,16,n/a
+refresh-1s (@timestamp),250000,21,n/a
+refresh-1s (@timestamp),300000,25,n/a
+refresh-1s (@timestamp),350000,29,n/a
+refresh-1s (@timestamp),400000,33,n/a
+refresh-1s (@timestamp),450000,37,n/a
+refresh-1s (@timestamp),500000,42,n/a
+refresh-1s (@timestamp),550000,46,n/a
+refresh-1s (@timestamp),600000,50,n/a
+refresh-1s (@timestamp),650000,54,n/a
+refresh-1s (@timestamp),700000,58,n/a
+refresh-1s (@timestamp),750000,62,n/a
+refresh-1s (@timestamp),800000,66,n/a
+refresh-1s (@timestamp),850000,71,n/a
+refresh-1s (@timestamp),900000,75,n/a
+refresh-1s (@timestamp),950000,79,n/a
+refresh-1s (@timestamp),1000000,84,n/a
+ts-field,50000,4,4
+ts-field,100000,8,8
+ts-field,150000,12,12
+ts-field,200000,17,8
+ts-field,250000,21,5
+ts-field,300000,25,9
+ts-field,350000,29,13
+ts-field,400000,34,10
+ts-field,450000,39,8
+ts-field,500000,44,13
+ts-field,550000,49,18
+ts-field,600000,54,16
+ts-field,650000,59,13
+ts-field,700000,64,11
+ts-field,750000,69,17
+ts-field,800000,74,22
+ts-field,850000,80,27
+ts-field,900000,85,17
+ts-field,950000,90,13
+ts-field,1000000,95,11
+dynamic-ts,50000,5,5
+dynamic-ts,100000,11,9
+dynamic-ts,150000,16,7
+dynamic-ts,200000,21,12
+dynamic-ts,250000,27,10
+dynamic-ts,300000,32,15
+dynamic-ts,350000,37,13
+dynamic-ts,400000,43,11
+dynamic-ts,450000,48,8
+dynamic-ts,500000,52,13
+dynamic-ts,550000,57,16
+dynamic-ts,600000,61,13
+dynamic-ts,650000,65,19
+dynamic-ts,700000,69,23
+dynamic-ts,750000,74,27
+dynamic-ts,800000,78,31
+dynamic-ts,850000,83,35
+dynamic-ts,900000,87,32
+dynamic-ts,950000,91,28
+dynamic-ts,1000000,95,25
+dynamic-ts after reopen,1050000,4,9
+dynamic-ts after reopen,1100000,9,13
+dynamic-ts after reopen,1150000,13,17
+dynamic-ts after reopen,1200000,18,21
+dynamic-ts after reopen,1250000,22,24
+dynamic-ts after reopen,1300000,26,28
+dynamic-ts after reopen,1350000,31,32
+dynamic-ts after reopen,1400000,35,36
+dynamic-ts after reopen,1450000,39,40
+dynamic-ts after reopen,1500000,44,44
+dynamic-ts after reopen,1550000,48,48
+dynamic-ts after reopen,1600000,53,52

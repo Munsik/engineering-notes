@@ -185,7 +185,7 @@
 - 보호 수단별 적용 범위 표: 설정, 대상 query 언어, 부작용
 - query log와 slow log로 범인 찾기
 - task 확인과 취소, search timeout
-- index pattern과 tier 설계로 비용을 줄이는 방법(1-3과 연결)
+- index pattern과 tier 설계로 비용을 줄이는 방법(1-5와 연결)
 - 애플리케이션 쪽 재시도와 timeout 설계
 
 다루지 않음:
@@ -204,7 +204,7 @@
 
 ### labs 실험 설계
 
-- 데이터: 1-1, 1-3에서 만든 다수의 data stream
+- 데이터: 1-3, 1-5에서 만든 다수의 data stream
 - 실험:
   - 넓은 index pattern과 좁은 pattern, tier 제외 조건을 각각 Query DSL과 ES|QL로 실행해 지연과 search thread pool 비교
   - 보호 설정을 하나씩 켜며 어떤 query가 거부되는지 기록

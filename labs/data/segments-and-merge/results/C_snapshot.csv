@@ -1,0 +1,4 @@
+snapshot,incremental_files,incremental_mb,total_files,total_mb
+1. before force merge,0,0.0,58,163.2
+2. no change,0,0.0,58,163.2
+3. after force merge,4,161.7,4,161.7
