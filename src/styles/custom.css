@@ -79,3 +79,27 @@
 		display: none;
 	}
 }
+
+/*
+ * Splash hero (home)
+ * - The hero has no image, so let the copy span the full content width
+ *   (the same width as the collection card grid below).
+ * - The tagline uses a deliberate line break on wide screens only.
+ */
+[data-has-hero] .hero {
+	grid-template-columns: 1fr;
+}
+
+[data-has-hero] .hero .copy > * {
+	max-width: none;
+}
+
+.en-tagline-br {
+	display: none;
+}
+
+@media (min-width: 50rem) {
+	.en-tagline-br {
+		display: inline;
+	}
+}

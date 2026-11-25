@@ -1,9 +1,9 @@
 ---
 title: Engineering Notes
-description: 엔터프라이즈 환경에서 기술을 프로덕션에 올릴 때 필요한 판단 기준과 운영 경험을 정리합니다.
+description: 비즈니스 문제에서 출발해 기술을 프로덕션에 적용하는 방법과, 설계와 운영의 판단 기준을 정리합니다.
 template: splash
 hero:
-  tagline: 기능 설명이 아니라, 그 기능을 프로덕션에서 쓰기 위해 내려야 하는 결정을 기록합니다.
+  tagline: '비즈니스 문제를 해결하기 위해 기술을 프로덕션에 적용하는 방법과,<br class="en-tagline-br" /> 설계하고 구현하고 운영하는 과정에서 필요한 판단 기준을 기록합니다.'
   actions:
     - text: Anomaly Detection in Production
       link: /engineering-notes/ml/anomaly-detection/
@@ -21,7 +21,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 <CardGrid>
   <Card title="Anomaly Detection in Production" icon="seti:graphql">
     job과 detector를 어떻게 나눌지부터 bucket span, 메모리, 결과 읽는 법, noise 처리, 운영까지 다룹니다.
-    Elastic 제공 job을 뜯어본 시나리오 12가지와, Kibana 샘플 데이터로 직접 돌려 보는 실습도 있습니다.
+    Elastic 제공 job을 뜯어본 시나리오 12가지와, Kibana 샘플 데이터로 직접 돌려 보는 실습,
+    AI 분석과 승인 workflow까지 이어지는 제조 현장 AIOps use case도 있습니다.
     [컬렉션 보기](/engineering-notes/ml/anomaly-detection/)
   </Card>
   <Card title="준비 중" icon="puzzle">
@@ -31,4 +32,11 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## 이런 글을 씁니다
 
-글은 크게 세 가지입니다. 설계 결정 하나를 실험 결과와 함께 파고드는 Deep Dive, 실제 적용 절차를 그대로 따라 할 수 있게 정리한 Practical Guide, 그리고 현장에서 부딪히며 얻은 판단 기준을 적은 Engineering Perspective입니다.
+글은 실제 업무 문제나 기술적 과제에서 시작합니다. 주제의 범위에 따라 아래 내용을 필요한 만큼 함께 다룹니다.
+
+- **설계 결정과 근거**: 왜 이 구성이나 설정을 골랐는지, 다른 선택지와 무엇이 다른지.
+- **실제 적용 방법**: 그대로 따라 할 수 있는 설정, API, query, workflow, 실습 코드.
+- **운영과 현장의 판단 기준**: 프로덕션에서 무엇이 잘못될 수 있고, 어떻게 검증하고 대응하는지.
+
+세 가지는 글의 종류가 아니라 한 글을 이루는 요소입니다. 비중은 주제마다 다릅니다.
+[공장 생산망 AIOps](/engineering-notes/ml/anomaly-detection/09-manufacturing-aiops/)는 job 13개를 나눈 이유, 바로 쓸 수 있는 job과 workflow 정의, 운영 중 실패 조건을 한 글에서 함께 다룹니다.
