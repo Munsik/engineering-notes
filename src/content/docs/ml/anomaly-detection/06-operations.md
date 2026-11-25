@@ -140,7 +140,7 @@ alert rule 하나만 있으면 datafeed가 멈추거나 메모리 한도에 걸�
 위 화면 맨 위에 "The datafeed is not started"라는 경고가 보입니다. rule을 만들 때 대상 job의 datafeed가 멈춰 있으면 Kibana가 이렇게 알려 줍니다. 실습처럼 과거 데이터만 분석하고 멈춘 job이라면 무시해도 되지만, 실시간 job에서 이 경고가 보인다면 rule보다 datafeed부터 살펴보세요.
 
 :::note[같은 결과로 alert가 반복되지 않게]
-최근 버전의 rule은 결과에 `event.ingested`(결과가 기록된 시각)가 있으면, 지난 실행 이후 새로 기록된 결과만 평가합니다.
+Elastic Stack 9.6부터(GA, Serverless도 GA) rule은 결과에 `event.ingested`(결과가 기록된 시각)가 있으면, 지난 실행 이후 새로 기록된 결과만 평가합니다.
 그래서 check interval이 bucket span보다 짧아도 같은 결과로 alert가 여러 번 가지 않습니다. 이 field가 없는 예전 결과에는 여전히 lookback interval이 쓰입니다.
 :::
 
@@ -181,10 +181,10 @@ job과 detector의 `description`에는 무엇을 왜 보는지 자세히 적어 
 | `query_delay` | 기본 60~120초 사이 임의 값. 같은 node의 job들이 한꺼번에 조회하지 않게 흩어 놓은 것입니다. ingest 지연이 길면 늘립니다. |
 | `frequency` | 실시간으로 조회하는 주기. 기본은 bucket span(짧을 때)이나 그 일부입니다. aggregation을 쓰면 interval로 나누어떨어져야 합니다. |
 | `delayed_data_check_config` | 늦게 들어온 데이터 검사. 기본 `check_window`는 2시간과 bucket span 8배 중 큰 값입니다. |
-| `max_empty_searches` | 데이터를 한 번도 못 본 실시간 datafeed를 빈 조회 N번 뒤 자동으로 멈춥니다. Elastic Security 제공 job은 10입니다. |
+| `max_empty_searches` | 데이터를 한 번도 못 본 실시간 datafeed를 빈 조회 N번 뒤 자동으로 멈추고 job도 닫습니다. 기본값은 없어서, 지정하지 않으면 계속 돕니다. Elastic Security 제공 job은 10입니다. |
 | `chunking_config` | 긴 기간을 나눠서 조회합니다. aggregation이 없으면 `auto`, 있으면 `manual`이 권장값입니다. |
 | `runtime_mappings` | datafeed 안에서만 쓰는 계산 field. influencer용 field를 만들 때 편합니다. |
-| 권한 | datafeed는 만들거나 마지막으로 고친 사용자의 role을 저장해 두고 그 권한으로 조회합니다. role 이름이 바뀌어도 계속 돌지만, role의 권한이 바뀌면 영향을 받습니다. API key로 만들었다면 그 key의 권한을 따릅니다. |
+| 권한 | datafeed는 만들거나 마지막으로 고친 사용자의 role을 저장해 두고 그 role의 권한으로 조회합니다. 저장된 role 자체의 권한이 바뀌면 바뀐 권한으로 돌지만, 그 사용자에게 다른 role을 붙이거나 떼는 건 반영되지 않습니다. 저장된 role을 갱신하려면 update datafeed API에 빈 JSON(`{}`)을 보냅니다. API key로 만들었다면 그 key의 권한을 따릅니다. |
 
 ## 설정을 바꾸는 순서
 
@@ -218,12 +218,12 @@ job이 failed 상태가 되면 datafeed를 force 옵션으로 멈추고, job도 
 
 | 구분 | 내용 |
 | --- | --- |
-| split field 이름 | `by`, `count`, `over`라는 이름의 field는 split에 쓸 수 없습니다. |
-| 배열 field | 분석할 때 정렬하고 중복을 뺀 뒤 쉼표로 이은 문자열 하나로 바뀝니다. |
+| split field 이름 | `by`, `count`, `over`라는 이름의 field는 `by_field_name`이나 `over_field_name`에 쓸 수 없습니다. |
+| 배열 field | 분석할 때 쉼표로 이은 문자열 하나로 바뀝니다. 정렬과 중복 제거는 aggregatable field에만 적용되고, `_source`에서 읽는 non-aggregatable 배열은 그대로 이어 붙입니다. 큰 배열은 자원을 많이 쓰니 datafeed query로 걸러 내세요. |
 | 시간 field | runtime field면 성능이 크게 떨어집니다. 색인된 field를 쓰세요. |
 | forecast | job당 동시에 3개까지. population 전용 job은 에러가 납니다. `lat_long`, `rare`, `freq_rare`, `time_of_day`, `time_of_week`도 forecast를 만들 수 없습니다. population detector가 섞인 job은 [01장](../01-job-design/#판단-기준) 참고. |
-| Kibana 차트 | `freq_rare`, `time_of_day`, `time_of_week`, `lat_long` 등은 Single Metric Viewer와 Anomaly Explorer에 차트가 안 나옵니다. 목록과 표로 봅니다. |
-| frozen tier, rollup | frozen tier 데이터로는 Kibana wizard에서 job을 만들 수 없어 API를 써야 합니다. rollup index는 지원하지 않습니다. |
+| Kibana 차트 | `freq_rare`, `time_of_day`, `time_of_week`는 Single Metric Viewer와 Anomaly Explorer에 차트가 안 나와서 목록과 표로 봅니다. `lat_long`은 차트 대신 Anomaly Explorer에 지도가 나옵니다. `info_content` 계열과 `varp` 계열은 model plot을 켜야 차트가 나옵니다. |
+| frozen tier, rollup | frozen tier 데이터로는 Kibana wizard에서 job을 만들 수 없어 API를 써야 합니다. rollup index와 rollup index를 포함한 data view는 Kibana의 job과 datafeed에 쓸 수 없습니다. |
 | categorization | 기본 tokenizer(`ml_standard`)와 사전은 영어 로그를 기준으로 만들어졌습니다. 한국어 로그라면 `categorization_analyzer`를 따로 정의하고 결과를 확인해 보세요. |
 | `multivariate_by_fields` | API 문서에 내부용으로 적혀 있습니다. 공식 지원 대상이 아니니 쓰지 않습니다. |
 
@@ -240,7 +240,7 @@ job이 failed 상태가 되면 datafeed를 force 옵션으로 멈추고, job도 
 | 7. 운영 | 메모리 상태 점검, 결과와 snapshot retention, 이벤트와 DST calendar 갱신, 설정 변경 이력 관리 |
 
 :::note
-Elastic Cloud Serverless에서는 Elastic Agent Builder와 대화하면서 anomaly detection job을 만드는 기능이 experimental로 나와 있습니다. Elastic Stack은 planned로 표시돼 있습니다.
+Elastic Agent Builder와 대화하면서 anomaly detection job을 만드는 기능이 있습니다. Elastic Cloud Serverless와 Elastic Stack 9.6 모두 experimental입니다. 공식 문서 설명으로는 agent가 데이터를 살펴보고, 과거 데이터로 설정을 시험해 본 뒤, 사용자가 결과를 승인하면 실시간 job을 만듭니다.
 :::
 
 ## 참고 문서

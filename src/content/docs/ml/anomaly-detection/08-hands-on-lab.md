@@ -17,7 +17,7 @@ sidebar:
 - 순서는 Kibana 샘플 job 3개를 만들고(Lab 1), 같은 관점을 advanced job 하나로 만든 다음(Lab 2), 둘을 비교하는 흐름입니다(Lab 3).
 - 이 페이지의 Dev Tools 요청은 저장소의 [`labs/anomaly-detection/hands-on-lab.console`](https://github.com/Munsik/engineering-notes/blob/main/labs/anomaly-detection/hands-on-lab.console)에 순서대로 모아 두었습니다. Console에 한 번에 붙여 넣고 위에서부터 실행하면 됩니다.
 
-:::note[Elastic Cloud Serverless]
+:::note[Elastic Cloud Serverless, Elastic Stack 9.6 이상]
 Lab 3의 결과 조회 API 대신 [ES|QL `.ml-anomalies` view](../04-reading-results/#esql로-결과-조회하기)를 쓸 수 있습니다.
 :::
 

@@ -99,7 +99,7 @@ score가 낮은 이상도 여러 job에서 같은 시각에 함께 나오면 의
 
 ## Detector가 여러 개인 job 읽기
 
-overall swim lane은 job 전체의 bucket score입니다. influencer swim lane을 단순히 더한 값이 아니라서, influencer 쪽에는 이상이 있어도 overall 칸은 비어 있을 수 있습니다.
+overall swim lane은 job 전체의 bucket score이고, influencer swim lane은 influencer score입니다. 서로 다른 결과에서 나온 값이라 같은 시간대라도 색과 숫자가 다를 수 있습니다. influencer swim lane을 더한다고 overall 값이 되지는 않습니다.
 
 Top influencers 목록은 influencer마다 bucket별 최고 score를 모든 detector에 걸쳐 모으고, 합계도 같이 보여 줍니다. 여러 증상에 한꺼번에 등장하는 entity가 위로 올라옵니다.
 
@@ -124,8 +124,7 @@ API로 볼 때는 record 결과의 `detector_index`로 detector를 구분합니�
 
 ## ES|QL로 결과 조회하기
 
-Elastic Cloud Serverless에서는 `.ml-anomalies` reserved view로 bucket, record, influencer 결과를 ES|QL로 조회할 수 있습니다(GA).
-Elastic Stack(직접 구축, Elastic Cloud Hosted)은 공식 문서에 "Planned"로 표시돼 있습니다. 이 환경에서는 결과 API나 `.ml-anomalies-*` index 검색을 쓰세요.
+`.ml-anomalies` reserved view로 bucket, record, influencer 결과를 ES|QL로 조회할 수 있습니다. Elastic Cloud Serverless는 GA이고, Elastic Stack(직접 구축, Elastic Cloud Hosted)은 9.6부터 GA입니다. 9.5 이하에서는 결과 API나 `.ml-anomalies-*` index 검색을 쓰세요. cross-cluster search로는 이 view를 조회할 수 없습니다.
 
 ```sql
 FROM .ml-anomalies

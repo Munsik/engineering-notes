@@ -71,11 +71,11 @@ POST _ml/anomaly_detectors/_estimate_model_memory
 
 추정값이 cardinality 가정에 얼마나 민감한지는 [09장 메모리 추정](../09-manufacturing-aiops/#메모리-추정)의 실측에서 볼 수 있습니다. 같은 로그 job이라도 bucket당 `trace.id` 개수를 얼마로 넣느냐에 따라 추정값이 job에 잡아 둔 한도를 넘기도 합니다.
 
-Elastic Stack 9.5부터(GA) Kibana의 Anomaly Detection Jobs 화면에서 job을 편집하면, 현재 `model_memory_limit`이 추정값과 다를 때 추정값을 보여 주고 Apply로 바로 바꿀 수 있습니다. job을 다시 만들 필요는 없습니다.
+Elastic Stack 9.5부터(GA) Kibana의 Anomaly Detection Jobs 화면에서 닫힌 job을 편집하면, 현재 `model_memory_limit`이 추정값과 다를 때 추정값을 보여 주고 Apply로 바로 바꿀 수 있습니다. job을 다시 만들 필요는 없지만, 먼저 datafeed를 멈추고 job을 닫아야 합니다([설정을 바꾸는 순서](../06-operations/#설정을-바꾸는-순서)).
 
 ## ML node 구성
 
-직접 구축한 환경이라면 ML 전용 node를 두는 걸 권합니다. ML node에서 다른 프로세스가 돌지 않는다면 `xpack.ml.max_machine_memory_percent`를 기본값 30%보다 올려도 됩니다.
+직접 구축한 환경이라면 ML 전용 node를 두는 걸 권합니다. ML node에서 다른 프로세스가 돌지 않는다면 `xpack.ml.max_machine_memory_percent`를 기본값 30%보다 올려도 됩니다. 공식 문서는 다른 소프트웨어가 없는 메모리 24GB 이상 전용 node라면 90%까지 올리는 예를 듭니다.
 
 Elastic Cloud에서는 ML node autoscaling을 켜 두면 필요한 만큼 node가 늘었다 줄었다 합니다.
 

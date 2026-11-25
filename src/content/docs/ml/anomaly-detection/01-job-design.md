@@ -165,7 +165,7 @@ population 분석은 entity가 수십만, 수백만이어도 entity마다 시계
 `by`나 `partition` 값이 없는 문서는 기본적으로 분석에서 빠집니다. `use_null: true`를 주면 값이 없는 문서도 별도 시계열로 분석합니다.
 Elastic이 제공하는 로그 job은 이 옵션으로 dataset 정보가 빠진 로그까지 지켜봅니다.
 
-이름이 `by`, `count`, `over`인 field는 split에 쓸 수 없습니다. 그리고 Kibana wizard는 split field의 cardinality가 1,000을 넘으면 메모리 경고를 띄웁니다.
+이름이 `by`, `count`, `over`인 field는 `by_field_name`이나 `over_field_name`에 쓸 수 없습니다. 그리고 Kibana wizard는 split field의 cardinality가 1,000을 넘으면 메모리 경고를 띄웁니다.
 
 ## Influencer
 

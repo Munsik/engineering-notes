@@ -767,7 +767,7 @@ PUT _ml/anomaly_detectors/mes-log-heartbeat-drop
 
 - Kibana **Applications**에서 **Anomaly detection** → **Create Job** → 환경 선택 순서로 만듭니다. job은 환경 단위로 생기고 최근 4주 데이터로 학습을 시작합니다([APM과 ML](https://www.elastic.co/docs/solutions/observability/apm/machine-learning)).
 - 서비스 상태 표시는 트랜잭션 유형이 `request`나 `page-load`일 때만 나옵니다.
-- 이 job의 트랜잭션 건수 급감(low count) detector는 Elastic Stack에서 아직 planned 상태라서, A2로 보완합니다.
+- 트랜잭션 건수 급감(low count) detector는 Elastic Stack 9.6부터(GA) 새로 만든 APM job에 들어갑니다. 그 전에 만든 job에는 없고, 넣으려면 환경의 APM job을 지우고 다시 만들어야 합니다(기존 결과와 모델은 사라집니다). 9.5 이하이거나 job을 다시 만들기 어렵다면 A2로 보완합니다([Detect low transaction counts](https://www.elastic.co/docs/solutions/observability/apm/machine-learning#apm-ml-low-transaction-count)).
 
 ### A2. 핵심 MES 트랜잭션 `mes-apm-key-tx`
 
@@ -1165,7 +1165,7 @@ sequenceDiagram
 | Workflows, alert trigger, workflow settings | 9.3 preview, 9.4부터 GA | GA | [Workflows](https://www.elastic.co/docs/explore-analyze/workflows), [Alert triggers](https://www.elastic.co/docs/explore-analyze/workflows/triggers/alert-triggers) |
 | `ai.prompt`, `ai.agent` | 9.3 preview, 9.4부터 GA | GA | [AI steps](https://www.elastic.co/docs/explore-analyze/workflows/steps/ai-steps) |
 | `ai.classify`, `ai.summarize` | 9.4부터 GA | GA | [AI steps](https://www.elastic.co/docs/explore-analyze/workflows/steps/ai-steps) |
-| `waitForInput` | 9.4부터 GA | GA | [waitForInput](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-input) |
+| `waitForInput` | 9.4부터 GA. step의 `timeout`, `channels`는 9.5부터 preview | GA(`timeout`, `channels`는 preview) | [waitForInput](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-input) |
 | `waitForApproval` | 9.5부터 preview | preview | [waitForApproval](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-approval) |
 | HITL 외부 채널(Slack 응답 링크) | 9.5부터 preview | preview | [Human-in-the-loop](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/human-in-the-loop) |
 | 동시 실행 `queue` 전략 | 9.5부터 GA | GA | [Workflow settings](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/settings) |
@@ -1178,7 +1178,8 @@ sequenceDiagram
 | AI step의 top-level field(`connector-id` 등)에 Liquid | 평가되지 않으므로 값을 직접 씁니다. | 평가됩니다. |
 | `connector-id`를 생략했을 때 모델 | 기본 AI connector | Feature Settings에서 step별로 지정한 모델, 없으면 기본 AI connector |
 
-9.4에서는 `waitForInput` 응답 경로에서 `.response`를 빼고, `waitForApproval`을 `waitForInput`(승인 boolean 하나)으로 바꾸세요. Workflows와 ML 기능은 구독 등급에 따라 쓸 수 있는 범위가 다릅니다([Elastic subscriptions](https://www.elastic.co/subscriptions)).
+9.4에서는 `waitForInput` 응답 경로에서 `.response`를 빼고, `waitForApproval`을 `waitForInput`(승인 boolean 하나)으로 바꾸세요.
+9.5부터 Generative AI connector는 deprecated로 표시돼 있습니다. 다만 `ai.prompt`, `ai.classify`, `ai.summarize`는 여전히 `connector-id`만 받습니다. inference endpoint(`inference-id`)를 받는 건 `ai.agent`뿐입니다([AI steps](https://www.elastic.co/docs/explore-analyze/workflows/steps/ai-steps)). Workflows와 ML 기능은 구독 등급에 따라 쓸 수 있는 범위가 다릅니다([Elastic subscriptions](https://www.elastic.co/subscriptions)).
 
 ### 1단계: Anomaly detection rule
 
