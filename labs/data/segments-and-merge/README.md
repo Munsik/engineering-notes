@@ -6,6 +6,7 @@
 | --- | --- |
 | [`lab.js`](lab.js) | 실험 스크립트. Kibana에 로그인한 브라우저 탭의 개발자 도구 콘솔에 붙여 넣어 실행합니다 |
 | [`segments-and-merge.console`](segments-and-merge.console) | 본문에 나온 점검 요청 모음. Kibana Dev Tools Console용 |
+| [`expunge-by-policy.console`](expunge-by-policy.console) | `only_expunge_deletes`가 Tiered와 time-based policy에서 다르게 동작하는지 재현. 로컬 Elasticsearch 9.5.5 단일 노드에서 실행 |
 | [`results/`](results/) | 실측 결과. `raw.json`(1회차), `raw_run2.json`(2회차, replica 1 조건, kNN 기본 조건), `raw_run3.json`(replica 1 조건 force merge, kNN segment 40개 조건)이 원본이고 CSV는 원본에서 뽑은 표입니다 |
 
 ## 실행 환경
@@ -33,6 +34,7 @@
 | D. `@timestamp` 매핑 / `ts` 필드 / dynamic `@timestamp` 비교, close/open 후 추가 적재. 2회 | `expPolicy()`, `expPolicy({ suffix: '-r2' })` | `D_policy.csv`, `D_timeline.csv` | 02 |
 | E. kNN 검색 지연, segment 여러 개와 1개. segment 40개 조건 2회 | `expKnn()`, `expKnnSegments()`, `expKnnSegments({ suffix: '-seg40-r2' })` | `E_knn.csv` | 02 |
 | `_disk_usage` | 콘솔 요청 | `raw.json`의 `disk_usage` | 01 |
+| F. `only_expunge_deletes`, Tiered와 time-based 비교(로컬 9.5.5) | `expunge-by-policy.console` | 파일 안 주석 | 02 |
 
 `raw.json`의 `timeline` 배열은 `[보낸 문서 수, 경과 초, segment 수, commit된 segment 수]`입니다. 실험 D와 close/open 뒤 timeline은 `[보낸 문서 수, 경과 초, 검색 가능 segment 수]`입니다.
 
@@ -55,3 +57,5 @@
 - 실험 C2의 replica 1 조건은 2회차 D의 `segments-lab-policy-ts-field-r2`를 `number_of_replicas: 1`로 바꾼 뒤 `expForceMergePeak('segments-lab-policy-ts-field-r2')`로 쟀습니다.
 - 실험 E를 기본 merge policy로 돌리면(`expKnn()`) 3만 건을 넣는 동안 segment가 2개로 합쳐져 비교가 되지 않았습니다. 그래서 `expKnnSegments()`는 `index.merge.policy.segments_per_tier: 64`, `refresh_interval: -1`로 만들고 750건마다 `_refresh`해서 segment 40개를 만든 뒤 비교합니다. `segments_per_tier`는 현재 공식 문서에 없는 설정이라 실험용으로만 썼습니다.
 - 실험 D의 close/open 단계는 원래 실행에서 seed를 `7 + 절대 위치`로 줬습니다. `lab.js`는 `offset` 옵션을 써서 seed 계산이 조금 다릅니다. 문서 내용만 달라지고 크기와 분포는 같습니다.
+- 실험 F는 Elastic Cloud Hosted가 아니라 로컬 Elasticsearch 9.5.5 단일 노드(tarball, JVM heap 1GB)에서 돌렸습니다. lab 디스크 여유가 merge disk watermark 아래라서 처음에는 merge가 시작되지 않았고, `indices.merge.disk.watermark.high`를 낮춘 뒤 진행했습니다.
+- `refresh.external_total`은 인덱스를 만들 때 shard가 열리면서 2가 됩니다. 실험 A의 미설정, `-1` 인덱스에 찍힌 2회는 이 값입니다.

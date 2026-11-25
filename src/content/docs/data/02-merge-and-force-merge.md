@@ -17,6 +17,7 @@ segment가 무엇이고 왜 쌓이는지는 [01. Segment의 생애](../01-segmen
 - Elasticsearch 9.5.5(Lucene 10.5.1) 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
 - merge policy 세부 설정과 기본값은 현재 공식 문서에 따로 정리돼 있지 않아 Elasticsearch 9.5.5 빌드 commit(`48acba6`)과 Lucene 10.5.1 소스로 확인했습니다. 해당 문장마다 근거 파일을 적었습니다.
 - 실측은 [01](../01-segments/)과 같은 환경입니다. Elastic Cloud Hosted 9.5.5, hot node 2대(노드당 RAM 8GB, JVM heap 4GB, vCPU 2), primary 1개, replica 0개 인덱스입니다. 실험 코드와 결과는 [`labs/data/segments-and-merge/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/segments-and-merge)에 있습니다.
+- `only_expunge_deletes`의 policy별 차이와 merge disk watermark 동작은 로컬 Elasticsearch 9.5.5 단일 노드에서 추가로 확인했습니다.
 - force merge는 Elastic Cloud Serverless에서는 쓸 수 없습니다([Tune for indexing speed](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/indexing-speed)).
 :::
 
@@ -43,21 +44,29 @@ Elasticsearch는 인덱스 매핑에 따라 merge policy를 둘 중 하나로 �
 | merge 결과 상한 | 5GB | 100GB |
 | 한 단계에 허용하는 segment 수 | 8개(`segments_per_tier`) | 32개가 모이면 합침(`merge_factor`) |
 | 작은 segment 기준 | 16MB 미만은 16MB로 취급(`floor_segment`) | 같음 |
+| 삭제 문서 회수 | 삭제 비율이 `deletes_pct_allowed`(기본 20%)를 넘으면 그 segment를 merge 후보로 올림 | 삭제 비율로 고르는 기준이 없음. 크기를 계산할 때 삭제분을 빼는 정도만 반영 |
 
-- 상한은 노드 설정 `indices.merge.policy.max_merged_segment`(기본 5GB)와 `indices.merge.policy.max_time_based_merged_segment`(기본 100GB)입니다. 시간 기반 데이터는 보통 rollover되니 상한이 크게 의미 없고, 상한 때문에 merge가 잘게 쪼개지면 다시 쓰는 양이 늘어난다는 이유로 일부러 높게 잡았다고 소스 주석에 적혀 있습니다.
+- 상한은 노드 설정 `indices.merge.policy.max_merged_segment`(기본 5GB)와 `indices.merge.policy.max_time_based_merged_segment`(기본 100GB)입니다. 시간 기반 데이터는 보통 rollover되니 상한이 크게 의미 없고, 상한 때문에 merge가 잘게 쪼개지면 다시 쓰는 양이 늘어난다는 이유로 일부러 높게 잡았다고 소스 주석에 적혀 있습니다. 공식 문서([ILM force merge action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-forcemerge), [Tune approximate kNN search](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/approximate-knn-search))는 자동 merge 상한을 5GB로만 설명합니다. 100GB는 소스 기준입니다.
+- 시간 기반 데이터에 LogByteSizeMergePolicy를 쓰는 동작은 8.8.0부터 기본입니다([PR #92684](https://github.com/elastic/elasticsearch/pull/92684), merge factor 32는 [PR #94134](https://github.com/elastic/elasticsearch/pull/94134)).
+- 삭제 문서 처리 방식이 다른 이유도 소스에 있습니다. `deletes_pct_allowed`와 `expunge_deletes_allowed`는 TieredMergePolicy에만 적용되고, LogByteSizeMergePolicy에는 같은 설정이 없다는 주석이 붙어 있습니다(`MergePolicyConfig.java`). Lucene에도 같은 문제를 다루는 이슈가 열려 있습니다([lucene#16701](https://github.com/apache/lucene/issues/16701)).
 - 바로 옆 segment끼리만 합치는 이유도 소스 주석에 있습니다. 시간 순서로 들어온 데이터는 segment마다 시간 범위가 겹치지 않게 됩니다. 그러면 `@timestamp` range 조건이 segment 하나를 통째로 포함하거나 통째로 건너뛰게 돼서 검색이 빨라집니다. 최근 데이터만 자주 보는 패턴과도 맞습니다.
 - `segments_per_tier`와 `floor_segment`는 9.5에서 바뀌었습니다. 9.4까지는 각각 10과 2MB였습니다(9.3, 9.4 브랜치와 9.5.5의 `MergePolicyConfig.java` 비교).
-- 인덱스 설정 `index.merge.policy.type`(`unset`, `tiered`, `time_based`)으로 policy를 직접 고를 수도 있습니다(소스). 공식 문서에 없는 설정이라 운영에서는 기본 판정에 맡기는 쪽을 권합니다(해석).
+- 인덱스 설정 `index.merge.policy.type`(`unset`, `tiered`, `time_based`)으로 policy를 직접 고를 수도 있습니다(소스). 공식 문서에 없는 설정이라 운영에서는 기본 판정에 맡기는 쪽을 권합니다(해석). dynamic 설정이라 운영 중에도 바로 바뀝니다. 삭제 문서가 많이 쌓인 큰 인덱스를 `tiered`로 바꾸면 그동안 미뤄진 삭제 회수 merge가 한꺼번에 몰릴 수 있습니다(해석).
 
 Lucene 수준에서 보면 두 policy 모두 큰 segment를 merge 대상에서 뺍니다.
 TieredMergePolicy는 상한의 절반(2.5GB)을 넘는 segment를 삭제 비율이 낮으면 후보에서 뺍니다. LogByteSizeMergePolicy는 상한 이상인 segment를 건너뜁니다(Lucene 소스 `TieredMergePolicy.java`, `LogMergePolicy.java`).
 
 ### 판정은 shard가 열릴 때 한 번 한다
 
-`@timestamp`가 있는지는 shard의 engine을 만들 때 한 번만 봅니다(소스 `IndexShard.java`의 `newEngineConfig`).
+`@timestamp`가 있는지는 shard의 engine을 만들 때만 봅니다(소스 `IndexShard.java`의 `newEngineConfig`). engine은 shard copy가 열릴 때 만들어지고, 일부 복구 과정(`rollbackEngineToGlobalCheckpoint`)에서 다시 만들어집니다.
 그래서 매핑 없이 인덱스를 만들고 첫 문서의 `@timestamp`가 dynamic mapping으로 date가 된 경우, 그 shard는 다시 열리기 전까지 TieredMergePolicy로 움직입니다. 아래 실측으로 확인했습니다.
 
-data stream은 만들 때부터 `@timestamp` 매핑이 있어야 하므로 이 문제가 없습니다. 일반 인덱스를 시간 기반으로 쓴다면 index template에 `@timestamp`를 date로 넣어 두는 게 안전합니다(해석).
+data stream은 만들 때부터 `@timestamp` 매핑이 있어야 하므로 이 문제가 없습니다. 재시작, relocation, 새 replica 할당으로 새로 열린 copy는 그 시점의 매핑으로 판정하므로, 같은 인덱스라도 copy마다 policy가 다를 수 있습니다(해석, 확인 필요).
+
+일반 인덱스에 `@timestamp`를 넣을지는 쓰기 패턴을 보고 정합니다(해석).
+
+- **append-only 시간 기반 인덱스**: index template에 `@timestamp`를 date로 넣어 두면 처음부터 LogByteSize로 움직입니다.
+- **update나 delete가 많은 인덱스**: `@timestamp`가 있으면 삭제 문서를 잘 회수하지 못하는 LogByteSize가 적용됩니다. 시간 필드 이름을 `@timestamp`가 아닌 다른 이름으로 두면 Tiered로 움직입니다. Elastic도 이 판정 기준을 data stream 쪽으로 좁히는 방안을 검토하고 있습니다([elasticsearch#159981](https://github.com/elastic/elasticsearch/issues/159981), 2026년 11월 기준 open).
 
 ### 실측: 같은 데이터, 다른 policy
 
@@ -134,8 +143,8 @@ POST my-index-000001/_forcemerge?max_num_segments=1
 공식 문서가 권하는 경우는 더 이상 쓰기가 없는 인덱스입니다([Force merge API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-indices-forcemerge)).
 
 - **rollover가 끝난 data stream backing index**: 쓰기가 멈춘 뒤 segment 1개로 합치면, 경우에 따라 더 단순하고 효율적인 자료 구조로 검색할 수 있습니다.
-- **searchable snapshot으로 넘기기 전**: ILM `searchable_snapshot` action은 기본으로 force merge를 먼저 합니다(`force_merge_index` 기본값 `true`). searchable snapshot 성능이 force merge 여부에 달려 있기 때문입니다. 9.2부터는 replica 0개짜리 clone을 만들어 그 위에서 force merge합니다(`force_merge_on_clone` 기본값 `true`). replica마다 같은 merge를 반복하지 않기 위해서입니다([Searchable snapshot action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-searchable-snapshot)).
-- **대량 적재가 끝난 kNN 인덱스**: segment 수가 kNN 검색 속도를 직접 좌우합니다. 공식 문서는 force merge 말고도 적재 중 `refresh_interval: -1`로 처음부터 큰 segment를 만드는 방법, `index.merge.policy.max_merged_segment`를 10GB에서 20GB로 올리는 방법을 같이 제시합니다([Tune approximate kNN search](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/approximate-knn-search)).
+- **searchable snapshot으로 넘기기 전**: ILM `searchable_snapshot` action은 기본으로 force merge를 먼저 합니다(`force_merge_index` 기본값 `true`). searchable snapshot 성능이 force merge 여부에 달려 있기 때문입니다. 9.2부터는 replica 0개짜리 clone을 만들어 그 위에서 force merge합니다(`force_merge_on_clone` 기본값 `true`). replica마다 같은 merge를 반복하지 않기 위해서입니다([Searchable snapshot action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-searchable-snapshot)). 이 force merge는 searchable snapshot action이 있는 phase의 직전 tier(hot이나 warm)에서 실행됩니다. 아래에서 다루는 "최대 세 배" 여유 공간도 그 tier 노드에 필요합니다([ILM force merge action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-forcemerge)).
+- **대량 적재가 끝난 kNN 인덱스**: segment 수가 kNN 검색 속도를 직접 좌우합니다. 공식 문서는 force merge 말고도 적재 중 `refresh_interval: -1`로 처음부터 큰 segment를 만드는 방법, `index.merge.policy.max_merged_segment`를 10GB에서 20GB로 올리는 방법을 같이 제시합니다([Tune approximate kNN search](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/approximate-knn-search)). 9.5부터 GA인 `vectordb_document` index mode는 merge를 내부 병렬로, IO 제한 없이 돌리는 설정을 기본으로 넣어 줍니다(같은 문서).
 
 작은 lab에서도 확인해 봤습니다. 384차원 vector 3만 건으로 segment 40개를 일부러 만든 뒤(`index.merge.policy.segments_per_tier: 64`), force merge 전후로 같은 kNN query 200개(`k: 10`, `num_candidates: 100`)의 `took`을 비교했습니다. 두 번 돌린 평균은 segment 40개일 때 3.4ms와 4.2ms, 1개일 때 3.0ms에서 3.1ms였습니다(실측). 이 규모에서는 차이가 1ms 안쪽이었습니다.
 데이터 전체가 50MB로 메모리에 다 들어가고 검색 자체가 몇 ms로 짧았기 때문으로 봅니다(해석). 공식 문서가 말하는 몇 배 차이는 vector가 많고 segment가 큰 인덱스에서 나오는 값으로 읽어야 합니다. 9.5.5에서 384차원 `dense_vector`를 옵션 없이 만들면 `bbq_hnsw`가 기본으로 적용됐습니다(매핑 응답 기준). 결과 원본은 [`results/E_knn.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/E_knn.csv)에 있습니다.
@@ -146,16 +155,16 @@ ILM `forcemerge` action은 hot과 warm phase에서 쓸 수 있고, hot phase에�
 
 쓰기가 계속 들어오는 인덱스에는 하지 않습니다. 공식 문서가 드는 이유는 두 가지입니다(Force merge API).
 
-- **merge 대상에서 빠지는 큰 segment가 생깁니다.** force merge는 5GB가 넘는 segment를 만들 수 있고, 이 segment는 일반 merge 대상에서 빠집니다. 이후 update와 delete로 생긴 삭제 문서가 그 segment에 계속 쌓여 디스크와 검색 성능이 나빠집니다.
+- **merge 대상에서 빠지는 큰 segment가 생깁니다.** force merge는 5GB가 넘는 segment를 만들 수 있고, 이 segment는 일반 merge 대상에서 빠집니다. 이후 update와 delete로 생긴 삭제 문서가 그 segment에 계속 쌓여 디스크와 검색 성능이 나빠집니다. Lucene 소스 기준으로는 끝없이 쌓이지는 않습니다. TieredMergePolicy는 큰 segment라도 그 segment와 인덱스 전체의 삭제 비율이 모두 `deletes_pct_allowed`(20%)를 넘으면 다시 merge 후보로 올립니다. 그 전까지는 삭제 문서를 떠안고 있습니다(Lucene `TieredMergePolicy.java`).
 - **snapshot이 증분으로 올라가지 않습니다.** segment 파일이 통째로 바뀌기 때문에 다음 snapshot은 인덱스 전체를 새로 올립니다.
 
-5GB는 TieredMergePolicy의 기본 상한입니다. `@timestamp`가 있는 인덱스는 상한이 100GB라서, 같은 크기의 segment라도 일반 merge 대상에서 빠지는 기준이 다릅니다(소스 기준). 다만 시간 기반 인덱스는 어차피 rollover 뒤에 force merge하므로, 실제로 문제가 되는 곳은 update가 많은 Tiered 인덱스입니다(해석).
+5GB는 TieredMergePolicy의 기본 상한입니다. `@timestamp`가 있는 인덱스는 상한이 100GB라서, 같은 크기의 segment라도 일반 merge 대상에서 빠지는 기준이 다릅니다(소스 기준). 다만 시간 기반 인덱스는 어차피 rollover 뒤에 force merge하므로, 실제로 문제가 되는 곳은 update가 많은 인덱스입니다. Tiered 인덱스는 force merge로 생긴 큰 segment에, `@timestamp`가 있는 일반 인덱스는 policy 자체에 삭제 회수 기준이 없어서 삭제 문서가 쌓입니다(해석).
 
 비용도 큽니다.
 
 - `max_num_segments=1`이면 shard 크기의 최대 세 배까지 디스크를 씁니다.
 - force merge task는 취소할 수 없습니다. 연결이 끊겨도 백그라운드에서 계속 돕니다.
-- shard마다 노드의 `force_merge` thread pool에서 실행합니다. 크기는 `max(1, 할당된 processor 수 / 8)`로 고정입니다. vCPU 2개인 이번 실험 노드는 1이었습니다.
+- shard마다 노드의 `force_merge` thread pool에서 실행합니다. 기본 크기는 `max(1, 할당된 processor 수 / 8)`이고, vCPU 2개인 이번 실험 노드는 1이었습니다. `thread_pool.force_merge.size`로 늘릴 수 있지만, 공식 문서는 고급 설정이니 상태를 보면서 조금씩 늘리라고 안내합니다([ILM force merge action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-forcemerge)).
 
 ### 실측: force merge 전후
 
@@ -195,11 +204,15 @@ segment 19개, 163MB인 인덱스를 force merge 전후로 snapshot했습니다.
 
 ### 지운 문서만 정리하기: only_expunge_deletes
 
-`only_expunge_deletes=true`는 삭제 문서가 있는 segment만 다시 씁니다. segment를 1개로 합치지 않습니다.
-삭제 비율이 `index.merge.policy.expunge_deletes_allowed`(기본 10%) 이하인 segment는 건너뜁니다(소스 `MergePolicyConfig.java`).
+`only_expunge_deletes=true`는 삭제 문서가 있는 segment만 다시 씁니다. 어떤 segment를 고르는지는 merge policy마다 다릅니다(소스 `MergePolicyConfig.java`, Lucene `LogMergePolicy.java`).
 
-[01의 update 실측](../01-segments/#실측-같은-문서를-반복-update)에서 삭제 비율 8%인 segment가 남은 것이 이 기준 때문이었습니다. 기준을 0으로 낮추면 모두 정리됐습니다.
-update가 많은 인덱스에서 쓰기를 멈추지 않고 공간만 돌려받고 싶을 때 `max_num_segments=1`보다 부담이 적은 선택지입니다(해석).
+- **TieredMergePolicy**: 삭제 비율이 `index.merge.policy.expunge_deletes_allowed`(기본 10%) 이하인 segment는 건너뜁니다. segment를 1개로 합치지 않습니다.
+- **LogByteSizeMergePolicy**(`@timestamp` 인덱스): 이 기준이 없습니다. 삭제 문서가 한 건이라도 있는 segment를 모두 다시 쓰고, 그런 segment가 나란히 있으면 하나로 합칩니다. merge 크기 상한도 보지 않습니다.
+
+로컬 9.5.5 단일 노드에서 segment 4개(각각 문서 2%를 삭제)로 확인했습니다. `ts` 인덱스는 segment 4개와 삭제 문서가 그대로 남았고, `@timestamp` 인덱스는 segment 1개로 합쳐지면서 삭제 문서가 모두 사라졌습니다(실측). 재현 요청은 [`labs/data/segments-and-merge/expunge-by-policy.console`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/expunge-by-policy.console)에 있습니다.
+
+[01의 update 실측](../01-segments/#실측-같은-문서를-반복-update)에서 삭제 비율 8%인 segment가 남은 것도 그 인덱스가 Tiered였기 때문입니다. 기준을 0으로 낮추면 모두 정리됐습니다.
+update가 많은 Tiered 인덱스에서 쓰기를 멈추지 않고 공간만 돌려받고 싶을 때 `max_num_segments=1`보다 부담이 적은 선택지입니다. `@timestamp` 인덱스에서는 삭제가 있는 segment 전체를 다시 쓰는 작업이 되므로, 해당 segment 크기와 디스크 여유를 먼저 확인합니다(해석).
 
 ## 판단 기준
 
@@ -221,12 +234,14 @@ flowchart TD
 | 상황 | 권장 |
 | --- | --- |
 | 로그, 메트릭 data stream | ILM에서 rollover 뒤 warm phase `forcemerge`, 또는 searchable snapshot action의 기본 force merge. hot phase에서 수동으로 하지 않는다 |
-| update가 많은 카탈로그, entity 인덱스 | force merge를 일정으로 돌리지 않는다. `docs.deleted` 비율을 보고 필요할 때 `only_expunge_deletes` |
+| update가 많은 카탈로그, entity 인덱스 | force merge를 일정으로 돌리지 않는다. 매핑에 `@timestamp`가 있는지 먼저 확인한다. `docs.deleted` 비율을 보고 필요할 때 `only_expunge_deletes` |
 | 처음 한 번 대량 적재 후 검색만 하는 인덱스(kNN 포함) | 적재 중 `refresh_interval: -1`, replica 0으로 큰 segment를 먼저 만들고, 적재가 끝난 뒤 한 번 force merge |
 | 디스크 사용률이 이미 높은 노드 | force merge 전에 여유 공간부터 계산. merge는 flood stage 근처에서 새로 시작하지 않으므로 merge가 밀리기 시작하면 indexing도 같이 느려진다 |
 | merge 때문에 indexing이 느린지 의심될 때 | `indexing.throttle_time_in_millis`, `merges.current`, `merges.total_throttled_time_in_millis`를 같이 본다. refresh 주기를 늘리고 bulk 크기를 조정하는 것부터 해 본다 |
 
-디스크 여유는 이렇게 계산합니다. 한 노드에서 동시에 force merge되는 shard 수는 `force_merge` thread pool 크기와 같습니다. 그래서 필요한 여유 공간은 "그 노드에서 가장 큰 shard 크기 x 3 x `force_merge` thread pool 크기"입니다. vCPU 16개 노드라면 thread pool이 2이므로, 50GB shard 기준으로 300GB가 필요합니다(예시 값).
+merge disk watermark에 걸린 노드에서는 force merge도 끝나지 않습니다. 로컬 9.5.5에서 디스크 여유가 기준(95%) 아래로 내려가자 새 merge가 대기열에 쌓였고, `_forcemerge` 요청은 응답 없이 계속 기다렸습니다. 로그에는 merge를 시작할 디스크 공간이 부족하다는 경고가 5초마다 남았고, 기준을 낮추자 대기 중이던 merge가 바로 실행됐습니다(실측). force merge task는 취소할 수 없으므로, 디스크부터 확인하고 실행합니다(해석).
+
+디스크 여유는 이렇게 계산합니다. 한 노드에서 동시에 force merge되는 shard 수는 `force_merge` thread pool 크기와 같습니다. 그래서 필요한 여유 공간은 "그 노드에서 가장 큰 shard 크기 x 3 x `force_merge` thread pool 크기"입니다. thread pool 크기를 바꿨다면 그 값으로 계산합니다. vCPU 16개 노드라면 thread pool이 2이므로, 50GB shard 기준으로 300GB가 필요합니다(예시 값).
 
 ## 다음 글
 
@@ -242,5 +257,7 @@ flowchart TD
 - [ILM searchable snapshot action](https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-searchable-snapshot)
 - [Tune approximate kNN search](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/approximate-knn-search)
 - [Tune for indexing speed](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/indexing-speed)
+- Elasticsearch PR, 이슈: [PR #92684](https://github.com/elastic/elasticsearch/pull/92684), [PR #94134](https://github.com/elastic/elasticsearch/pull/94134), [elasticsearch#159981](https://github.com/elastic/elasticsearch/issues/159981)
+- Lucene 이슈: [lucene#16701](https://github.com/apache/lucene/issues/16701)
 - Elasticsearch 9.5.5 소스: [`MergePolicyConfig.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/MergePolicyConfig.java), [`IndexShard.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/shard/IndexShard.java), [`ThreadPoolMergeScheduler.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/engine/ThreadPoolMergeScheduler.java), [`ThreadPoolMergeExecutorService.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/engine/ThreadPoolMergeExecutorService.java), [`Engine.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/engine/Engine.java)
 - Lucene 10.5.1 소스: [`TieredMergePolicy.java`](https://github.com/apache/lucene/blob/releases/lucene/10.5.1/lucene/core/src/java/org/apache/lucene/index/TieredMergePolicy.java), [`LogMergePolicy.java`](https://github.com/apache/lucene/blob/releases/lucene/10.5.1/lucene/core/src/java/org/apache/lucene/index/LogMergePolicy.java)

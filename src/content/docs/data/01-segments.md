@@ -59,10 +59,11 @@ Lucene 10.5.1의 기본 codec 문서(`lucene/core/.../codecs/lucene104/package-i
 | `.dvd`, `.dvm` | doc values. 문서별 열 단위 값 | 정렬, aggregation, ES\|QL |
 | `.fdt`, `.fdx` | stored fields | `_source`, `_id` |
 | `.kdd`, `.kdi`, `.kdm` | points(BKD tree) | 숫자, 날짜, IP의 range 검색 |
-| `.vec`, `.veq`, `.vex` 등 | 원본 vector, quantized vector, HNSW graph | kNN 검색 |
+| `.vec`, `.veq`, `.vex` 등 | 원본 vector, quantized vector(int8, int4), HNSW graph | kNN 검색 |
 | `.liv` | live docs. 어떤 문서가 살아 있는지 | 삭제 표시 |
 
 Elasticsearch는 필드 종류와 index mode에 따라 postings와 doc values format 일부를 자체 구현으로 바꿔 씁니다(Elasticsearch 소스 `PerFieldFormatSupplier.java`). 그래서 실제 디스크의 파일 이름은 이 표와 조금 다를 수 있습니다. 구성 요소의 역할은 같습니다.
+vector도 마찬가지입니다. BBQ로 quantize한 vector는 `.veq` 대신 Elasticsearch 형식인 `.veb`에 저장됩니다([Tune approximate kNN search](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/approximate-knn-search)). 9.5.5에서 384차원 이상 `dense_vector`의 기본값이 `bbq_hnsw`이므로, 옵션 없이 만든 vector 인덱스에서는 `.veb`를 보게 됩니다.
 
 작은 segment는 이 파일들을 `.cfs` 하나로 묶습니다. 파일 수가 줄어서 file handle을 덜 씁니다.
 Elasticsearch는 buffer에서 새로 쓴 segment를 compound file로 만들고(소스 `EngineConfig.java`), merge로 만든 segment는 1GB 이하일 때만 compound file로 만듭니다(`index.compound_format` 기본값 `1gb`, 소스 `MergePolicyConfig.java`). `_cat/segments`의 `compound` 열로 확인할 수 있습니다.
@@ -134,7 +135,9 @@ Elastic Cloud Serverless는 기본 주기가 다릅니다. `refresh_interval`은
 공식 문서는 쓰기가 많은 shard 하나에 512MB 넘게 줘도 보통 빨라지지 않는다고 설명합니다([Tune for indexing speed](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/indexing-speed)).
 
 buffer가 가득 차면 refresh 주기와 상관없이 segment가 디스크에 쓰입니다.
-Elasticsearch는 buffer를 가장 많이 쓰는 shard를 골라 가장 큰 대기 segment 하나를 씁니다(소스 `InternalEngine.writeIndexingBuffer`). 이 segment는 디스크에 있지만 다음 refresh 전까지 검색에는 안 보입니다.
+노드 전체 사용량이 buffer 크기를 넘으면 Elasticsearch는 buffer를 쓰고 있는 shard를 shard ID 순서로 돌아가며 골라 메모리를 비웁니다. 가장 많이 쓰는 shard부터 고르지 않는 이유는 그쪽이 벤치마크에서 더 나빴기 때문이라고 소스 주석에 적혀 있습니다(소스 `IndexingMemoryController.java`).
+고른 shard에서는 보통 가장 큰 대기 segment 하나를 디스크에 씁니다. 이 segment는 디스크에 있지만 다음 refresh 전까지 검색에는 안 보입니다.
+예외가 있습니다. 같은 `_id`를 덮어쓰는 작업이 많아 version map이 buffer보다 메모리를 더 쓰고 있으면, segment 하나만 쓰는 대신 refresh를 합니다. flush 기준(크기나 시간)의 절반을 이미 넘었다면 flush를 합니다. 이때는 그 시점까지의 문서가 검색에 보이게 됩니다(소스 `InternalEngine.writeIndexingBuffer`, `reclaimVersionMapMemory`).
 
 shard가 많을수록 buffer가 잘게 나뉘고, segment도 작아집니다. 노드당 shard 수가 indexing 성능에 영향을 주는 이유 중 하나입니다(해석).
 
@@ -180,7 +183,7 @@ Elasticsearch에서 flush는 Lucene commit을 하고 새 translog generation을 
 | `30s` | 5회 / 5회 | 4개 (4 / 2), 두 번 같음 | 0회 / 0회 | 161.6MB / 161.6MB |
 | `-1` | 2회 / 2회 | 2개 (0 / 1), 두 번 같음 | 0회 / 0회 | 148.3MB / 148.3MB |
 
-refresh 횟수는 `_stats`의 `refresh.external_total`입니다. 두 번의 결과가 거의 같아서 아래 설명은 두 회차 모두에 해당합니다. 결과 원본은 [`results/A_refresh.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/A_refresh.csv)에 있습니다.
+refresh 횟수는 `_stats`의 `refresh.external_total`입니다. 미설정과 `-1` 인덱스의 2회는 인덱스를 만들 때 shard가 열리면서 생긴 값입니다. 문서를 넣기 전에도 2였습니다(로컬 9.5.5에서 확인). 두 번의 결과가 거의 같아서 아래 설명은 두 회차 모두에 해당합니다. 결과 원본은 [`results/A_refresh.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/A_refresh.csv)에 있습니다.
 
 결과에서 읽을 것은 세 가지입니다.
 
@@ -227,7 +230,8 @@ segment는 고칠 수 없기 때문에 "지운다"는 것은 표시를 붙이는
 
 - 1회차 update 직후에는 옛 버전 20만 건이 모두 `docs.deleted`로 남았고, 디스크는 정확히 두 배가 됐습니다.
 - 이후에는 merge가 삭제 문서를 꾸준히 걷어 냈습니다. 그래도 `store.size`는 처음의 2.6배에서 3.2배 사이를 오갔습니다. 대부분은 앞 절에서 본 "commit point가 잡고 있는 merge 전 파일"입니다. force merge는 끝난 뒤 flush를 하기 때문에 그 파일이 정리되면서 34.1MB로 떨어졌습니다.
-- `only_expunge_deletes`를 실행해도 삭제 문서 1만 6천 건이 남았습니다. 그 segment의 삭제 비율이 8%라서 기준값 10%(`index.merge.policy.expunge_deletes_allowed`) 아래였기 때문입니다. 기준을 0으로 낮추자 모두 사라졌습니다. 이때 retention lease는 이미 최신 작업까지 풀려 있었습니다.
+- `only_expunge_deletes`를 실행해도 삭제 문서 1만 6천 건이 남았습니다. 그 segment의 삭제 비율이 8%라서 기준값 10%(`index.merge.policy.expunge_deletes_allowed`) 아래였기 때문입니다. 기준을 0으로 낮추자 모두 사라졌습니다. 이 인덱스는 `ts` 필드를 쓴 TieredMergePolicy 인덱스라서 10% 기준이 적용됐습니다. `@timestamp` 인덱스는 이 기준이 없어 동작이 다릅니다([다음 글](../02-merge-and-force-merge/#지운-문서만-정리하기-only_expunge_deletes) 참고).
+이때 기록된 retention lease는 최신 작업보다 3만 4천 건 정도 뒤에 있었지만(`retaining_seq_no` 1,166,000, 전체 작업 약 120만 건) 공간 회수를 막지 않았습니다.
 
 결과 원본은 [`results/B_update.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/B_update.csv)에 있습니다.
 
@@ -268,13 +272,14 @@ stateDiagram-v2
 | 확인할 것 | 요청 | 이상 신호 |
 | --- | --- | --- |
 | segment 수와 상태 | `GET _cat/segments/<index>?v&h=shard,prirep,segment,docs.count,docs.deleted,size,committed,searchable` | 같은 shard에 작은 segment가 수십 개 이상 계속 남아 있음 |
-| 삭제 문서 비율 | `GET _cat/indices/<index>?v&h=index,docs.count,docs.deleted,store.size` | `docs.deleted`가 `docs.count`의 20%를 넘는 상태가 오래 감 |
+| 삭제 문서 비율 | `GET _cat/indices/<index>?v&h=index,docs.count,docs.deleted,store.size` | Tiered 인덱스에서 `docs.deleted`가 `docs.count`의 20%를 넘는 상태가 오래 감. `@timestamp` 인덱스는 추세가 계속 오르는지 봄 |
 | refresh 부담 | `GET <index>/_stats/refresh` | 쓰기가 많은 인덱스에서 `external_total`이 초 단위로 늘어남 |
 | flush와 translog | `GET <index>/_stats/flush,translog` | `translog.uncommitted_size_in_bytes`가 계속 큼. 재시작 시 복구가 길어짐 |
 | retention lease | `GET <index>/_stats?level=shards&filter_path=**.retention_leases` | `retaining_seq_no`가 오래 앞으로 가지 않음 |
 
 `_cat/segments`는 primary와 replica의 segment를 모두 나열합니다. replica가 있는 인덱스는 `prirep` 열로 나눠서 봅니다.
 20%는 TieredMergePolicy가 삭제 문서를 많다고 보는 기본 기준(`index.merge.policy.deletes_pct_allowed`, 소스 `MergePolicyConfig.java`)에서 가져온 값입니다.
+`@timestamp`가 있어 LogByteSizeMergePolicy를 쓰는 인덱스에는 이 기준이 없습니다. 삭제 비율로 merge 대상을 고르지 않기 때문에 update나 delete가 많으면 삭제 문서가 더 오래 남을 수 있습니다(같은 소스, [lucene#16701](https://github.com/apache/lucene/issues/16701)). 두 policy의 차이는 [다음 글](../02-merge-and-force-merge/#merge-policy는-두-가지다)에서 다룹니다.
 
 ## 다음 글
 
@@ -290,5 +295,7 @@ stateDiagram-v2
 - [History retention settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/history-retention)
 - [Merge settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/merge)
 - [Analyze index disk usage API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-indices-disk-usage)
+- [Tune approximate kNN search](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/approximate-knn-search)
+- Lucene 이슈: [lucene#16701 LogMergePolicy has no explicit delete-driven merge selection](https://github.com/apache/lucene/issues/16701)
 - Lucene 10.5.1 소스: [`codecs/lucene104/package-info.java`](https://github.com/apache/lucene/blob/releases/lucene/10.5.1/lucene/core/src/java/org/apache/lucene/codecs/lucene104/package-info.java)
 - Elasticsearch 9.5.5 소스: [`IndexSettings.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/IndexSettings.java), [`IndexingMemoryController.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/indices/IndexingMemoryController.java), [`InternalEngine.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/engine/InternalEngine.java), [`EngineConfig.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/engine/EngineConfig.java), [`MergePolicyConfig.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/MergePolicyConfig.java), [`Store.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/store/Store.java), [`Lucene.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/common/lucene/Lucene.java), [`PerFieldFormatSupplier.java`](https://github.com/elastic/elasticsearch/blob/48acba663b09e70b115dd879329141506c377890/server/src/main/java/org/elasticsearch/index/codec/PerFieldFormatSupplier.java)
