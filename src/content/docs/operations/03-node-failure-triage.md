@@ -101,7 +101,19 @@ GC가 계속 돌아도 heap이 줄지 않는 상태는 저절로 회복되지 �
 
 - 9.5.5 RPM, Debian 패키지는 `/usr/lib/sysctl.d/elasticsearch.conf`에 `vm.max_map_count=262144`를 넣고, 설치와 업그레이드 때 `systemd-sysctl`을 다시 시작합니다(Elasticsearch 9.5.5 소스 `distribution/packages`). 9.6 개발 브랜치는 1048576입니다.
 - systemd의 sysctl.d는 디렉터리와 상관없이 파일 이름의 사전 순서로 적용하고, 같은 설정이 여러 파일에 있으면 이름이 가장 뒤인 파일이 이깁니다. `/etc/sysctl.d/99-custom.conf`의 값은 이름 순서상 뒤인 `elasticsearch.conf`(`9`보다 `e`가 뒤)에 덮입니다. `/etc/sysctl.d/elasticsearch.conf`처럼 같은 이름으로 두면 `/usr/lib/sysctl.d`의 패키지 파일을 대체합니다([systemd sysctl.d(5)](https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html)).
-- 공식 문서는 `/etc/sysctl.conf`에 두면 패키지 기본값보다 우선한다고 적고 있습니다. 다만 `/etc/sysctl.conf`를 `/etc/sysctl.d/99-sysctl.conf`로 연결해 읽는 배포판에서는 위 순서 규칙 때문에 패키지 파일이 이길 수 있습니다. 업그레이드와 재부팅 뒤 `sysctl vm.max_map_count`로 실제 값을 확인합니다(확인 필요: 배포판별 동작).
+- 공식 문서는 `/etc/sysctl.conf`에 두면 패키지 기본값보다 우선한다고 적고 있습니다([vm.max_map_count](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/vm-max-map-count)). 그런데 `systemd-sysctl`은 `/etc/sysctl.conf`를 직접 읽지 않습니다. 배포판이 `99-sysctl.conf`라는 이름의 링크로 연결해 둔 경우에만 읽고, 이 이름은 `elasticsearch.conf`보다 앞이라 패키지 값에 덮입니다.
+- Ubuntu 24.04(systemd 255, procps-ng 4.0.4)에서 재현했습니다. `/etc/sysctl.conf`에 1048576, `/usr/lib/sysctl.d/elasticsearch.conf`에 262144를 두고 실행한 결과입니다. 패키지를 설치하는 대신 9.5.5 패키지와 같은 내용의 파일을 같은 위치에 두었습니다.
+
+| 적용 경로 | 언제 도나 | 결과 |
+| --- | --- | --- |
+| `systemd-sysctl` | 부팅, 패키지 설치와 업그레이드(postinst) | 262144. 패키지 값이 이김 |
+| `sysctl --system`(procps) | 사람이 직접 실행할 때 | 1048576. `/etc/sysctl.conf`를 맨 마지막에 읽음 |
+| `/etc/sysctl.d/elasticsearch.conf`에 1048576 | 둘 다 | 1048576. 같은 이름이 패키지 파일을 대체 |
+
+- Ubuntu 24.04는 자체 기본값으로 `/etc/sysctl.d/10-map-count.conf`에 1048576을 둡니다. Elasticsearch 패키지가 넣는 `elasticsearch.conf`는 이름 순서상 뒤라 이 값을 262144로 낮춥니다.
+- 링크가 있는 배포판은 Ubuntu 24.04(위 재현), RHEL 7 이후([Red Hat solution 3726391](https://access.redhat.com/solutions/3726391)), Debian 12입니다. Debian 13은 이 링크를 없애서 `systemd-sysctl`이 `/etc/sysctl.conf`를 아예 읽지 않습니다([Debian 13 release notes 5.1.15](https://www.debian.org/releases/trixie/release-notes/issues.html#etc-sysctl-conf-is-no-longer-honored)).
+- RHEL에서 tuned가 돌면 tuned의 sysctl plugin이 `/etc/sysctl.conf`를 마지막에 다시 적용합니다([RHEL-6884](https://issues.redhat.com/browse/RHEL-6884)). 그래서 같은 설정이라도 tuned 유무에 따라 결과가 달라질 수 있습니다.
+- 정리하면 배포판과 상관없이 `/etc/sysctl.d/elasticsearch.conf`에 두는 방법이 확실합니다. 업그레이드와 재부팅 뒤에는 `sysctl vm.max_map_count`로 실제 값을 확인합니다(해석).
 
 THP(transparent huge pages), glibc malloc arena 같은 튜닝은 공식 important system configuration에 없습니다. 근거 없이 바꾸지 않습니다.
 
