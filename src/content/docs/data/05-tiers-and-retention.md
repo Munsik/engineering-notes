@@ -24,7 +24,7 @@ data tier와 searchable snapshot은 이 사이를 메우는 기능입니다. 다
 | --- | --- | --- | --- | --- |
 | hot | 최근 데이터, 쓰기와 잦은 검색 | regular index, 로컬 디스크 | 보통 1개 이상 | 가능 |
 | warm | 가끔 검색, 쓰기 거의 없음 | regular index | 보통 1개 이상 | 가능 |
-| cold | 드물게 검색 | fully mounted searchable snapshot(또는 regular index) | 기본 0개, snapshot이 복구 원본 | 불가 |
+| cold | 드물게 검색 | fully mounted searchable snapshot, 또는 replica를 둔 regular index | searchable snapshot은 기본 0개, snapshot이 복구 원본 | searchable snapshot은 불가 |
 | frozen | 아주 드물게 검색 | partially mounted searchable snapshot | 기본 0개 | 불가 |
 
 [Data tiers](https://www.elastic.co/docs/manage-data/lifecycle/data-tiers)와 [Searchable snapshots](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/searchable-snapshots) 문서를 기준으로 정리했습니다.

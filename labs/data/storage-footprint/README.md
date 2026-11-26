@@ -35,5 +35,5 @@ python3 fidelity.py http://localhost:9200 > results/fidelity.json
 ## 실행하면서 알게 된 것
 
 - 1회차의 첫 조합들은 JVM warm-up 영향으로 적재 속도가 낮게 나왔습니다. 적재 속도와 CPU는 2회차 값으로 봅니다. 크기는 두 회차가 1% 안쪽으로 같았습니다.
-- create index 요청에 `index.mode: logsdb`를 직접 넣으면 `host.name` 정렬이 붙지 않습니다. 그래서 모든 조합을 index template 기반 data stream으로 만들었습니다.
+- create index 요청이나 `data_stream`이 없는 index template으로 `index.mode: logsdb`를 주면 `host.name` 정렬이 붙지 않습니다. 그래서 모든 조합을 `data_stream: {}`가 있는 index template으로 만든 data stream으로 했습니다.
 - basic 라이선스에서 `index.mapping.source.mode: synthetic`은 HTTP 200으로 받아들여지지만 실제 값은 STORED였습니다.

@@ -28,11 +28,11 @@ sidebar:
 | --- | --- | --- |
 | [Logs data streams](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream) 문서 | 최대 60%, indexing 성능 10%에서 20% 영향 | 기준 설정은 적혀 있지 않음. 데이터와 버전에 따라 다르다고 명시 |
 | [logsdb GA 블로그](https://www.elastic.co/search-labs/blog/elasticsearch-logsdb-index-mode) (8.17) | 최대 65% | logsdb를 쓰지 않는 최근 버전 |
-| [Observability Labs, LogsDB storage evolution](https://www.elastic.co/observability-labs/blog/elasticsearch-logsdb-storage-evolution) (2026년 4월) | 77% (161.9GB에서 37.5GB) | nightly benchmark의 logsdb 미사용 인덱스, Enterprise 라이선스 |
+| [Observability Labs, LogsDB storage evolution](https://www.elastic.co/observability-labs/blog/elasticsearch-logsdb-storage-evolution) | 본문 77% (161.9GB에서 37.5GB), 제목은 최대 75% | nightly benchmark에서 같은 데이터를 logsdb 없이 넣은 인덱스. logsdb 쪽은 Enterprise 라이선스 |
 | [General index settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/index-modules) 문서의 `index.codec` | 최대 약 28% | `best_compression` 대 `default` codec |
 
 같은 logsdb라도 비교 대상이 `default` codec이면 절감률이 크게 나오고, 이미 `best_compression`을 쓰던 인덱스와 비교하면 작게 나옵니다.
-기존 Elastic Agent 통합의 `logs-*` 템플릿은 `logs@settings`에서 이미 `best_compression`을 켜 둡니다(9.5.5의 `logs@settings` component template 기준). 이런 환경에서 logsdb 전환 효과를 가늠할 때는 standard + `best_compression`을 baseline으로 잡아야 합니다(해석).
+9.5.5에 내장된 `logs@settings` component template도 `index.codec: best_compression`을 넣어 둡니다(로컬 9.5.5에서 `GET _component_template/logs@settings`로 확인). 통합(integration) 템플릿이나 직접 만든 템플릿은 구성에 따라 다르므로, backing index의 실제 `index.codec`을 먼저 봅니다. 이미 `best_compression`을 쓰는 환경에서 logsdb 전환 효과를 가늠할 때는 standard + `best_compression`을 baseline으로 잡아야 합니다(해석).
 
 ## 저장 공간을 차지하는 네 가지 구조
 
@@ -47,7 +47,7 @@ sidebar:
 
 각 설정이 줄이는 대상이 다릅니다.
 
-- `best_compression`: stored fields 압축을 LZ4에서 ZSTD로 바꿉니다. 8.16부터 ZSTD입니다. 나머지 구조는 그대로입니다.
+- `best_compression`: stored fields 압축을 LZ4에서 ZSTD로 바꿉니다. 8.16에서 DEFLATE 대신 ZSTD로 바뀌었습니다([LogsDB storage evolution](https://www.elastic.co/observability-labs/blog/elasticsearch-logsdb-storage-evolution)). 나머지 구조는 그대로입니다.
 - synthetic `_source`: 원본 JSON을 저장하지 않고, 조회할 때 doc values와 stored field에서 다시 만듭니다([_source field](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-source-field#synthetic-source)).
 - `logsdb`: synthetic `_source`, `best_compression`, `host.name`과 `@timestamp` 기준 index sorting, 숫자와 keyword doc values 전용 codec을 한꺼번에 켭니다([Configure a logs data stream](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream-configure)).
 - `logsdb_columnar`: logsdb의 기본값에 더해, text가 아닌 필드를 doc values로만 저장하고 색인하지 않습니다. 매핑도 평탄하게(flat) 바꿉니다([Columnar index mode](https://www.elastic.co/docs/reference/elasticsearch/columnar)).
@@ -92,7 +92,7 @@ force merge 뒤 문서당 바이트입니다. 두 번 모두 1% 안쪽으로 같
 - **host cardinality가 높으면 logsdb 절감 폭이 줄어듭니다.** host가 5만 개면 30만 건 안에서 같은 host의 문서가 몇 건밖에 이어지지 않아 정렬 효과가 약해집니다. logsdb는 65%에서 59%로 내려갔고, synthetic `_source`만 켠 `std-syn`은 54% 그대로였습니다. 정렬 이득만 빠졌다는 뜻입니다(해석).
 - **필드가 많을수록 `_source` 제거 효과가 커집니다.** 필드 200개짜리 문서는 `_source`가 대부분을 차지해서 `std-syn`만으로 69%가 줄었습니다.
 - **message가 길면 synthetic `_source`만으로는 부족합니다.** `std-syn`(37%)이 `std-bc`(42%)보다 덜 줄었습니다. `match_only_text`는 synthetic `_source`를 위해 원문을 따로 저장하는데, `std-syn`은 codec이 `default`라서 그 원문을 LZ4로 저장하기 때문입니다. 아래 `_disk_usage`에서 확인할 수 있습니다.
-- force merge 전후 크기 차이는 2% 안쪽이었습니다. 적재 직후 크기로 sizing해도 크게 틀리지 않습니다.
+- force merge 전후 크기 차이는 5% 안쪽이었습니다. 가장 큰 차이는 `hicard`의 logsdb(46.4MB에서 44.3MB)였습니다. 이 규모에서는 적재 직후 크기로 sizing해도 크게 틀리지 않았습니다.
 
 ### 어디가 줄었나: `_disk_usage`
 
@@ -116,8 +116,8 @@ force merge 뒤 문서당 바이트입니다. 두 번 모두 1% 안쪽으로 같
 ### 적재 비용
 
 1회차는 첫 조합에서 JVM warm-up 영향이 커서 2회차 값으로 봅니다. `base` 기준 Elasticsearch 프로세스 CPU 시간(문서 1천 건당)은 `std` 31.1ms, `std-bc` 31.7ms, `std-syn` 27.8ms, `logsdb` 32.5ms, `columnar` 27.4ms였습니다(실측).
-다른 데이터셋에서도 설정 사이 차이는 대부분 10% 안쪽이었고, 회차마다 순서가 바뀌었습니다. vCPU 1개 환경이라 이 정도 차이는 구분하기 어렵습니다.
-공식 문서의 "indexing 10%에서 20% 영향"은 이 규모에서는 드러나지 않았다고만 적어 둡니다. 실제 적재 비용은 운영 하드웨어에서 Rally 같은 도구로 재야 합니다(해석).
+2회차 기준으로 logsdb는 네 데이터셋 모두 `std`와 5% 안쪽 차이였습니다(`fields200`은 4% 적고 나머지는 4%에서 5% 많음). `columnar`는 `hicard`와 `fields200`에서 `std`보다 19%에서 20% 적게 썼고, `longmsg`에서는 같았습니다. 색인하지 않는 keyword 필드가 많을수록 줄어든 것으로 보입니다(해석).
+vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 측정 오차와 구분하기 어렵습니다. 공식 문서의 "indexing 10%에서 20% 영향"은 이 규모에서는 드러나지 않았다고만 적어 둡니다. 실제 적재 비용은 운영 하드웨어에서 Rally 같은 도구로 재야 합니다(해석).
 
 ### 조회 지연
 
@@ -131,7 +131,8 @@ force merge 뒤 문서당 바이트입니다. 두 번 모두 1% 안쪽으로 같
 | `_source` 100건 가져오기 (`base`) | 9.7 | 18.7 | 12.1 | 14.6 | 10.3 |
 
 - `best_compression`은 `_source`를 읽을 때 느립니다. 100건 fetch가 9.7ms에서 18.7ms로 늘었습니다. 공식 문서도 get by id 지연이 10%에서 33% 늘 수 있다고 적고 있습니다.
-- `columnar`는 keyword에 inverted index가 없어서 term 조건을 doc values로 걸러야 합니다. 이 데이터에서는 term 건수 조회가 두 배 넘게, `hicard`의 집계가 네 배 넘게 느렸습니다. 9.5의 columnar는 아직 preview이고, Labs 글은 keyword도 우선 블록 압축만 쓴다고 설명합니다([One field, one copy](https://www.elastic.co/search-labs/blog/columnar-storage-elasticsearch-index-modes)). 조회 성능은 GA까지 바뀔 수 있는 부분입니다.
+- logsdb는 `hicard`의 집계에서 `std`보다 두 배 가까이 느렸습니다(5.5ms 대 10.5ms). `base`에서는 차이가 없었습니다. 원인은 이 실험으로 가리지 못했습니다(확인 필요).
+- `columnar`는 keyword에 inverted index가 없어서 term 조건을 doc values로 걸러야 합니다. 이 데이터에서는 term 건수 조회가 두 배 넘게, `hicard`의 집계가 네 배 넘게 느렸습니다. 9.5의 columnar는 아직 preview입니다. Labs 글에 따르면 9.5.0의 columnar 모드는 cardinality에 따라 dictionary와 블록 압축을 고르는 기능이 아직 준비되지 않아, keyword와 text 모두 doc values를 블록 압축 방식으로만 저장합니다([One field, one copy](https://www.elastic.co/search-labs/blog/columnar-storage-elasticsearch-index-modes)). 조회 성능은 GA까지 바뀔 수 있는 부분입니다.
 - synthetic `_source` 재구성 비용은 이 규모에서는 크지 않았습니다(9.7ms 대 12.1ms).
 
 ### 돌아오는 `_source`가 다르다
@@ -189,13 +190,20 @@ basic 라이선스에서 확인한 결과입니다(로컬 9.5.5).
 GET logs-*/_settings/index.mode,index.mapping.source.mode,index.sort.field?include_defaults=true&flat_settings=true
 ```
 
-### `host.name` 정렬은 index template으로 줄 때만 붙는다
+### `host.name` 정렬은 data stream template으로 줄 때만 붙는다
 
-create index 요청에 `index.mode: logsdb`를 직접 넣으면, `host.name`을 keyword로 매핑해도 정렬이 `@timestamp` 하나만 걸렸습니다.
-같은 설정을 index template(또는 `logs-*-*` 패턴의 기본 동작)으로 주면 `host.name`, `@timestamp` 두 필드로 정렬했습니다(로컬 9.5.5 실측).
-소스에서도 `host.name` 정렬과 필드 주입은 template에서 결정된 index mode를 기준으로 합니다(`LogsdbIndexModeSettingsProvider.java`).
+공식 문서는 logsdb가 기본으로 `host.name`, `@timestamp`로 정렬한다고 설명합니다([Configure a logs data stream](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream-configure#logsdb-sort-settings)). 로컬 9.5.5에서는 만드는 방법에 따라 결과가 달랐습니다.
 
-일반 인덱스 두 개를 만들고 reindex해서 비교하는 방식으로 logsdb 효과를 재면, 실제 data stream보다 정렬 이득이 빠진 숫자가 나올 수 있습니다. 이 글의 실험은 모두 index template으로 만든 data stream으로 했습니다.
+| 만드는 방법 | 결과 `index.sort.field` |
+| --- | --- |
+| create index 요청에 `index.mode: logsdb`, `host.name`은 keyword로 매핑 | `["@timestamp"]` |
+| `data_stream`이 없는 index template에 `index.mode: logsdb` | `["@timestamp"]`, `host.name` 필드도 주입되지 않음 |
+| `data_stream: {}`가 있는 index template에 `index.mode: logsdb` | `["host.name", "@timestamp"]` |
+| `logs-*-*` 이름의 data stream(9.0 이후 기본 동작) | `["host.name", "@timestamp"]` |
+
+소스에서도 같은 조건이 보입니다. 정렬과 필드 주입은 template에서 읽은 index mode를 기준으로 하는데(`LogsdbIndexModeSettingsProvider.java`), template에서 index mode를 읽는 함수는 data stream template이 아니면 값을 돌려주지 않습니다(`ProjectMetadata.java`의 `retrieveIndexModeFromTemplate`).
+
+일반 인덱스 두 개를 만들고 reindex해서 비교하는 방식으로 logsdb 효과를 재면, 실제 data stream보다 정렬 이득이 빠진 숫자가 나올 수 있습니다. 이 글의 실험은 모두 data stream template으로 만든 data stream으로 했습니다.
 
 ## 적용 방법
 
@@ -286,4 +294,4 @@ flowchart TD
 - [Analyze the index disk usage API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-indices-disk-usage)
 - Search Labs: [LogsDB index mode](https://www.elastic.co/search-labs/blog/elasticsearch-logsdb-index-mode), [One field, one copy: How Elasticsearch columnar storage drops the inverted index](https://www.elastic.co/search-labs/blog/columnar-storage-elasticsearch-index-modes)
 - Observability Labs: [Elasticsearch over the years: how LogsDB cuts index size](https://www.elastic.co/observability-labs/blog/elasticsearch-logsdb-storage-evolution)
-- Elasticsearch 9.5.5 소스: [`LogsdbIndexModeSettingsProvider.java`](https://github.com/elastic/elasticsearch/blob/v9.5.5/x-pack/plugin/logsdb/src/main/java/org/elasticsearch/xpack/logsdb/LogsdbIndexModeSettingsProvider.java), [`LogsdbLicenseService.java`](https://github.com/elastic/elasticsearch/blob/v9.5.5/x-pack/plugin/logsdb/src/main/java/org/elasticsearch/xpack/logsdb/LogsdbLicenseService.java)
+- Elasticsearch 9.5.5 소스: [`ProjectMetadata.java`](https://github.com/elastic/elasticsearch/blob/v9.5.5/server/src/main/java/org/elasticsearch/cluster/metadata/ProjectMetadata.java), [`LogsdbIndexModeSettingsProvider.java`](https://github.com/elastic/elasticsearch/blob/v9.5.5/x-pack/plugin/logsdb/src/main/java/org/elasticsearch/xpack/logsdb/LogsdbIndexModeSettingsProvider.java), [`LogsdbLicenseService.java`](https://github.com/elastic/elasticsearch/blob/v9.5.5/x-pack/plugin/logsdb/src/main/java/org/elasticsearch/xpack/logsdb/LogsdbLicenseService.java)

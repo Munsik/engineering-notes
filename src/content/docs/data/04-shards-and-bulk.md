@@ -95,9 +95,9 @@ flowchart LR
 
 write thread pool rejection은 모든 조건에서 0이었습니다. 결과 원본은 [`results/A_bulk_shards.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/shards-and-bulk/results/A_bulk_shards.csv)에 있습니다.
 
-- **한 건씩 보내면 bulk 1,000건보다 60배에서 100배 느립니다.** 문서 1천 건을 넣는 데 CPU를 1초 가까이 썼습니다. bulk 1,000건이면 25ms에서 40ms였습니다. 요청 하나를 받고 처리하고 응답하는 고정 비용이 문서 처리 비용보다 훨씬 크기 때문입니다(해석).
-- **shard가 많을수록 같은 bulk가 작아집니다.** primary 20개에 100건씩 보내면 shard마다 5건씩 20조각이 됩니다. 처리량은 primary 1개일 때의 3분의 1 이하로 떨어졌고, CPU는 문서당 두 배 넘게 썼습니다. "bulk 100건"이 shard 입장에서는 "bulk 5건"이 된 셈입니다.
-- **bulk가 충분히 크면 shard 수 차이가 줄어듭니다.** 5,000건(3.7MB)에서는 primary 1개와 20개의 처리량 차이가 10% 안쪽이었습니다. 처리량은 primary 1개 기준 1,000건 근처에서 이미 거의 평평해졌습니다.
+- **한 건씩 보내면 bulk 1,000건보다 40배에서 100배 느립니다.** 문서 1천 건을 넣는 데 CPU를 0.9초에서 2.5초 썼습니다. bulk 1,000건이면 25ms에서 40ms였습니다. 요청 하나를 받고 처리하고 응답하는 고정 비용이 문서 처리 비용보다 훨씬 크기 때문입니다(해석).
+- **shard가 많을수록 같은 bulk가 작아집니다.** primary 20개에 100건씩 보내면 shard마다 5건씩 20조각이 됩니다. 처리량은 primary 1개일 때의 4분의 1에서 3분의 1로 떨어졌고, CPU는 문서당 두 배에서 세 배를 썼습니다. "bulk 100건"이 shard 입장에서는 "bulk 5건"이 된 셈입니다.
+- **bulk가 충분히 크면 shard 수 차이가 줄어듭니다.** 5,000건(3.7MB)에서는 primary 1개와 20개의 처리량 차이가 12% 안팎이었습니다. 처리량은 primary 1개 기준 1,000건 근처에서 이미 거의 평평해졌습니다.
 - bulk 1건 조건만 shard가 많을수록 오히려 조금 빨랐습니다. primary 1개 칸이 매 라운드 맨 처음에 돌았기 때문일 수 있어서 이 차이는 해석하지 않습니다.
 
 ### 공식 권장과 맞춰 보기
@@ -109,8 +109,9 @@ write thread pool rejection은 모든 조건에서 0이었습니다. 결과 원�
 
 | 항목 | 기본값 | 근거 |
 | --- | --- | --- |
-| `write` thread pool 크기 | 할당된 processor 수 | [Thread pool settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/thread-pool-settings) |
+| `write` thread pool 크기 | 할당된 processor 수. shard 단위 쓰기와 ingest processor를 처리 | [Thread pool settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/thread-pool-settings) |
 | `write` queue 크기 | `max(10000, processor 수 x 750)`. 9.1까지는 10,000 | 같은 문서 |
+| `write_coordination` thread pool | 9.1부터. bulk 요청의 coordination을 처리. 크기는 processor 수, queue 10,000. 9.0까지는 이 일도 `write` pool이 했음 | 같은 문서 |
 | HTTP 요청 최대 크기 | `http.max_content_length` 100MB | 9.5.5 기본값 확인 |
 | indexing pressure 한도 | `indexing_pressure.memory.limit` heap의 10%. 넘으면 429 | 9.5.5 기본값 확인 |
 
@@ -148,9 +149,9 @@ tenant 100개 x dataset 3종(app, access, audit)을 가정했습니다. 같은 3
 
 필드 매핑 heap 추정치는 `GET _nodes/stats`의 `indices.mappings.total_estimated_overhead_in_bytes`입니다. 결과 원본은 [`results/B_multitenant.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/shards-and-bulk/results/B_multitenant.csv)에 있습니다.
 
-- **적재가 3.5배 느렸습니다.** bulk 5,000건이 data stream 300개로 흩어져 shard마다 평균 17건이 됐습니다. 위 실험 A에서 본 "shard가 많으면 bulk가 작아진다"가 그대로 나타났습니다.
+- **적재가 3.3배에서 3.5배 느렸습니다.** bulk 5,000건이 data stream 300개로 흩어져 shard마다 평균 17건이 됐습니다. 위 실험 A에서 본 "shard가 많으면 bulk가 작아진다"가 그대로 나타났습니다.
 - **저장 크기가 1.7배였습니다.** shard가 작으면 logsdb 정렬과 압축이 묶을 수 있는 문서가 적고, shard마다 고정으로 드는 파일도 있습니다(해석).
-- **tenant 하나만 조회할 때는 차이가 거의 없었습니다.** 공용 data stream도 `tenant.id` term 조건이면 충분히 빨랐습니다. 반면 여러 tenant를 한꺼번에 보는 집계는 shard 300개를 돌아야 해서 12배에서 19배 느렸습니다.
+- **tenant 하나만 조회할 때는 차이가 거의 없었습니다.** 공용 data stream도 `tenant.id` term 조건이면 충분히 빨랐습니다. 반면 여러 tenant를 한꺼번에 보는 집계는 shard 300개를 돌아야 해서 16배에서 19배 느렸습니다.
 - cluster state와 필드 매핑 heap이 100배 늘었습니다. 300개로는 문제가 되지 않지만, tenant 1,000개에 dataset 10종이면 data stream 1만 개가 되고, rollover가 돌 때마다 index 수는 더 늘어납니다. 그때는 master heap 기준(1GB당 3,000개)과 shard 한도에 바로 걸립니다(해석).
 
 매핑 원본 크기(`total_deduplicated_mapping_size`)는 두 구조 모두 357바이트 증가로 같았습니다. 같은 매핑은 cluster state에서 중복 제거되기 때문입니다. 줄지 않는 것은 data node의 필드별 heap입니다.
@@ -181,7 +182,7 @@ shard 3 하나가 문서의 75%, indexing 시간의 74%를 차지했습니다. �
 
 ### 진단 순서
 
-아래 순서는 제가 쓰는 방법입니다(해석). 각 요청은 공식 Hot spotting 문서에 나오는 것입니다.
+아래 순서는 제가 쓰는 방법입니다(해석). 요청은 공식 Hot spotting 문서의 요청에서 열과 필드만 줄였고, 로컬 9.5.5에서 그대로 실행되는 것을 확인했습니다. 9.1 이후에는 bulk coordination 단계의 거부를 보려면 `write_coordination` pool도 같이 봅니다.
 
 ```mermaid
 flowchart TD
@@ -199,7 +200,7 @@ flowchart TD
 
 ```console
 GET _cat/nodes?v&s=name&h=name,node.role,heap.percent,cpu,disk.used_percent,available_processors
-GET _cat/thread_pool/write,search?v&s=n,nn&h=n,nn,q,a,r,c
+GET _cat/thread_pool/write,write_coordination,search?v&s=n,nn&h=n,nn,q,a,r,c
 GET _cat/allocation?v&s=node&h=node,shards,disk.percent,disk.indices
 GET _cat/shards?v&h=index,shard,prirep,docs,store,node&s=store:desc
 GET _stats/indexing?level=shards&filter_path=indices.*.shards.*.routing.node,indices.*.shards.*.indexing.index_total
