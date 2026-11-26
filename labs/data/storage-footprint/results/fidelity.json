@@ -1,0 +1,144 @@
+{
+ "input": {
+  "@timestamp": "2026-11-26T10:00:00.000Z",
+  "host": {
+   "name": "host-1"
+  },
+  "message": "dns lookup ok",
+  "dns": {
+   "answers": [
+    "10.0.0.3",
+    "10.0.0.1",
+    "10.0.0.3"
+   ]
+  },
+  "links": [
+   {
+    "trace_id": "t1",
+    "span_id": "s1"
+   },
+   {
+    "trace_id": "t2",
+    "span_id": "s2"
+   }
+  ],
+  "service.name": "checkout",
+  "debug": {
+   "raw": {
+    "k": "v"
+   }
+  }
+ },
+ "std": {
+  "@timestamp": "2026-11-26T10:00:00.000Z",
+  "host": {
+   "name": "host-1"
+  },
+  "message": "dns lookup ok",
+  "dns": {
+   "answers": [
+    "10.0.0.3",
+    "10.0.0.1",
+    "10.0.0.3"
+   ]
+  },
+  "links": [
+   {
+    "trace_id": "t1",
+    "span_id": "s1"
+   },
+   {
+    "trace_id": "t2",
+    "span_id": "s2"
+   }
+  ],
+  "service.name": "checkout",
+  "debug": {
+   "raw": {
+    "k": "v"
+   }
+  }
+ },
+ "std-syn": {
+  "@timestamp": "2026-11-26T10:00:00.000Z",
+  "debug": {
+   "raw": {
+    "k": "v"
+   }
+  },
+  "dns": {
+   "answers": [
+    "10.0.0.1",
+    "10.0.0.3"
+   ]
+  },
+  "host": {
+   "name": "host-1"
+  },
+  "links": {
+   "span_id": [
+    "s1",
+    "s2"
+   ],
+   "trace_id": [
+    "t1",
+    "t2"
+   ]
+  },
+  "message": "dns lookup ok",
+  "service": {
+   "name": "checkout"
+  }
+ },
+ "logsdb": {
+  "@timestamp": "2026-11-26T10:00:00.000Z",
+  "debug": {
+   "raw": {
+    "k": "v"
+   }
+  },
+  "dns": {
+   "answers": [
+    "10.0.0.3",
+    "10.0.0.1",
+    "10.0.0.3"
+   ]
+  },
+  "host": {
+   "name": "host-1"
+  },
+  "links": [
+   {
+    "trace_id": "t1",
+    "span_id": "s1"
+   },
+   {
+    "trace_id": "t2",
+    "span_id": "s2"
+   }
+  ],
+  "message": "dns lookup ok",
+  "service": {
+   "name": "checkout"
+  }
+ },
+ "columnar": {
+  "@timestamp": "2026-11-26T10:00:00.000Z",
+  "dns.answers": [
+   "10.0.0.3",
+   "10.0.0.1",
+   "10.0.0.3"
+  ],
+  "host.name": "host-1",
+  "links.span_id": [
+   "s1",
+   "s2"
+  ],
+  "links.trace_id": [
+   "t1",
+   "t2"
+  ],
+  "message": "dns lookup ok",
+  "service.name": "checkout"
+ }
+}
