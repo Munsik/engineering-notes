@@ -1,0 +1,5 @@
+run,layout,docs,docs_per_sec,es_cpu_ms_per_1k_docs,shard_ops_per_request,store_bytes,one_tenant_query_p50_ms,all_tenants_agg_p50_ms,indices,shards,segments,cluster_state_json_bytes,dedup_mapping_bytes,field_mapper_overhead_bytes
+1,per-tenant,300000,4285,191.0,300.0,64059920,14.5,245.4,300,300,653,799700,357,17203200
+1,shared,300000,14285,47.6,3.0,38528172,14.3,15.6,3,3,4,7913,357,172032
+2,per-tenant,300000,4853,152.5,300.0,64025069,8.4,187.0,300,300,657,799700,357,17203200
+2,shared,300000,16961,38.0,3.0,38539826,7.3,9.8,3,3,4,7913,357,172032

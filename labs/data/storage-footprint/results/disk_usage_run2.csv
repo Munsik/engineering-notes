@@ -1,0 +1,11 @@
+dataset,config,total_mb,inverted_index_mb,stored_fields_mb,doc_values_mb,points_mb,norms_mb,top3
+base,std,100.5,16.6,63.4,15.5,4.6,0.0,"_source:61.3, trace.id:17.4, message:4.7, _id:3.6"
+base,std-bc,64.1,16.7,27.0,15.5,4.6,0.0,"_source:26.1, trace.id:17.4, message:4.7, _id:2.5"
+base,std-syn,46.0,16.8,8.6,15.8,4.6,0.0,"trace.id:17.4, message._original:6.4, message:4.7, _id:3.8"
+base,logsdb,35.4,14.9,1.0,16.7,2.7,0.0,"trace.id:17.4, message:4.4, message._original:3.2, _id:2.4"
+base,columnar,22.7,5.8,0.0,16.9,0.0,0.0,"message:7.7, trace.id:5.0, _id:2.6, user.name:0.9"
+longmsg,std,64.2,8.3,48.8,5.2,1.6,0.0,"_source:48.3, trace.id:6.2, message:3.9, _id:1.0"
+longmsg,std-bc,37.5,8.4,22.2,5.2,1.6,0.0,"_source:22.0, trace.id:6.2, message:3.9, _id:0.8"
+longmsg,std-syn,40.3,8.4,24.8,5.3,1.6,0.0,"message._original:24.5, trace.id:6.2, message:3.9, _id:0.9"
+longmsg,logsdb,24.7,7.6,0.3,15.7,1.0,0.0,"message._original:11.1, trace.id:6.2, message:3.7, _id:0.8"
+longmsg,columnar,19.9,4.1,0.0,15.8,0.0,0.0,"message:14.8, trace.id:1.7, _id:0.9, user.name:0.3"

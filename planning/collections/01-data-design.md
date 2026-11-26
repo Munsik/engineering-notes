@@ -34,8 +34,12 @@
 
 ## 1-3. 로그 저장 용량은 무엇과 비교해 몇 % 줄어드는가
 
-상태: `미착수`
-예정 파일: `data/03-storage-footprint.md`, `labs/data/storage-footprint/`
+상태: `발행` (2026-11-26)
+파일: `data/03-storage-footprint.md`, `labs/data/storage-footprint/`
+
+- 실측(로컬 9.5.5 단일 노드, trial): 5개 설정 x 4개 데이터셋(1천만 건 대신 10만에서 30만 건) x 2회, `_disk_usage`, `_source` 차이
+- 소스로 확인한 것: 라이선스 fallback(`LogsdbIndexModeSettingsProvider.java`, `LogsdbLicenseService.java`), template으로 줄 때만 `host.name` 정렬
+- 남은 확인: 운영 하드웨어에서의 적재 비용 차이, 객체 배열 비율 축(fidelity 예시로 대체)
 
 ### 이 글이 답하는 질문
 
@@ -125,8 +129,11 @@
 
 ## 1-4. Shard 수와 크기, bulk 형태를 어떻게 정할 것인가
 
-상태: `미착수`
-예정 파일: `data/04-shards-and-bulk.md`, `labs/data/shards-and-bulk/`
+상태: `발행` (2026-11-26)
+파일: `data/04-shards-and-bulk.md`, `labs/data/shards-and-bulk/`
+
+- 실측(로컬 9.5.5 단일 노드): 실험 A 3회(primary 1개 행은 1, 3회차), 실험 B 2회, 실험 C 1회. 3노드 구성은 쓰지 않음
+- 남은 확인: 다중 노드에서 write queue 편중 재현
 
 ### 이 글이 답하는 질문
 
@@ -203,8 +210,11 @@
 
 ## 1-5. 오래된 데이터는 어디에 두고 어떻게 꺼내 볼 것인가
 
-상태: `미착수`
-예정 파일: `data/05-tiers-and-retention.md`, `labs/data/tiers-and-retention/`
+상태: `발행` (2026-11-26)
+파일: `data/05-tiers-and-retention.md`, `labs/data/tiers-and-retention/`
+
+- 실측(로컬 9.5.5 단일 노드, shared cache 1GB, `fs` repository): mount 방식별 크기와 조회 지연 2회, ILM 전환 단계, regular index 복원, `_tier` 제외(Query DSL, ES|QL filter)
+- 남은 확인: S3 또는 MinIO에서의 첫 조회 지연, 다중 노드에서 frozen node 재시작 중 검색 결과
 
 ### 이 글이 답하는 질문
 

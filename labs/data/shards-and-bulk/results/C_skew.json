@@ -1,0 +1,29 @@
+{
+ "cat_shards": "index     shard prirep   docs store\nsb-c-skew 0     p       23841     9\nsb-c-skew 1     p       15079     6\nsb-c-skew 2     p       12087     4\nsb-c-skew 3     p      148993    51\n",
+ "shards": [
+  {
+   "shard": 0,
+   "index_total": 23841,
+   "index_time_ms": 855,
+   "store_bytes": 9630131
+  },
+  {
+   "shard": 1,
+   "index_total": 15079,
+   "index_time_ms": 497,
+   "store_bytes": 6298826
+  },
+  {
+   "shard": 2,
+   "index_total": 12087,
+   "index_time_ms": 468,
+   "store_bytes": 5153928
+  },
+  {
+   "shard": 3,
+   "index_total": 148993,
+   "index_time_ms": 5299,
+   "store_bytes": 53655596
+  }
+ ]
+}
