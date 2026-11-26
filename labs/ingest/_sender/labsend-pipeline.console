@@ -1,0 +1,10 @@
+# 송신기 메시지에서 run, seq를 꺼내는 ingest pipeline. Custom UDP/TCP Logs integration의 pipeline으로 지정하거나 @custom에서 호출
+PUT _ingest/pipeline/labsend-parse
+{
+  "processors": [
+    { "kv": { "field": "message", "field_split": " ", "value_split": "=", "include_keys": ["run", "seq"], "target_field": "labsend", "ignore_failure": true } },
+    { "rename": { "field": "labsend.run", "target_field": "labels.run", "ignore_missing": true } },
+    { "convert": { "field": "labsend.seq", "target_field": "labels.seq", "type": "long", "ignore_missing": true } },
+    { "remove": { "field": "labsend", "ignore_missing": true } }
+  ]
+}

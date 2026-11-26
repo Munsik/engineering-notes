@@ -9,6 +9,14 @@
 - 공통 기준: Elastic Agent(Fleet 관리와 standalone), Logstash, Elasticsearch, Kibana 9.x. self-managed와 Elastic Cloud Hosted 기준. Serverless와 다른 점은 글마다 따로 적는다
 - 공통 데이터: 순번(`seq`)과 송신 시각을 넣은 synthetic 로그. 송신 측에서 보낸 건수를 정확히 알 수 있어야 유실과 중복을 셀 수 있다. `labs/_datagen/loggen.py`를 확장하거나 `labs/ingest/_sender/`에 송신기를 둔다
 
+## 진행 메모 (2026-11-26)
+
+- 8편 모두 `draft: true`로 작성. 근거는 공식 문서, elastic/integrations와 Kibana 소스, rsyslog, nginx 공식 문서. 사내 KB, Slack, Drive는 방향 확인에만 쓰고 본문에 인용하지 않음
+- 처리량 실측은 하지 않기로 결정. 환경과 데이터마다 결과가 달라 공개 수치로서 의미가 약함. 02의 실험 A와 07의 Logstash 처리량 실험은 "직접 재는 절차"로 대체
+- 장애 주입(03, 04) 실측 수치도 넣지 않음. 송신기와 대조 쿼리를 labs에 두고 직접 재는 절차를 적음
+- Kibana 화면 캡처는 별도 작업자가 진행: `planning/captures/ingest.md`(C-01에서 C-07). 본문에는 `<!-- CAPTURE: 파일명 | ID -->` 자리표시
+- 공개 전 남은 일: 캡처 반영, `labs/ingest/` 쿼리와 설정의 lab 실행 확인, 본문의 "확인 필요" 해소, draft 제거와 index FAQ 점검
+
 ## 글 목록과 순서
 
 | 순서 | 파일 | 제목(가제) | 한 줄 요지 |
@@ -37,7 +45,7 @@
 
 ## 2-1. 수집기는 무엇으로 고를 것인가
 
-상태: `기획`
+상태: `초안` (draft, 2026-11-26)
 예정 파일: `ingest/01-choose-collector.md`
 
 ### 이 글이 답하는 질문
@@ -95,7 +103,7 @@
 
 ## 2-2. 파싱은 어디서 할 것인가
 
-상태: `기획` (기존 2-1 계획을 옮김)
+상태: `초안` (draft, 2026-11-26) (기존 2-1 계획을 옮김)
 예정 파일: `ingest/02-where-to-parse.md`, `labs/ingest/where-to-parse/`
 
 ### 이 글이 답하는 질문
@@ -142,7 +150,7 @@
 
 ## 2-3. 수집기가 멈춰도 로그가 끊기지 않게 하려면
 
-상태: `기획` (신규)
+상태: `초안` (draft, 2026-11-26) (신규)
 예정 파일: `ingest/03-no-gap-ingest.md`, `labs/ingest/no-gap/`
 
 ### 이 글이 답하는 질문
@@ -226,7 +234,7 @@
 
 ## 2-4. UDP syslog를 유실 없이 받으려면
 
-상태: `기획` (신규)
+상태: `초안` (draft, 2026-11-26) (신규)
 예정 파일: `ingest/04-syslog-udp.md`, `labs/ingest/syslog-udp/`
 
 ### 이 글이 답하는 질문
@@ -296,7 +304,7 @@
 
 ## 2-5. 원본을 빠짐없이 받았다는 것을 어떻게 증명하는가
 
-상태: `기획` (신규)
+상태: `초안` (draft, 2026-11-26) (신규)
 예정 파일: `ingest/05-count-reconciliation.md`, `labs/ingest/reconciliation/`
 
 ### 이 글이 답하는 질문
@@ -365,7 +373,7 @@
 
 ## 2-6. 수집 흐름을 대시보드로 어떻게 보는가
 
-상태: `기획` (신규)
+상태: `초안` (draft, 2026-11-26) (신규)
 예정 파일: `ingest/06-flow-dashboard.md`, `labs/ingest/flow-dashboard/`
 
 ### 이 글이 답하는 질문
@@ -425,7 +433,7 @@
 
 ## 2-7. 수집 계층에 자원은 얼마나 필요한가
 
-상태: `기획` (신규)
+상태: `초안` (draft, 2026-11-26) (신규)
 예정 파일: `ingest/07-collector-sizing.md`, `labs/ingest/collector-sizing/`
 
 ### 이 글이 답하는 질문
@@ -479,7 +487,7 @@
 
 ## 2-8. 수백에서 수만 대 Agent를 어떻게 운영할 것인가
 
-상태: `기획` (기존 2-2 계획을 옮김)
+상태: `초안` (draft, 2026-11-26) (기존 2-2 계획을 옮김)
 예정 파일: `ingest/08-fleet-at-scale.md`, `labs/ingest/fleet-at-scale/`
 
 ### 이 글이 답하는 질문

@@ -1,0 +1,4 @@
+# Fleet > Settings > Outputs > Logstash 출력
+# Hosts 칸: logstash-01:5044, logstash-02:5044
+# Advanced YAML configuration 칸:
+loadbalance: true

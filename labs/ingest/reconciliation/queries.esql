@@ -1,0 +1,29 @@
+// 05. 건수 정합성 쿼리 모음. 모두 lab에서 실행 확인 필요
+
+// 1) 순번 기반 유실, 중복
+FROM logs-lab.syslog-*
+| WHERE labels.run == "run-01"
+| STATS copies = COUNT(*) BY labels.seq
+| STATS received = COUNT(*), duplicated = COUNT_DISTINCT(CASE(copies > 1, labels.seq, null)), min_seq = MIN(labels.seq), max_seq = MAX(labels.seq)
+| EVAL expected = max_seq - min_seq + 1, missing = expected - received
+
+// 2) 1,000건 단위로 빠진 구간
+FROM logs-lab.syslog-*
+| WHERE labels.run == "run-01"
+| STATS BY labels.seq
+| EVAL block = FLOOR(labels.seq / 1000)
+| STATS present = COUNT(*) BY block
+| WHERE present < 1000
+| SORT block
+
+// 3) 시간대, 호스트별 건수(원천 건수와 대조)
+FROM logs-*
+| WHERE @timestamp >= "2026-11-25T00:00:00+09:00" AND @timestamp < "2026-11-26T00:00:00+09:00"
+| STATS docs = COUNT(*) BY data_stream.dataset, host.name, hour = BUCKET(@timestamp, 1 hour)
+| SORT data_stream.dataset, host.name, hour
+
+// 4) failure store 건수
+FROM logs-*::failures
+| WHERE @timestamp >= NOW() - 1 day
+| STATS failed = COUNT(*) BY data_stream.dataset, error.type
+| SORT failed DESC
