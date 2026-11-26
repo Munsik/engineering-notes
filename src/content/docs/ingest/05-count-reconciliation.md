@@ -82,6 +82,17 @@ FROM logs-lab.syslog-*
 
 lab(9.5.5)에서 순번 1부터 20000까지 중 5001에서 5300을 빼고, 12001에서 12050은 두 번 넣어 확인했습니다. 결과는 `received` 19700, `duplicated` 50, `expected` 20000, `missing` 300입니다.
 
+실제 수집 경로(송신기 → UDP → Agent 2대 → Logstash 2대 → Elasticsearch)에서도 같은 쿼리로 셌습니다. 초당 2,000건을 25분 보낸 `cap-11`은 `expected` 3,000,000, `received` 2,608,967, `duplicated` 0이었습니다. 송신기가 기록한 송신 건수와 `expected`가 같아서, 빠진 391,033건이 모두 송신 이후 구간에서 생겼다는 것을 알 수 있습니다. 분 단위로 나누어 보면 Agent 출력을 Logstash로 바꾼 시점부터 유실률이 올라갑니다. 자세한 결과는 [04](../04-syslog-udp/#lab에서-본-것)에 있습니다.
+
+```sql
+FROM logs-lab.syslog-*
+| WHERE labels.run == "cap-11"
+| STATS got = COUNT(*), lo = MIN(labels.seq), hi = MAX(labels.seq) BY m = BUCKET(@timestamp, 1 minute)
+| EVAL span = hi - lo + 1, miss = span - got, pct = ROUND(100.0 * miss / span, 1)
+| KEEP m, got, miss, pct
+| SORT m
+```
+
 빠진 구간을 1,000건 단위로 찾습니다.
 
 ```sql

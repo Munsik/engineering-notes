@@ -11,18 +11,18 @@
       "grid": {
         "x": 0,
         "y": 0,
-        "w": 16,
-        "h": 12
+        "w": 48,
+        "h": 14
       },
       "config": {
-        "title": "P1-a Agent 출력 ack(5분)",
+        "title": "P1 단계별 처리량(2분): Agent 출력 ack, Logstash 입력, Elasticsearch 저장",
         "type": "xy",
         "layers": [
           {
             "type": "line",
             "data_source": {
               "type": "esql",
-              "query": "TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-* | STATS agent_acked = SUM(INCREASE(beat.stats.libbeat.output.events.acked)) BY t = TBUCKET(5 minutes) | SORT t"
+              "query": "TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-* | WHERE NOT component.id LIKE \"*monitoring*\" AND NOT component.id LIKE \"elasticsearch-*\" | STATS agent_acked = SUM(INCREASE(beat.stats.libbeat.output.events.acked)) BY t = TBUCKET(2 minutes) | SORT t"
             },
             "x": {
               "column": "t"
@@ -32,27 +32,12 @@
                 "column": "agent_acked"
               }
             ]
-          }
-        ]
-      }
-    },
-    {
-      "type": "vis",
-      "grid": {
-        "x": 16,
-        "y": 0,
-        "w": 16,
-        "h": 12
-      },
-      "config": {
-        "title": "P1-b Logstash 입력(5분)",
-        "type": "xy",
-        "layers": [
+          },
           {
             "type": "line",
             "data_source": {
               "type": "esql",
-              "query": "FROM metrics-logstash.pipeline-* | STATS eps = AVG(logstash.pipeline.flow.input_throughput.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.name | STATS logstash_in = SUM(eps) * 300 BY t | SORT t"
+              "query": "TS metrics-logstash.pipeline-* | STATS logstash_in = SUM(INCREASE(`logstash.pipeline.total.events.in`)) BY t = TBUCKET(2 minutes) | SORT t"
             },
             "x": {
               "column": "t"
@@ -62,27 +47,12 @@
                 "column": "logstash_in"
               }
             ]
-          }
-        ]
-      }
-    },
-    {
-      "type": "vis",
-      "grid": {
-        "x": 32,
-        "y": 0,
-        "w": 16,
-        "h": 12
-      },
-      "config": {
-        "title": "P1-c Elasticsearch 저장(5분)",
-        "type": "xy",
-        "layers": [
+          },
           {
             "type": "line",
             "data_source": {
               "type": "esql",
-              "query": "FROM logs-* | WHERE event.ingested IS NOT NULL | STATS stored = COUNT(*) BY t = BUCKET(event.ingested, 5 minutes) | SORT t"
+              "query": "FROM logs-* | WHERE event.ingested IS NOT NULL | STATS stored = COUNT(*) BY t = BUCKET(event.ingested, 2 minutes) | SORT t"
             },
             "x": {
               "column": "t"
@@ -93,14 +63,19 @@
               }
             ]
           }
-        ]
+        ],
+        "legend": {
+          "placement": "outside",
+          "position": "bottom",
+          "visibility": "visible"
+        }
       }
     },
     {
       "type": "vis",
       "grid": {
         "x": 0,
-        "y": 12,
+        "y": 14,
         "w": 24,
         "h": 12
       },
@@ -133,7 +108,7 @@
       "type": "vis",
       "grid": {
         "x": 24,
-        "y": 12,
+        "y": 14,
         "w": 24,
         "h": 12
       },
@@ -142,7 +117,7 @@
         "type": "data_table",
         "data_source": {
           "type": "esql",
-          "query": "FROM metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-* | WHERE beat.stats.libbeat.pipeline.queue.filled.pct IS NOT NULL | STATS filled = MAX(beat.stats.libbeat.pipeline.queue.filled.pct) BY agent.name, component.id | SORT filled DESC | LIMIT 20"
+          "query": "FROM metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-* | WHERE NOT component.id LIKE \"*monitoring*\" AND beat.stats.libbeat.pipeline.queue.filled.pct IS NOT NULL | STATS filled = MAX(beat.stats.libbeat.pipeline.queue.filled.pct) BY agent.name, component.id | SORT filled DESC | LIMIT 20"
         },
         "rows": [
           {
@@ -163,40 +138,45 @@
       "type": "vis",
       "grid": {
         "x": 0,
-        "y": 24,
+        "y": 26,
         "w": 24,
         "h": 12
       },
       "config": {
-        "title": "P4 Logstash backpressure, worker 사용률",
+        "title": "P4 Logstash worker 사용률(노드별)",
         "type": "xy",
         "layers": [
           {
             "type": "line",
             "data_source": {
               "type": "esql",
-              "query": "FROM metrics-logstash.pipeline-* | STATS backpressure = AVG(logstash.pipeline.flow.queue_backpressure.current), worker_util = AVG(logstash.pipeline.flow.worker_utilization.current) BY t = BUCKET(@timestamp, 5 minutes) | SORT t"
+              "query": "FROM metrics-logstash.pipeline-* | STATS backpressure = AVG(logstash.pipeline.total.flow.queue_backpressure.current), worker_util = AVG(logstash.pipeline.total.flow.worker_utilization.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.host.name | SORT t"
             },
             "x": {
               "column": "t"
             },
             "y": [
               {
-                "column": "backpressure"
-              },
-              {
                 "column": "worker_util"
               }
-            ]
+            ],
+            "breakdown_by": {
+              "column": "logstash.pipeline.host.name"
+            }
           }
-        ]
+        ],
+        "legend": {
+          "placement": "outside",
+          "position": "bottom",
+          "visibility": "visible"
+        }
       }
     },
     {
       "type": "vis",
       "grid": {
         "x": 24,
-        "y": 24,
+        "y": 26,
         "w": 24,
         "h": 12
       },
@@ -208,7 +188,7 @@
             "type": "line",
             "data_source": {
               "type": "esql",
-              "query": "TS metrics-elastic_agent.filebeat_input-* | WHERE filebeat_input.input == \"udp\" | STATS drops = SUM(INCREASE(filebeat_input.system_packet_drops)) BY t = TBUCKET(5 minutes), agent.name | SORT t"
+              "query": "TS metrics-elastic_agent.filebeat_input-* | WHERE filebeat_input.input == \"udp\" | STATS drops = SUM(INCREASE(filebeat_input.system_packet_drops)) BY t = TBUCKET(1 minute), agent.name | SORT t"
             },
             "x": {
               "column": "t"
@@ -222,14 +202,19 @@
               "column": "agent.name"
             }
           }
-        ]
+        ],
+        "legend": {
+          "placement": "outside",
+          "position": "bottom",
+          "visibility": "visible"
+        }
       }
     },
     {
       "type": "vis",
       "grid": {
         "x": 0,
-        "y": 36,
+        "y": 38,
         "w": 24,
         "h": 12
       },
@@ -259,7 +244,7 @@
       "type": "vis",
       "grid": {
         "x": 24,
-        "y": 36,
+        "y": 38,
         "w": 24,
         "h": 12
       },

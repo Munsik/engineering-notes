@@ -57,6 +57,10 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 - 업그레이드 중에는 디스크가 Agent 크기의 두 배 필요합니다([07](../07-collector-sizing/#elastic-agent)).
 - Agent는 업그레이드하면서 다시 시작합니다. 수신 전용 Agent는 한 대씩 업그레이드합니다([03](../03-no-gap-ingest/#agent)).
 
+![Fleet의 Agent 업그레이드 대화 상자. 여러 Agent를 고른 뒤 대상 버전과 Rollout period(2 hours)를 지정합니다.](../../../assets/ingest/ingest-fleet-upgrade.jpg)
+
+여러 Agent를 고르고 Actions에서 업그레이드를 열면 위 화면이 나옵니다. lab(Kibana 9.5.5)의 Rollout period 선택지는 Immediately, 1, 2, 4, 8, 12, 24 hours였습니다. 화면 도움말은 이 기간 동안 offline인 Agent는 다시 online이 될 때 업그레이드된다고 설명합니다. 화면 상단 문구대로 업그레이드는 되돌릴 수 없는 작업으로 안내됩니다. 되돌릴 일이 생기면 rollback 기능(9.3 GA)을 씁니다.
+
 권장 순서입니다(해석).
 
 1. Fleet Server와 Kibana, Elasticsearch가 대상 버전을 지원하는지 확인합니다. Fleet Server를 먼저 올립니다.
@@ -102,7 +106,6 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 | 업그레이드 진행 | Fleet의 업그레이드 상태 화면 |
 | known issue | [Fleet Server known issues](https://www.elastic.co/docs/release-notes/fleet-server/known-issues), Elastic Agent release notes |
 
-<!-- CAPTURE: ingest-fleet-upgrade.jpg | C-07 -->
 
 ## 판단 기준
 

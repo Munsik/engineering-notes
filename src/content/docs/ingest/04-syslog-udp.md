@@ -77,7 +77,9 @@ TS metrics-elastic_agent.filebeat_input-*
 
 Elastic Agent 패키지가 설치하는 `[Elastic Agent] UDP Input Metrics` 대시보드에서도 이 지표를 볼 수 있습니다. 여러 단계를 한 화면에서 비교하려면 [06](../06-flow-dashboard/)의 흐름 대시보드에 이 쿼리를 패널로 넣습니다.
 
-<!-- CAPTURE: ingest-udp-input-metrics.jpg | C-03 -->
+![Discover에서 본 UDP input 지표. 고속 송신 구간에 lab-recv-02의 received가 분당 40만 건 가까이 오르지만 drops는 내내 0입니다.](../../../assets/ingest/ingest-udp-input-metrics.jpg)
+
+위 화면은 아래 "lab에서 본 것"의 고속 송신 구간입니다. 이 지표가 0이라고 유실이 없었던 것은 아니었습니다.
 
 ## 수신 버퍼 조정
 
@@ -176,6 +178,26 @@ stream {
 | 같은 시간의 `RcvbufErrors` 증가분 | 8,966 |
 
 송신 쪽에서는 오류가 하나도 없었고, 버려진 8,966건은 수신 호스트의 `RcvbufErrors`에만 남았습니다. 보낸 건수에서 읽은 건수를 뺀 값과 정확히 같습니다. UDP는 송신 측 기록만으로는 유실을 알 수 없다는 점을 그대로 보여 줍니다.
+
+## lab에서 본 것
+
+수신 Agent 2대(9.5.4, Docker), Logstash 2대, 송신기 컨테이너를 Mac의 Rancher Desktop 위 같은 Docker network에 두고 잰 결과입니다(실측). 송신 건수는 송신기 기록, 받은 건수는 Elasticsearch에서 순번으로 센 값입니다.
+
+| 시험 | 송신 | 저장 | 유실 | Agent `system_packet_drops` 증가 |
+| --- | --- | --- | --- | --- |
+| 초당 2,000건, 25분(`cap-11`) | 3,000,000 | 2,608,967 | 391,033(13.0%) | 0 |
+| 최대 속도(약 27,000건/초), 2분(`cap-12`) | 3,280,000 | 843,545 | 2,436,455(74.3%) | 0 |
+
+- 송신기의 `send_errors`는 두 시험 모두 0이었습니다. 중복은 없었습니다.
+- `cap-11`의 처음 2분은 Agent가 Elasticsearch로 바로 보내던 구간이고, 분당 유실이 0.4%에서 1.4%였습니다. Logstash 출력으로 바꾼 뒤에는 분당 9%에서 21%를 오갔습니다. 이때 Logstash worker 사용률은 15%에서 35%로 여유가 있었습니다.
+- `cap-12` 구간에는 Logstash 두 대의 worker 사용률이 99%, `queue_backpressure`가 0.9 안팎까지 올랐습니다. 처리 계층이 따라가지 못한 구간입니다.
+- 두 시험 내내 Agent UDP input의 `system_packet_drops`와 `receive_queue_length`는 0이었습니다.
+
+여기서 얻은 판단입니다(해석).
+
+- Agent의 drop 지표는 그 socket에서 커널이 버린 것만 셉니다. 이 lab에서는 유실이 그 바깥(컨테이너 사이 가상 네트워크 구간으로 추정)에서 생겨 지표에 잡히지 않았습니다. 정확한 지점은 확인하지 못했습니다. 운영에서도 NIC, 스위치, 부하 분산기에서 생긴 유실은 이 지표에 나오지 않습니다.
+- 그래서 drop 지표만 보고 "유실 없음"이라고 판단하지 않습니다. 도입 시험은 순번 송신으로 끝에서 세고, 운영에서는 수신 호스트의 `RcvbufErrors`, NIC drop 같은 커널 카운터를 같이 봅니다.
+- 출력 경로가 바뀌자 유실률이 크게 달라졌습니다. UDP 수신 성능은 수신기 단독이 아니라 출력까지 포함한 전체 경로로 잽니다. 처리 계층을 바꾸면 위 절차를 다시 돌립니다.
 
 ## 판단 기준
 

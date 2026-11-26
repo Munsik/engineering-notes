@@ -1,0 +1,44 @@
+# compose lab을 붙이기 전에 Kibana Dev Tools에서 한 번 실행하는 준비 요청
+# 1) 송신기 순번 추출과 event.ingested. 이 lab에서는 Custom UDP Logs(input package)로 dataset을 lab.syslog로 지정해도
+#    dataset 전용 index template이 만들어지지 않아(9.5.5 lab 관찰), logs 템플릿과 같은 구성의 템플릿을 직접 둔다
+PUT _ingest/pipeline/logs-lab.syslog@custom
+{
+  "description": "lab: 송신기 순번 추출",
+  "processors": [ { "pipeline": { "name": "labsend-parse" } } ]
+}
+
+PUT _ingest/pipeline/logs-lab.syslog@pipeline
+{
+  "description": "lab: logs@default-pipeline + event.ingested + 순번 추출",
+  "processors": [
+    { "set": { "field": "@timestamp", "copy_from": "_ingest.timestamp", "override": false } },
+    { "set": { "field": "event.ingested", "value": "{{{_ingest.timestamp}}}" } },
+    { "pipeline": { "name": "logs-lab.syslog@custom", "ignore_missing_pipeline": true } }
+  ]
+}
+
+PUT _index_template/logs-lab.syslog
+{
+  "index_patterns": ["logs-lab.syslog-*"],
+  "priority": 150,
+  "data_stream": {},
+  "composed_of": ["logs@mappings", "logs@settings", "logs@custom", "ecs@mappings"],
+  "ignore_missing_component_templates": ["logs@custom"],
+  "allow_auto_create": true,
+  "template": {
+    "settings": { "index": { "default_pipeline": "logs-lab.syslog@pipeline" } },
+    "data_stream_options": { "failure_store": { "enabled": true } }
+  }
+}
+
+# 2) Logstash가 쓰는 API key. 응답의 id와 api_key를 id:api_key 형식으로 .env의 ES_API_KEY에 넣는다(encoded 값이 아님)
+POST /_security/api_key
+{
+  "name": "lab-logstash-writer",
+  "role_descriptors": {
+    "logstash_writer": {
+      "cluster": ["monitor", "read_ilm", "read_pipeline"],
+      "index": [ { "names": ["logs-*", "metrics-*"], "privileges": ["view_index_metadata", "create_doc", "auto_configure"] } ]
+    }
+  }
+}

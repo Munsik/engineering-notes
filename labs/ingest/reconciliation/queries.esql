@@ -27,3 +27,11 @@ FROM logs-*::failures
 | WHERE @timestamp >= NOW() - 1 day
 | STATS failed = COUNT(*) BY document.index, error.type
 | SORT failed DESC
+
+// 5) 분 단위 유실률(순번이 시간 순서대로 붙는 송신기 기준)
+FROM logs-lab.syslog-*
+| WHERE labels.run == "cap-11"
+| STATS got = COUNT(*), lo = MIN(labels.seq), hi = MAX(labels.seq) BY m = BUCKET(@timestamp, 1 minute)
+| EVAL span = hi - lo + 1, miss = span - got, pct = ROUND(100.0 * miss / span, 1)
+| KEEP m, got, miss, pct
+| SORT m

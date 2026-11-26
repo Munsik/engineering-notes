@@ -1,17 +1,17 @@
-// 흐름 대시보드 패널 정의. Stack 9.5.5 lab에서 실행 확인(P1-b, P4는 Logstash가 없어 필드 정의로만 확인)
+// 흐름 대시보드 패널 정의. Stack 9.5.5 lab에서 실행 확인(Logstash 2대, Agent 3대로 확인)
 // Agent self-monitoring 지표는 9.2 이후 Agent에서 metrics-elastic_agent.elastic_agent-*에 component.id별로 들어온다.
 // 이전 Agent가 섞여 있으면 metrics-elastic_agent.filebeat-*도 같이 지정한다(없는 패턴은 무시된다).
 // 두 data stream은 TSDS이고 누적값은 counter 타입이라 MAX, MIN 대신 TS + INCREASE를 쓴다(9.4 GA).
 
-// P1-a Agent 출력 acked(5분 증가분)
+// P1-a Agent 출력 acked(5분 증가분). monitoring component와, Elasticsearch 출력일 때 같은 값을 한 번 더 보고하는 elasticsearch-* component를 뺀다
 TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
+| WHERE NOT component.id LIKE "*monitoring*" AND NOT component.id LIKE "elasticsearch-*"
 | STATS agent_acked = SUM(INCREASE(beat.stats.libbeat.output.events.acked)) BY t = TBUCKET(5 minutes)
 | SORT t
 
-// P1-b Logstash 입력 처리량(초당 값의 평균에 300을 곱해 5분 건수로 맞춤). flow 지표는 gauge
-FROM metrics-logstash.pipeline-*
-| STATS eps = AVG(logstash.pipeline.flow.input_throughput.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.name
-| STATS logstash_in = SUM(eps) * 300 BY t
+// P1-b Logstash 입력 건수(5분 증가분). events.in은 counter. in은 예약어라 backtick으로 감싼다
+TS metrics-logstash.pipeline-*
+| STATS logstash_in = SUM(INCREASE(`logstash.pipeline.total.events.in`)) BY t = TBUCKET(5 minutes)
 | SORT t
 
 // P1-c Elasticsearch에 저장된 문서(event.ingested 기준)
@@ -34,9 +34,9 @@ FROM metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
 | SORT filled DESC
 | LIMIT 20
 
-// P4 Logstash backpressure, worker 사용률(gauge)
+// P4 Logstash backpressure, worker 사용률(gauge). 노드별로 본다
 FROM metrics-logstash.pipeline-*
-| STATS backpressure = AVG(logstash.pipeline.flow.queue_backpressure.current), worker_util = AVG(logstash.pipeline.flow.worker_utilization.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.name
+| STATS backpressure = AVG(logstash.pipeline.total.flow.queue_backpressure.current), worker_util = AVG(logstash.pipeline.total.flow.worker_utilization.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.host.name
 | SORT t
 
 // P5 UDP drop 증가분. system_packet_drops는 counter

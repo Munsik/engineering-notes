@@ -12,14 +12,14 @@ curl -X PUT "$KIBANA_URL/api/dashboards/lab-ingest-flow" \
   -d @dashboard.json
 ```
 
-| ID | 패널 | 차트 | 쿼리 | 상태(lab 9.5.5) |
-| --- | --- | --- | --- | --- |
-| P1 | 단계별 처리량 | 선 3개 | P1-a(Agent acked), P1-b(Logstash input), P1-c(Elasticsearch 문서 증가) | P1-a: Agent 9.5.3 데이터로 결과 확인. counter라 `TS` + `INCREASE`로 수정. P1-b: Logstash가 없어 미확인(필드는 `logstash` 패키지 정의 기준). P1-c: 결과 확인 |
-| P2 | 수집 지연 p50, p95 | 선 | P2 | 결과 확인 |
-| P3 | Agent queue 사용률 상위 | 표 | P3 | 결과 확인. data stream을 `elastic_agent.elastic_agent`로 수정. `filled.pct`는 0에서 1 사이 비율 |
-| P4 | Logstash backpressure | 선 | P4 | 미확인(Logstash 없음) |
-| P5 | UDP drop 증가분 | 선 | P5 | 문법 확인, UDP 데이터 없음. 필드를 `filebeat_input.system_packet_drops`로, 계산을 `INCREASE`로 수정 |
-| P6 | 실패 문서 | 표 | P6 | 결과 확인. `data_stream.dataset` 대신 `document.index`로 수정 |
-| P7 | 원천별 마지막 수신 | 표 | P7 | 결과 확인 |
+| ID | 패널 | 차트 | 상태(lab 9.5.5, `compose/` 실행) |
+| --- | --- | --- | --- |
+| P1 | 단계별 처리량(Agent acked, Logstash `events.in`, Elasticsearch 저장) | 선 3개를 한 패널에 | 확인. counter라 `TS` + `INCREASE`. Agent는 monitoring과 `elasticsearch-*` component를 빼야 두 배로 세지 않음 |
+| P2 | 수집 지연 p50, p95 | 선 | 확인 |
+| P3 | Agent queue 사용률 상위 | 표 | 확인. `filled.pct`는 0에서 1 사이 비율 |
+| P4 | Logstash worker 사용률(노드별) | 선 | 확인. `logstash.pipeline.total.flow.*` 아래에 있고, `worker_utilization`은 0에서 100 사이 백분율 |
+| P5 | UDP drop 증가분 | 선 | 쿼리 확인. lab에서는 유실이 있었는데도 값이 0이었음(04 참고) |
+| P6 | 실패 문서 | 표 | 확인. `document.index`로 묶음 |
+| P7 | 원천별 마지막 수신 | 표 | 확인 |
 
-배치: 1행 P1(세 패널), 2행 P2, P3 / 3행 P4, P5 / 4행 P6, P7. 시간 범위 기본값은 최근 6시간.
+배치: 1행 P1(넓게), 2행 P2, P3 / 3행 P4, P5 / 4행 P6, P7. 시간 범위 기본값은 최근 6시간.

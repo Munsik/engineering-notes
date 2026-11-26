@@ -23,11 +23,11 @@ sidebar:
 | 원천 | 원천이 보낸 건수(가능한 경우) | | 원천 시스템 |
 | Agent 입력 | 입력별 받은 이벤트(`filebeat_input.events_processed_total`) | UDP `filebeat_input.system_packet_drops`, `filebeat_input.receive_queue_length` | `metrics-elastic_agent.filebeat_input-*` |
 | Agent 출력 | `beat.stats.libbeat.output.events.acked` | `pipeline.queue.filled.pct`(0에서 1 사이 비율), `pipeline.events.dropped`, `output.events.failed` | `metrics-elastic_agent.elastic_agent-*`(9.2 이후 Agent), `metrics-elastic_agent.filebeat-*`(이전 Agent) |
-| Logstash | `logstash.pipeline.flow.input_throughput` | `queue_backpressure`, `worker_utilization`, DLQ | Logstash integration(`metrics-logstash.pipeline-*`) |
+| Logstash | `logstash.pipeline.total.events.in`(counter), `logstash.pipeline.total.flow.input_throughput` | `total.flow.queue_backpressure`, `total.flow.worker_utilization`, DLQ | Logstash integration(`metrics-logstash.pipeline-*`) |
 | Elasticsearch | data stream별 문서 증가, indexing rate | failure store 건수, `_ignored` 비율 | data stream 자체, Stack Monitoring |
 | 지연 | `event.ingested` - `@timestamp` | | data stream 자체 |
 
-Logstash integration의 pipeline data stream은 flow metrics(`input_throughput`, `worker_utilization`, `worker_concurrency`, `queue_backpressure`의 `current`, `last_1_minute`)를 수집합니다(elastic/integrations `logstash` 패키지 필드 정의 기준). flow metrics 자체는 Logstash node stats API가 제공합니다([Tuning and profiling Logstash performance](https://www.elastic.co/docs/reference/logstash/tuning-logstash)).
+Logstash integration의 pipeline data stream은 `logstash.pipeline.total.flow` 아래에 flow metrics(`input_throughput`, `worker_utilization`, `worker_concurrency`, `queue_backpressure`의 `current`, `last_1_minute`)를 수집합니다(elastic/integrations `logstash` 패키지 필드 정의 기준). flow metrics 자체는 Logstash node stats API가 제공합니다([Tuning and profiling Logstash performance](https://www.elastic.co/docs/reference/logstash/tuning-logstash)).
 
 ## 기본 제공 화면으로 되는 것
 
@@ -48,7 +48,9 @@ Logstash integration의 pipeline data stream은 flow metrics(`input_throughput`,
 ![Elastic Agent의 Agent metrics 대시보드 일부. 메모리 사용량, 최대 queue 사용률, 초당 ack 이벤트(성공, 실패), 문제 이벤트 패널이 보입니다.](../../../assets/ingest/ingest-agent-dashboard.jpg)
 
 위 화면은 lab의 Agent 한 대(9.5.3)로 본 `[Elastic Agent] Agent metrics` 대시보드입니다. Fleet의 Agent 상세에서 View more agent metrics로 열립니다. 대시보드 안내 문구대로 Agent 한 대를 골라서 봐야 의미가 있습니다. 같은 패키지에는 `[Elastic Agent] UDP Input Metrics`, `TCP Input Metrics`처럼 입력 종류별 대시보드도 들어 있습니다(lab의 설치된 대시보드 목록으로 확인).
-<!-- CAPTURE: ingest-logstash-pipeline.jpg | C-05 -->
+![Logstash integration의 Pipelines Overview 대시보드. 고속 송신 구간에 Worker Utilization이 100% 가까이 오르고, Events received per second가 초당 4,500건 안팎까지 올라갑니다.](../../../assets/ingest/ingest-logstash-pipeline.jpg)
+
+위 화면은 `[Metrics Logstash] Pipelines Overview` 대시보드입니다. 23:16 무렵 Worker Utilization이 한 단계 오른 구간은 Logstash 한 대를 멈춰 남은 한 대가 두 배를 받은 때이고, 23:25 무렵의 봉우리는 고속 송신 구간입니다([03](../03-no-gap-ingest/#패턴-1-agent에서-logstash-여러-대로)). `worker_utilization`은 0에서 100 사이 백분율로 기록됩니다(lab 확인).
 
 ## 직접 만드는 흐름 대시보드
 
@@ -105,24 +107,41 @@ Agent 출력 처리량입니다. 5분마다 출력이 ack를 받은 이벤트 �
 ```sql
 TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
 | WHERE @timestamp >= NOW() - 6 hours
+  AND NOT component.id LIKE "*monitoring*" AND NOT component.id LIKE "elasticsearch-*"
 | STATS acked = SUM(INCREASE(beat.stats.libbeat.output.events.acked)) BY t = TBUCKET(5 minutes)
 | SORT t
 ```
 
+조건 두 개는 lab에서 숫자를 맞춰 보고 넣었습니다.
+
+- `*monitoring*` component는 Agent 자체 지표와 로그를 보내는 몫이라 뺍니다.
+- Elasticsearch 출력을 쓰는 Agent(9.5.4)는 같은 이벤트를 입력 component(`udp-default`)와 출력 component(`elasticsearch-default`) 양쪽에 같은 `acked` 값으로 보고했습니다. 둘 다 더하면 두 배가 됩니다. Logstash 출력으로 바꾸자 `elasticsearch-*` component는 나오지 않았습니다(lab 확인).
+
 `INCREASE`는 구간 경계에 맞춰 값을 보정하므로 결과가 소수로 나옵니다. 초당 값이 필요하면 `RATE`를 씁니다. lab에서 같은 구간을 `TO_LONG`으로 바꿔 최댓값과 최솟값의 차이로 세 보면, 구간 사이에 걸친 증가분이 빠져 `INCREASE`보다 작게 나왔습니다.
 
-Logstash 입력 처리량과 backpressure입니다.
+Logstash 입력 건수입니다. `logstash.pipeline.total.events.in`은 counter이고, `in`이 ES|QL 예약어라 필드 이름을 backtick으로 감쌉니다. flow metrics는 `logstash.pipeline.total.flow` 아래에 있습니다(lab 9.5.5, `logstash` 패키지 2.11.3 확인).
+
+```sql
+TS metrics-logstash.pipeline-*
+| WHERE @timestamp >= NOW() - 6 hours
+| STATS logstash_in = SUM(INCREASE(`logstash.pipeline.total.events.in`)) BY t = TBUCKET(5 minutes)
+| SORT t
+```
+
+Logstash 노드별 worker 사용률과 backpressure입니다. 두 값은 gauge라 `FROM`과 `AVG`로 봅니다.
 
 ```sql
 FROM metrics-logstash.pipeline-*
 | WHERE @timestamp >= NOW() - 6 hours
-| STATS input_eps = AVG(logstash.pipeline.flow.input_throughput.current),
-        backpressure = AVG(logstash.pipeline.flow.queue_backpressure.current)
-    BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.name
+| STATS worker_util = AVG(logstash.pipeline.total.flow.worker_utilization.current),
+        backpressure = AVG(logstash.pipeline.total.flow.queue_backpressure.current)
+    BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.host.name
 | SORT t
 ```
 
-<!-- CAPTURE: ingest-flow-dashboard.jpg | C-06 -->
+![직접 만든 수집 흐름 대시보드. Agent 출력 ack, Logstash 입력, Elasticsearch 저장 세 선이 거의 겹쳐 움직이고, 아래에 수집 지연과 Agent queue 사용률 표가 있습니다.](../../../assets/ingest/ingest-flow-dashboard.jpg)
+
+위 화면은 lab의 30분입니다. 세 선이 거의 겹칩니다. Logstash 한 대를 멈춘 5분에도 남은 한 대가 받아 선이 벌어지지 않았습니다. 그런데 같은 시간 순번으로 세어 보면 송신량의 13%가 UDP 구간에서 사라졌습니다([04](../04-syslog-udp/#lab에서-본-것)). 이 대시보드는 Agent가 받은 뒤의 구간만 보여 줍니다. 원천에서 Agent까지의 유실은 원천 쪽 건수와 대조해야 보입니다([05](../05-count-reconciliation/)).
 
 ## 끊김 알림
 

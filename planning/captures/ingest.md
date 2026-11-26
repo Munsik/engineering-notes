@@ -48,16 +48,16 @@
 
 캡처마다 파일명, 사용한 Stack 버전, 본문 주석을 이미지로 바꿨는지, 쿼리를 고쳤다면 무엇을 고쳤는지 적습니다.
 
-## 진행 상황(2026-11-26, lab ECH 9.5.5)
+## 진행 상황(2026-11-26, lab ECH 9.5.5 + `labs/ingest/compose/`)
 
 | ID | 상태 | 메모 |
 | --- | --- | --- |
-| C-01 | 완료 | Fleet API로 `lab-logstash` 출력 생성(정책에는 지정하지 않음). flyout만 잘라 배경의 Fleet Server URL이 보이지 않게 함 |
-| C-02 | 완료 | `logs-lab.syslog-default`에 날짜 형식 오류 120건, `labels.seq` 문자열 35건을 bulk로 넣어 만듦 |
-| C-03 | 남음 | lab에 UDP를 받는 Agent가 없음. 위 ES\|QL은 `filebeat_input.` 접두사와 counter 타입(`INCREASE`)에 맞게 고침 |
-| C-04 | 완료(대체) | `lab-recv-01` 대신 lab에 남아 있던 Agent 9.5.3(2026-09-23 데이터)로 캡처 |
-| C-05 | 남음 | lab에 Logstash가 없음 |
-| C-06 | 남음 | 대시보드 `[Lab] Ingest flow`(id `lab-ingest-flow`)는 만들어 두었음. Logstash, UDP 데이터가 들어온 뒤 캡처 |
-| C-07 | 남음 | lab의 Agent는 Elastic Cloud 관리 Agent 1대뿐이라 업그레이드 화면을 열 수 없음 |
+| C-01 | 완료 | Fleet API로 `lab-logstash` 출력 생성. flyout만 잘라 배경의 Fleet Server URL이 보이지 않게 함 |
+| C-02 | 완료 | 날짜 형식 오류 120건, `labels.seq` 문자열 35건을 bulk로 넣어 만듦 |
+| C-03 | 완료(변경) | 기본 `[Elastic Agent] UDP Input Metrics` 대시보드는 패널 대부분이 필드 없음 오류라, Discover ES\|QL(`TS` + `INCREASE`)로 캡처. drop이 0으로 찍힌 것 자체가 본문 내용 |
+| C-04 | 완료(대체) | lab에 남아 있던 Agent 9.5.3 데이터로 캡처 |
+| C-05 | 완료 | `[Metrics Logstash] Pipelines Overview`의 Worker Utilization, Events received per second |
+| C-06 | 완료 | `[Lab] Ingest flow`. Logstash 한 대 정지에도 선이 벌어지지 않음(남은 한 대가 받음) |
+| C-07 | 완료 | 업그레이드 대화 상자만 열고 실행하지 않음 |
 
 캡처 도구 제약으로 이미지 가로는 800px이 최대입니다.
