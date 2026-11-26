@@ -1,7 +1,6 @@
 ---
 title: 수집
 description: 수집기 선택부터 무중단 구성, UDP syslog, 건수 정합성, 흐름 대시보드, 자원 산정, 대규모 Fleet 운영까지 데이터를 안정적으로 들여오는 판단을 실무 순서대로 정리합니다.
-draft: true
 sidebar:
   label: 개요
   order: 0
@@ -28,7 +27,7 @@ sidebar:
 | 03 | [무중단 수집](03-no-gap-ingest/) | clustering 없는 수집기를 구성으로 이중화하는 패턴, persistent queue, 순차 업그레이드 |
 | 04 | [UDP syslog](04-syslog-udp/) | UDP 유실 지점과 계측, 버퍼, relay, 부하 분산 |
 | 05 | [건수 정합성](05-count-reconciliation/) | 구간별 카운터 대조, 유실과 중복 찾기, 저장되지 않은 문서 세기 |
-| 06 | [흐름 대시보드](06-flow-dashboard/) | 기본 제공 화면, ES\|QL로 만드는 흐름 대시보드, 끊김 알림 |
+| 06 | [흐름 대시보드](06-flow-dashboard/) | 기본 제공 화면, ES\|QL로 만드는 흐름 대시보드(Dashboards API JSON 포함), 끊김 알림 |
 | 07 | [자원 산정](07-collector-sizing/) | Agent, Logstash, Fleet Server의 CPU, 메모리, 디스크 |
 | 08 | [Fleet 운영](08-fleet-at-scale/) | 정책 설계, 단계적 변경과 업그레이드, 인증서 교체 |
 
@@ -40,6 +39,8 @@ sidebar:
 | Logstash나 Agent를 cluster로 묶을 수 있나 | 없습니다. 송신 측 부하 분산, L4 부하 분산, Kafka 분리로 구성합니다. | [03](03-no-gap-ingest/) |
 | UDP syslog 유실을 0으로 만들 수 있나 | UDP 구간이 남아 있는 한 보장할 수 없습니다. 장비 가까이에서 TCP로 바꾸고, 남은 구간의 drop을 계측합니다. | [04](04-syslog-udp/) |
 | 다 받았다는 것을 어떻게 증명하나 | 원천, 수집기 입력, 출력, Elasticsearch 저장 건수를 같은 시간 창으로 대조합니다. | [05](05-count-reconciliation/) |
+| 실패해 저장되지 않은 문서는 어디서 보나 | failure store에 쌓입니다. Streams의 Data quality 탭에서 건수와 오류 종류를 보고, ES\|QL은 `FROM logs-*::failures`를 `document.index`로 묶어 셉니다. | [02](02-where-to-parse/), [05](05-count-reconciliation/) |
+| UDP 부하 분산에 오픈소스 nginx나 HAProxy를 써도 되나 | 쓸 수는 있지만 멈춘 수신기를 스스로 빼지 못합니다. syslog는 응답이 없어 health check 근거가 없기 때문입니다. keepalived 같은 외부 check를 같이 둡니다. | [04](04-syslog-udp/) |
 | Logstash 한 대에 자원은 얼마나 주나 | heap 4GB에서 8GB로 시작하고, 처리량은 운영 데이터로 직접 잽니다. | [07](07-collector-sizing/) |
 
 ## 읽는 순서

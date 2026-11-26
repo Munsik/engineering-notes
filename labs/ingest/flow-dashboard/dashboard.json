@@ -1,0 +1,289 @@
+{
+  "title": "[Lab] Ingest flow",
+  "description": "수집 흐름 대시보드(Engineering Notes 수집 06)",
+  "time_range": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "vis",
+      "grid": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 12
+      },
+      "config": {
+        "title": "P1-a Agent 출력 ack(5분)",
+        "type": "xy",
+        "layers": [
+          {
+            "type": "line",
+            "data_source": {
+              "type": "esql",
+              "query": "TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-* | STATS agent_acked = SUM(INCREASE(beat.stats.libbeat.output.events.acked)) BY t = TBUCKET(5 minutes) | SORT t"
+            },
+            "x": {
+              "column": "t"
+            },
+            "y": [
+              {
+                "column": "agent_acked"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 16,
+        "y": 0,
+        "w": 16,
+        "h": 12
+      },
+      "config": {
+        "title": "P1-b Logstash 입력(5분)",
+        "type": "xy",
+        "layers": [
+          {
+            "type": "line",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM metrics-logstash.pipeline-* | STATS eps = AVG(logstash.pipeline.flow.input_throughput.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.name | STATS logstash_in = SUM(eps) * 300 BY t | SORT t"
+            },
+            "x": {
+              "column": "t"
+            },
+            "y": [
+              {
+                "column": "logstash_in"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 32,
+        "y": 0,
+        "w": 16,
+        "h": 12
+      },
+      "config": {
+        "title": "P1-c Elasticsearch 저장(5분)",
+        "type": "xy",
+        "layers": [
+          {
+            "type": "line",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM logs-* | WHERE event.ingested IS NOT NULL | STATS stored = COUNT(*) BY t = BUCKET(event.ingested, 5 minutes) | SORT t"
+            },
+            "x": {
+              "column": "t"
+            },
+            "y": [
+              {
+                "column": "stored"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 12
+      },
+      "config": {
+        "title": "P2 수집 지연 p50, p95(초)",
+        "type": "xy",
+        "layers": [
+          {
+            "type": "line",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM logs-* | WHERE event.ingested IS NOT NULL | EVAL lag_s = DATE_DIFF(\"seconds\", @timestamp, event.ingested) | STATS p50 = PERCENTILE(lag_s, 50), p95 = PERCENTILE(lag_s, 95) BY t = BUCKET(@timestamp, 5 minutes) | SORT t"
+            },
+            "x": {
+              "column": "t"
+            },
+            "y": [
+              {
+                "column": "p50"
+              },
+              {
+                "column": "p95"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 24,
+        "y": 12,
+        "w": 24,
+        "h": 12
+      },
+      "config": {
+        "title": "P3 Agent queue 사용률 상위",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-* | WHERE beat.stats.libbeat.pipeline.queue.filled.pct IS NOT NULL | STATS filled = MAX(beat.stats.libbeat.pipeline.queue.filled.pct) BY agent.name, component.id | SORT filled DESC | LIMIT 20"
+        },
+        "rows": [
+          {
+            "column": "agent.name"
+          },
+          {
+            "column": "component.id"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "filled"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 12
+      },
+      "config": {
+        "title": "P4 Logstash backpressure, worker 사용률",
+        "type": "xy",
+        "layers": [
+          {
+            "type": "line",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM metrics-logstash.pipeline-* | STATS backpressure = AVG(logstash.pipeline.flow.queue_backpressure.current), worker_util = AVG(logstash.pipeline.flow.worker_utilization.current) BY t = BUCKET(@timestamp, 5 minutes) | SORT t"
+            },
+            "x": {
+              "column": "t"
+            },
+            "y": [
+              {
+                "column": "backpressure"
+              },
+              {
+                "column": "worker_util"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 24,
+        "y": 24,
+        "w": 24,
+        "h": 12
+      },
+      "config": {
+        "title": "P5 UDP drop 증가분",
+        "type": "xy",
+        "layers": [
+          {
+            "type": "line",
+            "data_source": {
+              "type": "esql",
+              "query": "TS metrics-elastic_agent.filebeat_input-* | WHERE filebeat_input.input == \"udp\" | STATS drops = SUM(INCREASE(filebeat_input.system_packet_drops)) BY t = TBUCKET(5 minutes), agent.name | SORT t"
+            },
+            "x": {
+              "column": "t"
+            },
+            "y": [
+              {
+                "column": "drops"
+              }
+            ],
+            "breakdown_by": {
+              "column": "agent.name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 12
+      },
+      "config": {
+        "title": "P6 실패 문서",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM logs-*::failures | STATS failed = COUNT(*) BY document.index, error.type | SORT failed DESC"
+        },
+        "rows": [
+          {
+            "column": "document.index"
+          },
+          {
+            "column": "error.type"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "failed"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "grid": {
+        "x": 24,
+        "y": 36,
+        "w": 24,
+        "h": 12
+      },
+      "config": {
+        "title": "P7 원천별 마지막 수신(15분 이상 무수신)",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM logs-* | WHERE event.ingested >= NOW() - 1 day | STATS last_ingested = MAX(event.ingested) BY data_stream.dataset, host.name | EVAL silent_min = DATE_DIFF(\"minutes\", last_ingested, NOW()) | WHERE silent_min >= 15 | SORT silent_min DESC"
+        },
+        "rows": [
+          {
+            "column": "data_stream.dataset"
+          },
+          {
+            "column": "host.name"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "silent_min"
+          }
+        ]
+      }
+    }
+  ]
+}

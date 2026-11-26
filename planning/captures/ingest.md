@@ -32,7 +32,7 @@
 | --- | --- | --- | --- | --- | --- |
 | C-01 | `ingest-fleet-logstash-output.jpg` | 03, "패턴 1" 절 | Fleet > Settings > Outputs > `lab-logstash` 편집 | Hosts 칸에 host 두 개, Advanced YAML에 `loadbalance: true` | Fleet의 Logstash 출력 설정. Hosts에 Logstash 두 대가 있고 고급 YAML에 loadbalance가 켜져 있습니다. |
 | C-02 | `ingest-streams-data-quality.jpg` | 02, "실패한 문서는 어디로 가나" 절 | Streams > `logs-lab.syslog-default` > Data quality 탭 | failure store에 쌓인 실패 문서 건수, 오류 종류, 예시. 실패를 만들려면 날짜 형식이 틀린 메시지를 섞어 보냄 | Streams의 Data quality 탭. 실패 문서 건수와 오류 종류, 예시 문서가 보입니다. |
-| C-03 | `ingest-udp-input-metrics.jpg` | 04, "Agent UDP input 지표" 절 | Discover, data view 없이 ES\|QL: `FROM metrics-elastic_agent.filebeat_input-* \| WHERE system_packet_drops IS NOT NULL \| KEEP @timestamp, agent.name, system_packet_drops, receive_queue_length` | 송신 속도를 버퍼 한계 이상으로 올렸을 때 drop이 증가하는 행 | Discover에서 본 UDP input 지표. 송신 속도를 올린 구간에서 system_packet_drops가 늘어납니다. |
+| C-03 | `ingest-udp-input-metrics.jpg` | 04, "Agent UDP input 지표" 절 | Discover, data view 없이 ES\|QL: `TS metrics-elastic_agent.filebeat_input-* \| WHERE filebeat_input.input == "udp" \| STATS drops = SUM(INCREASE(filebeat_input.system_packet_drops)) BY t = TBUCKET(1 minute), agent.name` 또는 `[Elastic Agent] UDP Input Metrics` 대시보드` | 송신 속도를 버퍼 한계 이상으로 올렸을 때 drop이 증가하는 행 | Discover에서 본 UDP input 지표. 송신 속도를 올린 구간에서 system_packet_drops가 늘어납니다. |
 | C-04 | `ingest-agent-dashboard.jpg` | 06, "기본 제공 화면" 절 | Fleet > Agents > `lab-recv-01` > View more agent metrics(`[Elastic Agent] Agent metrics` 대시보드) | 입력, 출력 이벤트 패널과 queue 패널 | Elastic Agent 지표 대시보드. 수신 Agent의 입력과 출력 이벤트, queue 사용량이 보입니다. |
 | C-05 | `ingest-logstash-pipeline.jpg` | 06, "기본 제공 화면" 절 | Dashboards > `[Metrics Logstash]` pipeline 관련 대시보드 | pipeline별 처리량과 flow metrics(worker utilization, backpressure) | Logstash integration 대시보드. pipeline별 처리량과 worker 사용률, backpressure가 보입니다. |
 | C-06 | `ingest-flow-dashboard.jpg` | 06, "직접 만드는 흐름 대시보드" 절 | `labs/ingest/flow-dashboard/`의 정의로 만든 대시보드 `[Lab] Ingest flow` | P1에서 P7까지 전체. 송신 도중 `lab-ls-01`을 멈춰 처리량 선이 벌어지는 구간이 보이면 좋음 | 직접 만든 수집 흐름 대시보드. Logstash 한 대를 멈춘 구간에서 단계별 처리량 선 사이가 벌어집니다. |
@@ -47,3 +47,17 @@
 ## 완료 보고
 
 캡처마다 파일명, 사용한 Stack 버전, 본문 주석을 이미지로 바꿨는지, 쿼리를 고쳤다면 무엇을 고쳤는지 적습니다.
+
+## 진행 상황(2026-11-26, lab ECH 9.5.5)
+
+| ID | 상태 | 메모 |
+| --- | --- | --- |
+| C-01 | 완료 | Fleet API로 `lab-logstash` 출력 생성(정책에는 지정하지 않음). flyout만 잘라 배경의 Fleet Server URL이 보이지 않게 함 |
+| C-02 | 완료 | `logs-lab.syslog-default`에 날짜 형식 오류 120건, `labels.seq` 문자열 35건을 bulk로 넣어 만듦 |
+| C-03 | 남음 | lab에 UDP를 받는 Agent가 없음. 위 ES\|QL은 `filebeat_input.` 접두사와 counter 타입(`INCREASE`)에 맞게 고침 |
+| C-04 | 완료(대체) | `lab-recv-01` 대신 lab에 남아 있던 Agent 9.5.3(2026-09-23 데이터)로 캡처 |
+| C-05 | 남음 | lab에 Logstash가 없음 |
+| C-06 | 남음 | 대시보드 `[Lab] Ingest flow`(id `lab-ingest-flow`)는 만들어 두었음. Logstash, UDP 데이터가 들어온 뒤 캡처 |
+| C-07 | 남음 | lab의 Agent는 Elastic Cloud 관리 Agent 1대뿐이라 업그레이드 화면을 열 수 없음 |
+
+캡처 도구 제약으로 이미지 가로는 800px이 최대입니다.

@@ -1,7 +1,6 @@
 ---
 title: "수집기가 멈춰도 로그가 끊기지 않게 하려면"
 description: Logstash와 Elastic Agent에 clustering이 없다는 전제에서, 원천의 성격별로 끊김이 생기는 지점을 나누고 송신 측 부하 분산, L4 부하 분산, Kafka 분리, persistent queue, 순차 업그레이드로 무중단 수집을 구성하는 방법을 정리합니다.
-draft: true
 sidebar:
   label: 03. 무중단 수집
   order: 3
@@ -73,7 +72,9 @@ loadbalance: true
 - Logstash 한 대가 멈추면 Agent는 ack를 받지 못한 batch를 다른 Logstash로 다시 보냅니다. 멈춘 Logstash가 이미 Elasticsearch에 넣은 이벤트였다면 중복이 됩니다. 중복을 막는 방법은 [05](../05-count-reconciliation/#중복-찾기와-막기)에서 다룹니다.
 - 공식 문서는 Beats가 Logstash 그룹으로 부하를 분산하고, 고가용성을 위해 Logstash를 최소 2대 두라고 권합니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
 
-<!-- CAPTURE: ingest-fleet-logstash-output.jpg | C-01 -->
+![Fleet의 Logstash 출력 설정. Logstash hosts에 두 대가 있고, Advanced YAML configuration에 loadbalance가 켜져 있습니다.](../../../assets/ingest/ingest-fleet-logstash-output.jpg)
+
+이 출력을 정책에 지정하지 않으면 Agent는 계속 기존 출력으로 보냅니다. 출력은 Agent 정책의 Output for integrations에서 고릅니다.
 
 ### 패턴 2: TCP, HTTP 원천 앞에 L4 부하 분산
 

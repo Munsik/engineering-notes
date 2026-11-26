@@ -1,10 +1,23 @@
 # 송신기 메시지에서 run, seq를 꺼내는 ingest pipeline. Custom UDP/TCP Logs integration의 pipeline으로 지정하거나 @custom에서 호출
+# 메시지 앞부분(<134>1 ... - - -)에는 key=value가 아닌 토큰이 있어 kv processor는 실패한다. grok으로 필요한 두 값만 꺼낸다
 PUT _ingest/pipeline/labsend-parse
 {
+  "description": "labsend 메시지에서 run, seq 추출",
   "processors": [
-    { "kv": { "field": "message", "field_split": " ", "value_split": "=", "include_keys": ["run", "seq"], "target_field": "labsend", "ignore_failure": true } },
-    { "rename": { "field": "labsend.run", "target_field": "labels.run", "ignore_missing": true } },
-    { "convert": { "field": "labsend.seq", "target_field": "labels.seq", "type": "long", "ignore_missing": true } },
-    { "remove": { "field": "labsend", "ignore_missing": true } }
+    {
+      "grok": {
+        "field": "message",
+        "patterns": ["run=%{NOTSPACE:labels.run} seq=%{NUMBER:labels.seq:long}"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    }
+  ]
+}
+
+POST _ingest/pipeline/labsend-parse/_simulate
+{
+  "docs": [
+    { "_source": { "message": "<134>1 2026-11-26T10:00:00.123+09:00 sender-01 labsend - - - run=run-01 seq=123 payload=xxx" } }
   ]
 }

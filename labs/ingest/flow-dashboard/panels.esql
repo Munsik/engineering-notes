@@ -1,10 +1,14 @@
-// P1-a Agent 출력 acked(누적 카운터 → 구간 차이)
-FROM metrics-elastic_agent.filebeat-*
-| STATS acked = MAX(beat.stats.libbeat.output.events.acked) - MIN(beat.stats.libbeat.output.events.acked) BY t = BUCKET(@timestamp, 5 minutes), agent.id, component.id
-| STATS agent_acked = SUM(acked) BY t
+// 흐름 대시보드 패널 정의. Stack 9.5.5 lab에서 실행 확인(P1-b, P4는 Logstash가 없어 필드 정의로만 확인)
+// Agent self-monitoring 지표는 9.2 이후 Agent에서 metrics-elastic_agent.elastic_agent-*에 component.id별로 들어온다.
+// 이전 Agent가 섞여 있으면 metrics-elastic_agent.filebeat-*도 같이 지정한다(없는 패턴은 무시된다).
+// 두 data stream은 TSDS이고 누적값은 counter 타입이라 MAX, MIN 대신 TS + INCREASE를 쓴다(9.4 GA).
+
+// P1-a Agent 출력 acked(5분 증가분)
+TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
+| STATS agent_acked = SUM(INCREASE(beat.stats.libbeat.output.events.acked)) BY t = TBUCKET(5 minutes)
 | SORT t
 
-// P1-b Logstash 입력 처리량(초당). 5분 버킷 비교를 위해 300을 곱함
+// P1-b Logstash 입력 처리량(초당 값의 평균에 300을 곱해 5분 건수로 맞춤). flow 지표는 gauge
 FROM metrics-logstash.pipeline-*
 | STATS eps = AVG(logstash.pipeline.flow.input_throughput.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.name
 | STATS logstash_in = SUM(eps) * 300 BY t
@@ -23,27 +27,28 @@ FROM logs-*
 | STATS p50 = PERCENTILE(lag_s, 50), p95 = PERCENTILE(lag_s, 95) BY t = BUCKET(@timestamp, 5 minutes)
 | SORT t
 
-// P3 Agent queue 사용률 상위
-FROM metrics-elastic_agent.filebeat-*
-| WHERE @timestamp >= NOW() - 15 minutes
+// P3 Agent queue 사용률 상위. filled.pct는 0에서 1 사이 비율
+FROM metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
+| WHERE @timestamp >= NOW() - 15 minutes AND beat.stats.libbeat.pipeline.queue.filled.pct IS NOT NULL
 | STATS filled = MAX(beat.stats.libbeat.pipeline.queue.filled.pct) BY agent.name, component.id
 | SORT filled DESC
 | LIMIT 20
 
-// P4 Logstash backpressure, worker 사용률
+// P4 Logstash backpressure, worker 사용률(gauge)
 FROM metrics-logstash.pipeline-*
 | STATS backpressure = AVG(logstash.pipeline.flow.queue_backpressure.current), worker_util = AVG(logstash.pipeline.flow.worker_utilization.current) BY t = BUCKET(@timestamp, 5 minutes), logstash.pipeline.name
 | SORT t
 
-// P5 UDP drop(gauge 성격의 누적값 → 구간 차이). 필드 경로는 lab에서 확인
-FROM metrics-elastic_agent.filebeat_input-*
-| WHERE system_packet_drops IS NOT NULL
-| STATS drops = MAX(system_packet_drops) - MIN(system_packet_drops) BY t = BUCKET(@timestamp, 5 minutes), agent.name
+// P5 UDP drop 증가분. system_packet_drops는 counter
+TS metrics-elastic_agent.filebeat_input-*
+| WHERE filebeat_input.input == "udp"
+| STATS drops = SUM(INCREASE(filebeat_input.system_packet_drops)) BY t = TBUCKET(5 minutes), agent.name
 | SORT t
 
-// P6 실패 문서
+// P6 실패 문서. failure store 문서에는 data_stream.dataset이 없어 document.index로 묶는다
+// 실패가 한 번도 없으면 ::failures 대상이 비어 Unknown column 오류가 난다
 FROM logs-*::failures
-| STATS failed = COUNT(*) BY data_stream.dataset, error.type
+| STATS failed = COUNT(*) BY document.index, error.type
 | SORT failed DESC
 
 // P7 원천별 마지막 수신(알림 rule에도 사용)

@@ -1,7 +1,6 @@
 ---
 title: "원본을 빠짐없이 받았다는 것을 어떻게 증명하는가"
 description: 원천, 수집기 입력, 수집기 출력, Elasticsearch 저장 건수를 같은 시간 창으로 대조해 유실 구간을 찾는 방법, 순번으로 유실과 중복을 세는 ES|QL, fingerprint로 중복을 막는 방법, 저장되지 않은 문서를 세는 방법을 정리합니다.
-draft: true
 sidebar:
   label: 05. 건수 정합성
   order: 5
@@ -77,9 +76,11 @@ PUT _ingest/pipeline/add-event-ingested
 FROM logs-lab.syslog-*
 | WHERE labels.run == "run-01"
 | STATS copies = COUNT(*) BY labels.seq
-| STATS received = COUNT(*), duplicated = COUNT_DISTINCT(CASE(copies > 1, labels.seq, null)), min_seq = MIN(labels.seq), max_seq = MAX(labels.seq)
+| STATS received = COUNT(*), duplicated = SUM(CASE(copies > 1, 1, 0)), min_seq = MIN(labels.seq), max_seq = MAX(labels.seq)
 | EVAL expected = max_seq - min_seq + 1, missing = expected - received
 ```
+
+lab(9.5.5)에서 순번 1부터 20000까지 중 5001에서 5300을 빼고, 12001에서 12050은 두 번 넣어 확인했습니다. 결과는 `received` 19700, `duplicated` 50, `expected` 20000, `missing` 300입니다.
 
 빠진 구간을 1,000건 단위로 찾습니다.
 
@@ -87,13 +88,15 @@ FROM logs-lab.syslog-*
 FROM logs-lab.syslog-*
 | WHERE labels.run == "run-01"
 | STATS BY labels.seq
-| EVAL block = FLOOR(labels.seq / 1000)
-| STATS present = COUNT(*) BY block
+| EVAL block = FLOOR((labels.seq - 1) / 1000)
+| STATS present = COUNT(*), first_seq = MIN(labels.seq), last_seq = MAX(labels.seq) BY block
 | WHERE present < 1000
 | SORT block
 ```
 
-`COUNT_DISTINCT`는 근사값이라 값이 많으면 오차가 생깁니다. 정확한 수가 필요하면 위처럼 `STATS ... BY` 결과의 행 수를 셉니다. 순번 단위로 묶는 쿼리는 시험 규모에서 쓰고, 운영 데이터에는 아래의 건수 대조를 씁니다(해석). 두 쿼리는 lab에서 다시 실행해 확인해야 합니다(확인 필요).
+순번이 1부터 시작하므로 `labels.seq - 1`로 묶어야 각 묶음이 1에서 1000, 1001에서 2000이 됩니다. `labels.seq / 1000`으로 묶으면 첫 묶음(1에서 999)과 마지막 순번 하나가 늘 빠진 것처럼 나옵니다(lab에서 확인). 송신 범위가 1000의 배수가 아니면 마지막 묶음은 원래 덜 찹니다. 같은 lab 데이터에서는 5번 묶음 하나만 나오고, 그 안의 첫 순번이 5301이라 5001에서 5300이 빠졌다는 것을 알 수 있습니다.
+
+`COUNT_DISTINCT`는 근사값이라 값이 많으면 오차가 생깁니다. 그래서 위 쿼리는 순번별로 먼저 묶은 뒤 행 수(`COUNT(*)`)와 `SUM(CASE(...))`로 셉니다. 순번 단위로 묶는 쿼리는 시험 규모에서 쓰고, 운영 데이터에는 아래의 건수 대조를 씁니다(해석).
 
 ## 순번이 없을 때: 건수 대조
 
@@ -148,7 +151,7 @@ output {
 
 - `_id`를 직접 정하면 Elasticsearch가 같은 ID가 이미 있는지 확인해야 해서 indexing이 느려집니다. 공식 문서도 가능하면 자동 생성 ID를 쓰라고 권합니다([Tune for indexing speed](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/indexing-speed)).
 - fingerprint 대상 필드가 같으면 정당한 다른 이벤트도 하나로 합쳐집니다. 같은 초에 같은 메시지가 여러 번 찍히는 로그는 원천의 순번, 파일 offset 같은 구분 값을 대상에 넣습니다(해석).
-- 중복 검사는 같은 backing index 안에서만 됩니다. rollover 경계를 넘어 다시 들어온 중복은 막지 못합니다(해석, 확인 필요).
+- 중복 검사는 같은 backing index 안에서만 됩니다. data stream은 새 문서를 write index에만 넣기 때문입니다([Data streams](https://www.elastic.co/docs/manage-data/data-store/data-streams)). lab에서 같은 `_id`로 `_create`를 두 번 보내면 두 번째는 409였지만, 그 사이에 rollover를 하면 두 번째도 성공해 backing index 두 곳에 같은 `_id` 문서가 하나씩 남았습니다. 재전송이 rollover 직후에 겹치면 중복이 남을 수 있습니다.
 
 중복 비용이 크면 막지 않고 세기만 하는 선택지도 있습니다. 위의 순번 쿼리나 fingerprint 필드를 따로 저장해 `STATS COUNT(*) BY fp | WHERE count > 1`로 셉니다(해석).
 
@@ -156,7 +159,7 @@ output {
 
 | 종류 | 세는 방법 |
 | --- | --- |
-| failure store로 간 문서 | `FROM <data stream>::failures \| STATS COUNT(*) BY error.type` |
+| failure store로 간 문서 | `FROM <data stream>::failures \| STATS COUNT(*) BY document.index, error.type` |
 | 필드 일부가 버려진 문서 | `_ignored`가 있는 문서 수. Data Set Quality(beta) 페이지의 degraded document |
 | Logstash DLQ | DLQ 디렉터리 크기와 이벤트 수. DLQ input으로 다시 읽어 셈 |
 | 수집기에서 drop | Agent `beat.stats.libbeat.pipeline.events.dropped`, Logstash filter 단계의 차이(`in` - `out`) |
@@ -166,9 +169,11 @@ failure store는 9.2부터 새로 만드는 `logs-*-*` data stream에 기본으�
 ```sql
 FROM logs-*::failures
 | WHERE @timestamp >= NOW() - 1 day
-| STATS failed = COUNT(*) BY data_stream.dataset, error.type
+| STATS failed = COUNT(*) BY document.index, error.type
 | SORT failed DESC
 ```
+
+failure store 문서에는 `data_stream.dataset`이 없어서, 실패한 data stream은 `document.index`로 묶습니다(lab 9.5.5 확인). 실패가 한 번도 없었던 환경에서는 `::failures` 대상이 비어 있어 이 쿼리가 `Unknown column` 오류를 냅니다. 알림 rule로 쓸 때는 이 점을 감안합니다.
 
 ## 자동 대조와 알림
 

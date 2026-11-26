@@ -45,7 +45,7 @@
 
 ## 2-1. 수집기는 무엇으로 고를 것인가
 
-상태: `초안` (draft, 2026-11-26)
+상태: `발행` (2026-11-26, lab 9.5.5 확인)
 예정 파일: `ingest/01-choose-collector.md`
 
 ### 이 글이 답하는 질문
@@ -94,8 +94,8 @@
 ### 확인할 사실
 
 - [x] Agent는 memory queue만 사용자가 설정 가능, disk queue는 불가(Beats and Elastic Agent capabilities 표)
-- [ ] EDOT Collector의 Stack 9.x GA 상태와 log 수집 범위, Fleet 관리 여부
-- [ ] Elastic Agent의 OpenTelemetry 기반 실행 모드(hybrid, otel mode) 상태
+- [x] EDOT Collector의 Stack 9.x GA 상태와 log 수집 범위, Fleet 관리 여부
+- [x] Elastic Agent의 OpenTelemetry 기반 실행 모드(hybrid, otel mode) 상태
 - [ ] Logstash의 Fleet 중앙 관리(Logstash central pipeline management) 라이선스 조건
 - [ ] Agent integration이 없는 원천에서 쓸 수 있는 범용 input(custom logs, HTTP endpoint, CEL) 목록
 
@@ -103,7 +103,7 @@
 
 ## 2-2. 파싱은 어디서 할 것인가
 
-상태: `초안` (draft, 2026-11-26) (기존 2-1 계획을 옮김)
+상태: `발행` (2026-11-26, lab 9.5.5 확인) (기존 2-1 계획을 옮김)
 예정 파일: `ingest/02-where-to-parse.md`, `labs/ingest/where-to-parse/`
 
 ### 이 글이 답하는 질문
@@ -141,7 +141,7 @@
 
 ### 확인할 사실
 
-- [ ] failure store의 버전별 상태(GA 여부)와 기본 동작
+- [x] failure store의 버전별 상태(GA 여부)와 기본 동작
 - [ ] integration pipeline에서 `@custom` pipeline이 호출되는 위치와 이름 규칙
 - [ ] Logstash `filter-elastic_integration`의 요구 조건
 - [ ] Streams의 Stack GA 범위(classic stream, wired stream)
@@ -150,7 +150,7 @@
 
 ## 2-3. 수집기가 멈춰도 로그가 끊기지 않게 하려면
 
-상태: `초안` (draft, 2026-11-26) (신규)
+상태: `발행` (2026-11-26, lab 9.5.5 확인) (신규)
 예정 파일: `ingest/03-no-gap-ingest.md`, `labs/ingest/no-gap/`
 
 ### 이 글이 답하는 질문
@@ -234,7 +234,7 @@
 
 ## 2-4. UDP syslog를 유실 없이 받으려면
 
-상태: `초안` (draft, 2026-11-26) (신규)
+상태: `발행` (2026-11-26, lab 9.5.5 확인) (신규)
 예정 파일: `ingest/04-syslog-udp.md`, `labs/ingest/syslog-udp/`
 
 ### 이 글이 답하는 질문
@@ -304,7 +304,7 @@
 
 ## 2-5. 원본을 빠짐없이 받았다는 것을 어떻게 증명하는가
 
-상태: `초안` (draft, 2026-11-26) (신규)
+상태: `발행` (2026-11-26, lab 9.5.5 확인) (신규)
 예정 파일: `ingest/05-count-reconciliation.md`, `labs/ingest/reconciliation/`
 
 ### 이 글이 답하는 질문
@@ -373,7 +373,7 @@
 
 ## 2-6. 수집 흐름을 대시보드로 어떻게 보는가
 
-상태: `초안` (draft, 2026-11-26) (신규)
+상태: `발행` (2026-11-26, lab 9.5.5 확인) (신규)
 예정 파일: `ingest/06-flow-dashboard.md`, `labs/ingest/flow-dashboard/`
 
 ### 이 글이 답하는 질문
@@ -433,7 +433,7 @@
 
 ## 2-7. 수집 계층에 자원은 얼마나 필요한가
 
-상태: `초안` (draft, 2026-11-26) (신규)
+상태: `발행` (2026-11-26, lab 9.5.5 확인) (신규)
 예정 파일: `ingest/07-collector-sizing.md`, `labs/ingest/collector-sizing/`
 
 ### 이 글이 답하는 질문
@@ -487,7 +487,7 @@
 
 ## 2-8. 수백에서 수만 대 Agent를 어떻게 운영할 것인가
 
-상태: `초안` (draft, 2026-11-26) (기존 2-2 계획을 옮김)
+상태: `발행` (2026-11-26, lab 9.5.5 확인) (기존 2-2 계획을 옮김)
 예정 파일: `ingest/08-fleet-at-scale.md`, `labs/ingest/fleet-at-scale/`
 
 ### 이 글이 답하는 질문

@@ -1,7 +1,6 @@
 ---
 title: "파싱은 어디서 할 것인가"
 description: integration, ingest pipeline과 @custom pipeline, Logstash의 역할을 나누는 기준과 파싱에 실패한 문서가 어디로 가는지(failure store, DLQ, _ignored), 자주 깨지는 지점을 정리합니다.
-draft: true
 sidebar:
   label: 02. 파싱 위치
   order: 2
@@ -26,7 +25,14 @@ sidebar:
 | `@custom` ingest pipeline | integration 파싱을 업그레이드해도 남는 방식으로 보완 | 위와 같이 Elasticsearch CPU를 씀 |
 | Logstash | 외부 조회로 enrich, 조건별로 여러 출력, 무거운 변환을 Elasticsearch 밖에서 | 별도 노드 운영. 이중화는 직접 구성([03](../03-no-gap-ingest/)) |
 
-Logstash에서 integration의 ingest pipeline을 그대로 실행하는 `elastic_integration` filter도 있습니다([Using Logstash with Elastic integrations](https://www.elastic.co/docs/reference/logstash/using-logstash-with-elastic-integrations)). 요구 조건은 확인 필요입니다.
+Logstash에서 integration의 ingest pipeline을 그대로 실행하는 `elastic_integration` filter도 있습니다([Using Logstash with Elastic integrations](https://www.elastic.co/docs/reference/logstash/using-logstash-with-elastic-integrations)). 이벤트의 data stream을 보고 Elasticsearch에서 pipeline 정의를 받아 와 Logstash 안에서 실행합니다. 처리한 이벤트는 Elasticsearch에서 같은 pipeline을 다시 돌리지 않습니다. 쓰기 전에 확인할 조건은 다음과 같습니다([Elastic Integration filter plugin](https://www.elastic.co/docs/reference/logstash/plugins/plugins-filters-elastic_integration)).
+
+- Enterprise 구독이 필요합니다.
+- Logstash 9.x는 Java 21 이상이 필요합니다(8.x는 Java 17).
+- 연결 계정에 `monitor`, `read_pipeline`, `manage_index_templates` 권한이 필요합니다.
+- plugin 버전이 Elasticsearch의 major.minor보다 낮으면 pipeline을 만들지 못할 수 있습니다. 예를 들어 9.2 미만 plugin은 Elasticsearch 9.2 이후의 pipeline 정의를 읽지 못합니다. 그래서 Stack을 올릴 때 Kibana보다 Logstash(또는 이 plugin)를 먼저 올리라고 안내합니다.
+- 지원하는 processor는 일부입니다. `inference`처럼 목록에 없는 processor가 든 pipeline은 실행하지 못합니다. `geoip`는 Logstash 쪽에 GeoIP 데이터베이스가 있어야 합니다.
+- 첫 번째 filter로 둡니다. 그 앞에서 이벤트를 바꿀수록 Elasticsearch에서 처리한 결과와 달라집니다.
 
 ## `@custom` pipeline으로 보완하기
 
@@ -74,7 +80,18 @@ integration의 pipeline 자체를 고치면 integration을 업그레이드할 �
 
 Streams(9.2 GA)의 Data quality 탭은 failure store에 쌓인 실패 문서의 건수, 오류 종류, 예시를 보여 주고, Processing 탭에서 그 문서로 처리 규칙을 고쳐 볼 수 있습니다([Manage data quality with Streams](https://www.elastic.co/docs/solutions/observability/streams/manage-data-quality)).
 
-<!-- CAPTURE: ingest-streams-data-quality.jpg | planning/captures/ingest.md의 C-02 참고 -->
+![Streams의 Data quality 탭. 실패 문서 120건과 필드 일부가 버려진 문서 35건이 따로 세어지고, 아래 Issues 표에 "Documents indexing failed"와 "Field ignored"가 나뉘어 보입니다.](../../../assets/ingest/ingest-streams-data-quality.jpg)
+
+위 화면은 lab(9.5.5)에서 `@timestamp`를 `26/11/2026 22:00:00`처럼 날짜 형식이 아닌 값으로 120건, `labels.seq`(long)에 문자열을 35건 보내 만든 것입니다. 앞의 120건은 mapping 오류로 failure store에 들어갔고, bulk 응답은 성공(201)이었습니다. 뒤의 35건은 logsdb의 `ignore_malformed` 기본값 때문에 저장되고 해당 필드만 `_ignored`에 남았습니다.
+
+failure store 문서에는 원래 문서의 `data_stream.dataset`이 없습니다. 어느 data stream에서 실패했는지는 `document.index`로, 원인은 `error.type`과 `error.message`로 봅니다(lab 확인).
+
+```sql
+FROM logs-*::failures
+| WHERE @timestamp >= NOW() - 1 day
+| STATS failed = COUNT(*) BY document.index, error.type
+| SORT failed DESC
+```
 
 ## 자주 깨지는 지점
 

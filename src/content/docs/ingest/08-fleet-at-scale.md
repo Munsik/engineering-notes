@@ -1,7 +1,6 @@
 ---
 title: "수백에서 수만 대 Agent를 어떻게 운영할 것인가"
 description: Fleet에서 정책을 나누는 기준, 정책 변경과 Agent 업그레이드를 단계적으로 적용하는 방법(rollout 기간, 자동 업그레이드, rollback), CA와 인증서를 교체할 때의 제약, Fleet Server 가용성, Agent 상태를 판정하는 기준을 정리합니다.
-draft: true
 sidebar:
   label: 08. Fleet 운영
   order: 8

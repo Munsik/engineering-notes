@@ -83,14 +83,14 @@ Engineering Notes
 
 ### 2. 수집 ([상세](collections/02-ingest.md))
 
-- [ ] 2-1. 수집기는 무엇으로 고를 것인가 `초안`
-- [ ] 2-2. 파싱은 어디서 할 것인가 `초안`
-- [ ] 2-3. 수집기가 멈춰도 로그가 끊기지 않게 하려면 `초안`
-- [ ] 2-4. UDP syslog를 유실 없이 받으려면 `초안`
-- [ ] 2-5. 원본을 빠짐없이 받았다는 것을 어떻게 증명하는가 `초안`
-- [ ] 2-6. 수집 흐름을 대시보드로 어떻게 보는가 `초안`
-- [ ] 2-7. 수집 계층에 자원은 얼마나 필요한가 `초안`
-- [ ] 2-8. 수백에서 수만 대 Agent를 어떻게 운영할 것인가 `초안`
+- [x] 2-1. 수집기는 무엇으로 고를 것인가 `발행` (`ingest/01-choose-collector.md`)
+- [x] 2-2. 파싱은 어디서 할 것인가 `발행` (`ingest/02-where-to-parse.md`)
+- [x] 2-3. 수집기가 멈춰도 로그가 끊기지 않게 하려면 `발행` (`ingest/03-no-gap-ingest.md`)
+- [x] 2-4. UDP syslog를 유실 없이 받으려면 `발행` (`ingest/04-syslog-udp.md`)
+- [x] 2-5. 원본을 빠짐없이 받았다는 것을 어떻게 증명하는가 `발행` (`ingest/05-count-reconciliation.md`)
+- [x] 2-6. 수집 흐름을 대시보드로 어떻게 보는가 `발행` (`ingest/06-flow-dashboard.md`)
+- [x] 2-7. 수집 계층에 자원은 얼마나 필요한가 `발행` (`ingest/07-collector-sizing.md`)
+- [x] 2-8. 수백에서 수만 대 Agent를 어떻게 운영할 것인가 `발행` (`ingest/08-fleet-at-scale.md`)
 
 ### 3. 안정성 운영 ([상세](collections/03-cluster-stability.md))
 

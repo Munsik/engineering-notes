@@ -1,7 +1,6 @@
 ---
 title: "수집기는 무엇으로 고를 것인가"
 description: Elastic Agent, Logstash, Kafka, syslog relay, Agent에 내장된 OpenTelemetry Collector가 각각 무엇을 하고 무엇을 하지 못하는지 정리하고, 데이터 원천별 권장 경로와 decision tree를 제시합니다.
-draft: true
 sidebar:
   label: 01. 수집기 선택
   order: 1
@@ -26,13 +25,15 @@ sidebar:
 | Logstash | 복잡한 변환, 여러 출력으로 나누기, 외부 조회로 enrich, persistent queue(PQ)로 디스크 버퍼링 | clustering 없음. PQ는 그 노드의 디스크에만 있음. 다른 노드가 이어받지 못함 |
 | Kafka | 수신과 처리를 분리. 보존 기간 안에서 다시 읽기(replay). consumer group으로 처리 노드를 자유롭게 늘리고 줄임 | 그 자체가 운영해야 하는 클러스터. 파싱은 하지 않음 |
 | syslog relay(rsyslog, syslog-ng) | 네트워크 장비 가까이에서 UDP를 받아 disk-assisted queue에 두고 TCP로 넘김 | 파싱, 매핑은 뒤 계층의 일. UDP 구간 자체의 유실은 막지 못함 |
-| Agent 내장 OpenTelemetry Collector | OTLP 수신, OpenTelemetry 방식의 수집과 gateway 구성 | Fleet integration과 같은 방식의 정책 관리 범위는 다름(확인 필요) |
+| Agent 내장 OpenTelemetry Collector | OTLP 수신, OpenTelemetry receiver로 수집. Fleet 정책에 OpenTelemetry input package를 ECS integration과 함께 넣을 수 있음 | input package는 9.2 이후 Agent, 기본 모드에서만. otel 모드로 띄운 standalone Agent는 Fleet에 등록할 수 없음 |
 
 표의 제약은 공식 문서로 확인했습니다.
 
 - Agent는 Fleet 관리든 standalone이든 memory queue만 사용자가 설정할 수 있고, disk queue는 설정할 수 없습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison)).
 - Logstash는 같은 pipeline을 여러 노드에서 돌려 수평 확장하고, 고가용성을 위해 최소 2노드를 권합니다. TCP, UDP 입력은 애플리케이션 수준의 ack가 없어서 연결 문제가 생기면 데이터를 잃을 수 있다고 적고 있습니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
 - PQ는 노드 디스크에 쌓이므로, 공식 문서는 디스크 이중화(온프레미스는 RAID)를 함께 권합니다(같은 문서).
+- Agent는 9.2부터 OpenTelemetry Collector를 내장 runtime으로 씁니다. 기존 integration은 Beat receiver로 바뀌어 같은 ECS 데이터를 내고, OpenTelemetry receiver로 받은 데이터는 ingest pipeline을 거치지 않고 OpenTelemetry 전용 data stream에 저장됩니다([Elastic Agent as an OpenTelemetry Collector](https://www.elastic.co/docs/reference/fleet/elastic-agent-as-otel-collector)).
+- Fleet에서 OpenTelemetry receiver를 관리하려면 OpenTelemetry input package를 씁니다. Stack 9.2부터 preview이고, 9.2 이후 Agent가 기본 모드로 돌 때만 동작합니다. otel 모드로 띄운 Agent에는 쓸 수 없습니다([Collect OpenTelemetry data with Elastic Agent integrations](https://www.elastic.co/docs/reference/fleet/otel-integrations)). otel 모드의 standalone Agent와 upstream Collector는 Fleet 중앙 관리가 아직 계획 단계입니다(같은 [비교 표](https://www.elastic.co/docs/reference/fleet/elastic-agent-as-otel-collector#collector-comparison)).
 
 ## 공식 reference architecture
 

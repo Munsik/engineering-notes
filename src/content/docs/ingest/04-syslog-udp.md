@@ -1,7 +1,6 @@
 ---
 title: "UDP syslog를 유실 없이 받으려면"
 description: UDP syslog가 어디서 버려지는지 네 지점으로 나누고, 커널과 Elastic Agent 지표로 drop을 재는 방법, 수신 버퍼 조정, syslog relay와 부하 분산 구성, 수신기 재시작 구간을 줄이는 방법을 정리합니다.
-draft: true
 sidebar:
   label: 04. UDP syslog
   order: 4
@@ -65,7 +64,18 @@ UDP input은 다음 지표를 냅니다([Filebeat UDP input](https://www.elastic
 | `receive_queue_length` | 시스템 수신 queue 크기 합(IPv4, IPv6). Linux 전용 |
 | `system_packet_drops` | 시스템 패킷 drop 수 합(IPv4, IPv6). Linux 전용 |
 
-Fleet 관리 Agent는 이 입력 지표를 `metrics-elastic_agent.filebeat_input-*` data stream으로 보냅니다(elastic/integrations의 `elastic_agent` 패키지 필드 정의 기준). [06](../06-flow-dashboard/)의 대시보드에서 이 값을 패널로 씁니다.
+Fleet 관리 Agent는 이 입력 지표를 `metrics-elastic_agent.filebeat_input-*` data stream으로 보냅니다. 필드 이름 앞에는 `filebeat_input.`이 붙습니다. 이 data stream은 time series(TSDS)이고, `filebeat_input.system_packet_drops`는 `counter`로 매핑됩니다(elastic/integrations의 `elastic_agent` 패키지 `filebeat_input_metrics` 정의와 lab 9.5.5의 field caps로 확인). 나머지 두 지표는 이름 규칙(`*_length`, `*_gauge`)에 따라 gauge로 매핑됩니다.
+
+counter 필드에는 ES|QL의 `MAX`, `MIN`을 쓸 수 없습니다(lab에서 `verification_exception`). 증가분은 `TS` 명령과 `INCREASE`로 셉니다. 둘 다 Stack 9.4부터 GA입니다([TS](https://www.elastic.co/docs/reference/query-languages/esql/commands/ts), [INCREASE](https://www.elastic.co/docs/reference/query-languages/esql/functions-operators/time-series-aggregation-functions/increase)).
+
+```sql
+TS metrics-elastic_agent.filebeat_input-*
+| WHERE @timestamp >= NOW() - 6 hours AND filebeat_input.input == "udp"
+| STATS drops = SUM(INCREASE(filebeat_input.system_packet_drops)) BY t = TBUCKET(5 minutes), agent.name
+| SORT t
+```
+
+Elastic Agent 패키지가 설치하는 `[Elastic Agent] UDP Input Metrics` 대시보드에서도 이 지표를 볼 수 있습니다. 여러 단계를 한 화면에서 비교하려면 [06](../06-flow-dashboard/)의 흐름 대시보드에 이 쿼리를 패널로 넣습니다.
 
 <!-- CAPTURE: ingest-udp-input-metrics.jpg | C-03 -->
 
@@ -138,8 +148,10 @@ stream {
 }
 ```
 
-- 오픈소스 nginx는 UDP upstream의 능동 health check가 없습니다. 실패를 감지하는 방식은 확인 필요입니다. LVS(keepalived)나 네트워크 장비의 부하 분산 기능도 선택지입니다.
-- HAProxy의 UDP 지원 범위는 버전과 에디션에 따라 다릅니다(확인 필요).
+- 오픈소스 nginx의 UDP health check는 passive 방식뿐입니다. upstream이 오류를 돌려주거나 응답 시간이 지나면 실패로 세고, `fail_timeout`(기본 10초) 동안 `max_fails`(기본 1)번 실패하면 그 시간만큼 뺍니다. 능동 health check는 NGINX Plus 기능입니다([UDP health checks](https://docs.nginx.com/nginx/admin-guide/load-balancer/udp-health-check/)).
+- syslog는 응답을 돌려주지 않으므로 위 예처럼 `proxy_responses 0`으로 둡니다. 이러면 nginx가 기다릴 응답이 없어, 수신 Agent가 멈춰도 실패로 판단할 근거가 거의 없습니다. 오픈소스 nginx만으로는 죽은 수신기를 빼지 못한다고 보고, keepalived의 health check 스크립트로 수신기 프로세스나 Agent 상태를 보고 upstream을 바꾸는 식으로 보완합니다(해석).
+- LVS(keepalived)나 네트워크 장비의 부하 분산 기능도 선택지입니다. 커널에서 처리하므로 송신 IP를 보존하는 구성(DR 방식)을 고르기 쉽습니다(해석).
+- HAProxy 오픈소스 판은 범용 UDP 부하 분산을 하지 않습니다. 대신 syslog 전용 기능이 있습니다. 2.3부터 `log-forward` 섹션에서 `dgram-bind`로 UDP syslog를 받아 넘길 수 있고([Syslog forwarding](https://www.haproxy.com/documentation/haproxy-configuration-tutorials/syslog-forwarding/)), 2.9부터 `mode log` backend로 여러 수신기에 나눠 보낼 수 있습니다. 다만 UDP syslog 서버에는 health check를 걸 수 없습니다([Load balance syslog messages](https://www.haproxy.com/documentation/haproxy-configuration-tutorials/load-balancing/syslog/)). 범용 UDP 부하 분산은 HAProxy Enterprise의 UDP module(2.8r1 이후)이나 ALOHA가 맡습니다([UDP load balancing](https://www.haproxy.com/documentation/haproxy-enterprise/enterprise-modules/udp/)).
 - 부하 분산기를 거치면 수신기가 보는 송신 IP가 바뀔 수 있습니다. `host.ip`나 `log.source.address`로 장비를 구분한다면 원래 주소를 보존하는 방식(DSR, transparent proxy)을 확인합니다(해석).
 
 ### C. 이중 송신
@@ -153,6 +165,17 @@ stream {
 3. Elasticsearch에서 순번을 집계해 빠진 구간을 찾습니다([05](../05-count-reconciliation/#순번으로-유실-구간-찾기)).
 4. 속도를 단계적으로 올리며 drop이 시작되는 지점을 찾고, 버퍼와 수신기 수를 바꿔 다시 잽니다.
 5. 같은 속도에서 수신 Agent를 재시작해 직접 수신과 relay 경유의 차이를 봅니다.
+
+송신기와 `check-drops.sh`가 의도대로 동작하는지는 Linux 한 대에서 먼저 확인할 수 있습니다. 수신 버퍼를 4KB로 줄이고 일부러 느리게 읽는 수신기를 띄운 뒤, 송신기로 초당 3,000건을 3초 보낸 결과입니다(Linux 컨테이너에서 실측, loopback 주소 사용).
+
+| 항목 | 값 |
+| --- | --- |
+| 송신기가 보냈다고 기록한 건수(`sent`) | 9,000 |
+| 송신 오류(`send_errors`) | 0 |
+| 수신기가 읽은 건수 | 34 |
+| 같은 시간의 `RcvbufErrors` 증가분 | 8,966 |
+
+송신 쪽에서는 오류가 하나도 없었고, 버려진 8,966건은 수신 호스트의 `RcvbufErrors`에만 남았습니다. 보낸 건수에서 읽은 건수를 뺀 값과 정확히 같습니다. UDP는 송신 측 기록만으로는 유실을 알 수 없다는 점을 그대로 보여 줍니다.
 
 ## 판단 기준
 

@@ -1,7 +1,6 @@
 ---
 title: "수집 계층에 자원은 얼마나 필요한가"
 description: 호스트마다 설치하는 Elastic Agent, Logstash, Fleet Server의 CPU, 메모리, 디스크를 공식 수치와 산정 공식으로 잡는 방법, output performance preset과 Logstash 설정을 조정하는 기준, 운영 데이터로 처리량을 직접 재는 절차를 정리합니다.
-draft: true
 sidebar:
   label: 07. 자원 산정
   order: 7
@@ -67,7 +66,7 @@ Elasticsearch output은 `preset`으로 관련 설정을 한 번에 바꿉니다.
 - 물리 메모리를 넘기지 말고, 대개 물리 메모리의 50%에서 75% 안에서 잡습니다.
 - `Xms`와 `Xmx`를 같은 값으로 둡니다.
 
-PQ를 쓰면 queue 데이터는 디스크와 OS page cache에 있으므로, heap 밖의 메모리도 남겨 둡니다(해석).
+PQ를 쓰면 queue 데이터는 디스크와 OS page cache에 있으므로, JVM heap과 별도로 OS page cache에 쓸 메모리를 남겨 둡니다(해석).
 
 ### pipeline 설정
 
