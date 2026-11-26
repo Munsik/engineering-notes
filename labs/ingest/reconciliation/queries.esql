@@ -1,0 +1,37 @@
+// 05. 건수 정합성 쿼리 모음. Stack 9.5.5 lab에서 실행 확인
+
+// 1) 순번 기반 유실, 중복(COUNT_DISTINCT 근사값을 피해 행 수와 SUM으로 센다)
+FROM logs-lab.syslog-*
+| WHERE labels.run == "run-01"
+| STATS copies = COUNT(*) BY labels.seq
+| STATS received = COUNT(*), duplicated = SUM(CASE(copies > 1, 1, 0)), min_seq = MIN(labels.seq), max_seq = MAX(labels.seq)
+| EVAL expected = max_seq - min_seq + 1, missing = expected - received
+
+// 2) 1,000건 단위로 빠진 구간. 순번이 1부터 시작하므로 seq - 1로 묶는다
+FROM logs-lab.syslog-*
+| WHERE labels.run == "run-01"
+| STATS BY labels.seq
+| EVAL block = FLOOR((labels.seq - 1) / 1000)
+| STATS present = COUNT(*), first_seq = MIN(labels.seq), last_seq = MAX(labels.seq) BY block
+| WHERE present < 1000
+| SORT block
+
+// 3) 시간대, 호스트별 건수(원천 건수와 대조)
+FROM logs-*
+| WHERE @timestamp >= "2026-11-25T00:00:00+09:00" AND @timestamp < "2026-11-26T00:00:00+09:00"
+| STATS docs = COUNT(*) BY data_stream.dataset, host.name, hour = BUCKET(@timestamp, 1 hour)
+| SORT data_stream.dataset, host.name, hour
+
+// 4) failure store 건수. 실패 문서에는 data_stream.dataset이 없어 document.index로 묶는다
+FROM logs-*::failures
+| WHERE @timestamp >= NOW() - 1 day
+| STATS failed = COUNT(*) BY document.index, error.type
+| SORT failed DESC
+
+// 5) 분 단위 유실률(순번이 시간 순서대로 붙는 송신기 기준)
+FROM logs-lab.syslog-*
+| WHERE labels.run == "cap-11"
+| STATS got = COUNT(*), lo = MIN(labels.seq), hi = MAX(labels.seq) BY m = BUCKET(@timestamp, 1 minute)
+| EVAL span = hi - lo + 1, miss = span - got, pct = ROUND(100.0 * miss / span, 1)
+| KEEP m, got, miss, pct
+| SORT m

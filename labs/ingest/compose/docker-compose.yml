@@ -1,0 +1,60 @@
+# Engineering Notes 수집 컬렉션 lab
+# Agent 3대(수신 2, 지표 수집 1), Logstash 2대, UDP 송신기. Elasticsearch, Kibana, Fleet Server는 Elastic Cloud lab을 씀
+x-agent: &agent
+  image: docker.elastic.co/elastic-agent/elastic-agent:${AGENT_VERSION:-9.5.4}
+  restart: unless-stopped
+  networks: [lab]
+  user: root
+
+services:
+  lab-ls-01: &ls
+    image: docker.elastic.co/logstash/logstash:${LOGSTASH_VERSION:-9.5.5}
+    hostname: lab-ls-01
+    restart: unless-stopped
+    networks: [lab]
+    environment:
+      ES_HOSTS: ${ES_HOSTS}
+      ES_API_KEY: ${ES_API_KEY}
+      API_HTTP_HOST: 0.0.0.0
+      XPACK_MONITORING_ENABLED: "false"
+      LS_JAVA_OPTS: "-Xms1g -Xmx1g"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+  lab-ls-02:
+    <<: *ls
+    hostname: lab-ls-02
+
+  lab-recv-01:
+    <<: *agent
+    hostname: lab-recv-01
+    environment:
+      FLEET_ENROLL: "1"
+      FLEET_URL: ${FLEET_URL}
+      FLEET_ENROLLMENT_TOKEN: ${RECV_ENROLLMENT_TOKEN}
+  lab-recv-02:
+    <<: *agent
+    hostname: lab-recv-02
+    environment:
+      FLEET_ENROLL: "1"
+      FLEET_URL: ${FLEET_URL}
+      FLEET_ENROLLMENT_TOKEN: ${RECV_ENROLLMENT_TOKEN}
+  lab-host-01:
+    <<: *agent
+    hostname: lab-host-01
+    environment:
+      FLEET_ENROLL: "1"
+      FLEET_URL: ${FLEET_URL}
+      FLEET_ENROLLMENT_TOKEN: ${HOST_ENROLLMENT_TOKEN}
+
+  # docker compose run --rm sender --host lab-recv-01 --port 5514 --rate 2000 --seconds 1800 --run cap-01
+  sender:
+    image: python:3.12-alpine
+    profiles: [tools]
+    networks: [lab]
+    working_dir: /out
+    volumes:
+      - ../_sender:/out
+    entrypoint: ["python3", "/out/send.py", "--proto", "udp"]
+
+networks:
+  lab: {}

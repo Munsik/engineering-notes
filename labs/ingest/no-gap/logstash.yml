@@ -1,0 +1,8 @@
+# Logstash persistent queue. 값은 예시이며 크기는 07의 산정식으로 정한다
+queue.type: persisted
+queue.max_bytes: 50gb
+# at-least-once 권장값(디스크 쓰기 증가)
+queue.checkpoint.writes: 1
+# 업그레이드 전 queue를 비우고 종료하려면 true로 바꿔 재시작
+queue.drain: false
+dead_letter_queue.enable: true

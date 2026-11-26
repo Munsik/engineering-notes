@@ -10,5 +10,6 @@
 // - index.md가 draft인 컬렉션은 build할 때 sidebar와 홈에서 자동으로 빠집니다.
 export const siteCollections = [
   { dir: 'data', axis: '설계', topic: 'Elasticsearch 데이터 설계' },
+  { dir: 'ingest', axis: '수집', topic: 'Elastic 데이터 수집' },
   { dir: 'ml/anomaly-detection', axis: '탐지와 알림', topic: 'Elasticsearch ML anomaly detection' },
 ];

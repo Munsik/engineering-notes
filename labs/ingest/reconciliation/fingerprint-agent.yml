@@ -1,0 +1,5 @@
+# Agent integration의 Processors(고급 설정). 대상 필드는 정당한 이벤트끼리 겹치지 않는 조합으로 고른다
+- fingerprint:
+    fields: ["message", "host.name", "@timestamp"]
+    target_field: "@metadata._id"
+    method: "sha256"
