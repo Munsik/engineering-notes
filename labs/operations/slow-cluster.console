@@ -1,0 +1,43 @@
+# 05. 느려짐
+# 범위 가르기
+GET _cat/nodes?v&s=cpu:desc&h=name,node.role,master,cpu,load_1m,load_5m,heap.percent,available_processors
+GET _cat/thread_pool/search,write?v&s=n,nn&h=n,nn,a,q,r,c
+GET _cat/pending_tasks?v
+
+# CPU
+GET _nodes/hot_threads?threads=5
+
+# 오래 걸리는 task
+GET _tasks?detailed=true&human=true&group_by=none&actions=indices:data/read/search*,indices:data/read/esql*
+GET _tasks?detailed=true&human=true&actions=indices:*write*
+
+# 쏠림
+GET _cat/nodes?v&s=name&h=name,node.role,disk.total,heap.max,available_processors
+GET _cat/allocation?v&s=node&h=node,shards,disk.percent,disk.indices,disk.used
+GET _nodes/stats?human&filter_path=nodes.*.name,nodes.*.indices.indexing
+
+# 느린 요청 기록(값은 환경에 맞게)
+PUT logs-app-*/_settings
+{
+  "index.search.slowlog.threshold.query.warn": "5s",
+  "index.search.slowlog.threshold.query.info": "2s",
+  "index.search.slowlog.threshold.fetch.warn": "1s",
+  "index.search.slowlog.include.user": true
+}
+
+# Stack 9.4 이상, preview
+PUT _cluster/settings
+{
+  "persistent": {
+    "elasticsearch.querylog.enabled": true,
+    "elasticsearch.querylog.threshold": "2s"
+  }
+}
+
+# Stack 9.4 이상
+PUT _cluster/settings
+{
+  "persistent": {
+    "search.task_watchdog.enabled": true
+  }
+}

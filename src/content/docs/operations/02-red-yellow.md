@@ -1,7 +1,6 @@
 ---
 title: "클러스터가 RED나 YELLOW일 때 무엇부터 보는가"
 description: RED와 YELLOW의 차이, health report와 allocation explain으로 unassigned shard 원인을 읽는 순서, 자주 보는 원인별 조치, 사본이 없을 때의 선택지와 데이터 손실 범위를 정리합니다.
-draft: true
 sidebar:
   label: 02. RED와 YELLOW
   order: 2

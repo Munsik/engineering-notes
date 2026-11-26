@@ -1,7 +1,6 @@
 ---
 title: "노드가 왜 죽었는지 어떻게 좁혀 가는가"
 description: 노드가 재시작됐을 때 어떻게 죽었는지(SIGTERM, JVM OOM, OS OOM killer, GC가 회수하지 못함)부터 가르고, circuit breaker 429와 heap 압박의 원인을 진단 명령으로 좁히는 순서, 흔한 원인, OS 설정 점검을 정리합니다.
-draft: true
 sidebar:
   label: 03. 노드 장애
   order: 3

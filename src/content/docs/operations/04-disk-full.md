@@ -1,7 +1,6 @@
 ---
 title: "디스크가 차면 무슨 일이 생기고 어떻게 푸는가"
 description: 디스크 watermark 85, 90, 95%에서 각각 생기는 일, flood-stage read-only가 걸렸을 때 푸는 순서, 긴급 조치와 재발 방지, disk.used가 disk.indices보다 훨씬 클 때 의심할 것(9.5.0에서 9.5.2 known issue 포함)을 정리합니다.
-draft: true
 sidebar:
   label: 04. 디스크 부족
   order: 4

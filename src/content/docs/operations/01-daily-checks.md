@@ -1,7 +1,6 @@
 ---
 title: "평소에 무엇을 보고 있어야 하는가"
 description: health report API로 클러스터 상태를 한 번에 읽는 법, 공식 문서에 나온 임계값(heap 85%, parent breaker 95%, 디스크 85, 90, 95%, GC 기준)으로 알림을 거는 법, 매일, 매주, 매월 점검표와 모니터링 도구 선택을 정리합니다.
-draft: true
 sidebar:
   label: 01. 평소 점검
   order: 1

@@ -1,7 +1,6 @@
 ---
 title: 안정성 운영
 description: 평소 점검부터 RED와 YELLOW, 노드 장애, 디스크 부족, 느려짐, 비싼 query, 불안정한 클러스터, 복구 설계, 폐쇄망 점검, 장애 첫 30분까지 운영 중 실제로 겪는 문제를 단계별로 정리합니다.
-draft: true
 sidebar:
   label: 개요
   order: 0
@@ -24,12 +23,12 @@ sidebar:
 | 징후 | [02. RED와 YELLOW](02-red-yellow/) | 상태 읽기, unassigned shard 원인 찾기, 사본이 없을 때 |
 | 장애 | [03. 노드 장애](03-node-failure-triage/) | heap, circuit breaker, OOM, OS가 죽인 경우, OS 설정 |
 | 장애 | [04. 디스크 부족](04-disk-full/) | watermark, read-only 해제, 디스크가 이유 없이 늘 때 |
-| 장애 | 05. 느려짐 (예정) | CPU, thread pool, task 적체, 특정 노드 쏠림 |
-| 예방 | 06. 비싼 query (예정) | 위험한 query 유형, 보호 설정, 실행 중인 query 취소 |
-| 장애 | 07. 불안정한 클러스터 (예정) | node-left 반복, master 교체, cluster state가 클 때 |
-| 복구 설계 | 08. 복구 가능성 (예정) | replica, zone, snapshot, rolling restart |
-| 점검 | 09. 폐쇄망 점검 (예정) | 진단 파일 없이 같은 정보를 모으는 방법 |
-| 장애 대응 | 10. 첫 30분 (예정) | 정보 보존, 완화 조치 순서, 지원 요청 |
+| 장애 | [05. 느려짐](05-slow-cluster/) | CPU, thread pool, task 적체, 특정 노드 쏠림 |
+| 예방 | [06. 비싼 query](06-expensive-queries/) | 위험한 query 유형, 보호 설정, 실행 중인 query 취소 |
+| 장애 | [07. 불안정한 클러스터](07-unstable-cluster/) | node-left 반복, master 교체, cluster state가 클 때 |
+| 복구 설계 | [08. 복구 가능성](08-recoverability/) | replica, zone, snapshot, rolling restart |
+| 점검 | [09. 폐쇄망 점검](09-offline-diagnostics/) | 진단 파일 없이 같은 정보를 모으는 방법 |
+| 장애 대응 | [10. 첫 30분](10-incident-runbook/) | 정보 보존, 완화 조치 순서, 지원 요청 |
 
 ## 증상으로 찾기
 
@@ -40,3 +39,14 @@ sidebar:
 | 노드가 갑자기 재시작됨 | [03](03-node-failure-triage/#어떻게-죽었나부터-가른다) |
 | `index has read-only-allow-delete block` | [04](04-disk-full/#read-only-풀기) |
 | `disk.used`가 `disk.indices`보다 훨씬 큼 | [04](04-disk-full/#디스크가-이유-없이-늘-때) |
+| 429 `es_rejected_execution_exception`, 검색이나 적재가 느림 | [05](05-slow-cluster/) |
+| 노드 몇 대만 CPU, 디스크가 높음 | [05](05-slow-cluster/#일부-노드만-느릴-때-쏠림) |
+| 한가한 시간대에만 클라이언트 연결 오류 | [05](05-slow-cluster/#클러스터는-정상인데-클라이언트만-느릴-때) |
+| 특정 사용자의 대시보드, query 때문에 전체가 느림 | [06](06-expensive-queries/) |
+| 로그에 `node-left`가 반복됨 | [07](07-unstable-cluster/#빠진-이유-세-가지) |
+| 503 `master_not_discovered_exception`, master가 자주 바뀜 | [07](07-unstable-cluster/#master가-자주-바뀔-때) |
+| pending tasks에 `put-mapping`이 쌓임 | [07](07-unstable-cluster/#cluster-state가-클-때) |
+| rolling restart가 오래 걸림 | [08](08-recoverability/#rolling-restart) |
+| 진단 파일을 밖으로 낼 수 없음 | [09](09-offline-diagnostics/) |
+| 장애가 났는데 무엇부터 할지 모름 | [10](10-incident-runbook/) |
+| 로그인이 안 됨, API가 401 | [10](10-incident-runbook/#로그인이-안-될-때) |

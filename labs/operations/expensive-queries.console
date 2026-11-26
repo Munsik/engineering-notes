@@ -1,0 +1,35 @@
+# 06. 비싼 query
+# 현재 값 확인
+GET _cluster/settings?include_defaults=true&filter_path=*.search.max_buckets,*.search.allow_expensive_queries,*.search.default_search_timeout,*.search.max_open_scroll_context,*.esql.query.result_truncation_max_size
+
+# 보호 설정(공식 high JVM memory pressure 문서의 예)
+PUT _cluster/settings
+{
+  "persistent": {
+    "search.max_buckets": 20000,
+    "search.allow_expensive_queries": false,
+    "search.default_search_timeout": "1m"
+  }
+}
+
+# 실행 중인 query 찾기와 취소
+GET _tasks?detailed=true&human=true&group_by=parents&actions=indices:data/read/search*,indices:data/read/esql*,indices:data/read/eql*,indices:data/read/sql*,indices:data/read/msearch*,indices:data/read/async_search*
+# POST _tasks/<node_id>:<task_id>/_cancel
+
+# 대안: composite 집계
+GET logs-app-*/_search
+{
+  "size": 0,
+  "query": { "range": { "@timestamp": { "gte": "now-1d" } } },
+  "aggs": {
+    "by_user": {
+      "composite": {
+        "size": 1000,
+        "sources": [ { "user": { "terms": { "field": "user.name" } } } ]
+      }
+    }
+  }
+}
+
+# 대안: PIT + search_after
+POST logs-app-*/_pit?keep_alive=1m

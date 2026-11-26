@@ -100,16 +100,16 @@ Engineering Notes
 
 ### 3. 안정성 운영 ([상세](collections/03-cluster-stability.md))
 
-- [ ] 3-1. 평소에 무엇을 보고 있어야 하는가 `초안`
-- [ ] 3-2. 클러스터가 RED나 YELLOW일 때 무엇부터 보는가 `초안`
-- [ ] 3-3. 노드가 왜 죽었는지 어떻게 좁혀 가는가 `초안`
-- [ ] 3-4. 디스크가 차면 무슨 일이 생기고 어떻게 푸는가 `초안`
-- [ ] 3-5. 클러스터가 느려질 때 어디서 막혔는지 어떻게 찾는가 `기획`
-- [ ] 3-6. 비싼 query로부터 클러스터를 어떻게 보호하는가 `기획`
-- [ ] 3-7. 노드가 클러스터에서 자꾸 빠질 때 `기획`
-- [ ] 3-8. 노드 하나를 잃어도 데이터를 잃지 않으려면 `기획`
-- [ ] 3-9. 진단 파일을 밖으로 낼 수 없을 때 어떻게 점검하는가 `기획`
-- [ ] 3-10. 장애가 났을 때 첫 30분에 무엇을 하는가 `기획`
+- [x] 3-1. 평소에 무엇을 보고 있어야 하는가 `발행` (`operations/01-daily-checks.md`)
+- [x] 3-2. 클러스터가 RED나 YELLOW일 때 무엇부터 보는가 `발행` (`operations/02-red-yellow.md`)
+- [x] 3-3. 노드가 왜 죽었는지 어떻게 좁혀 가는가 `발행` (`operations/03-node-failure-triage.md`)
+- [x] 3-4. 디스크가 차면 무슨 일이 생기고 어떻게 푸는가 `발행` (`operations/04-disk-full.md`)
+- [x] 3-5. 클러스터가 느려질 때 어디서 막혔는지 어떻게 찾는가 `발행` (`operations/05-slow-cluster.md`)
+- [x] 3-6. 비싼 query로부터 클러스터를 어떻게 보호하는가 `발행` (`operations/06-expensive-queries.md`)
+- [x] 3-7. 노드가 클러스터에서 자꾸 빠질 때 `발행` (`operations/07-unstable-cluster.md`)
+- [x] 3-8. 노드 하나를 잃어도 데이터를 잃지 않으려면 `발행` (`operations/08-recoverability.md`)
+- [x] 3-9. 진단 파일을 밖으로 낼 수 없을 때 어떻게 점검하는가 `발행` (`operations/09-offline-diagnostics.md`)
+- [x] 3-10. 장애가 났을 때 첫 30분에 무엇을 하는가 `발행` (`operations/10-incident-runbook.md`)
 
 ### 4. 변화 관리 ([상세](collections/04-change-management.md))
 

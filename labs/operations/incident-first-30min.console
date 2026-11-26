@@ -1,0 +1,18 @@
+# 10. 첫 30분
+# 0에서 5분: 영향 확인
+GET _health_report?verbose=false
+GET _cat/health?v
+GET _cat/nodes?v&h=name,node.role,master,heap.percent,cpu,disk.used_percent,uptime&s=name
+
+# 5에서 10분: 재시작 전에 남길 것
+GET _health_report
+GET _nodes/hot_threads?threads=10
+GET _tasks?detailed=true&human=true&group_by=parents
+GET _cat/thread_pool?v&h=node_name,name,active,queue,rejected
+GET _cluster/pending_tasks
+GET _cluster/allocation/explain
+GET _nodes/stats/jvm,breaker,indexing_pressure?human
+GET _cluster/settings?flat_settings=true
+
+# 끝난 뒤: 바꾼 설정이 남아 있는지
+GET _cluster/settings?flat_settings=true
