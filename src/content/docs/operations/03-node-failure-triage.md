@@ -47,7 +47,7 @@ circuit breaker는 요청이 heap 한도를 넘을 것으로 예상되면 요청
 | parent | `indices.breaker.total.use_real_memory: true`(기본)면 heap의 95%, 아니면 70% |
 | request(aggregation 등 요청 단위 구조) | heap의 60% |
 | fielddata | heap의 40% |
-| in_flight_requests(전송 중 요청 크기) | heap의 100%(parent에 묶임) |
+| inflight_requests(전송 중 요청 크기) | heap의 100%(parent에 묶임) |
 
 근거: [Circuit breaker settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/circuit-breaker-settings).
 
@@ -56,7 +56,9 @@ GET _cat/circuit_breaker?v
 GET _nodes/stats?filter_path=nodes.*.name,nodes.*.breakers.*.tripped,nodes.*.breakers.*.estimated_size,nodes.*.breakers.*.limit_size
 ```
 
-오류 메시지의 `[parent]`, `[request]`, `[fielddata]`가 어떤 breaker인지 알려 줍니다. `[parent]`는 heap 전체가 높다는 뜻이라 특정 요청보다 heap 압박 자체를 봐야 하고, `[request]`는 대개 큰 aggregation입니다(해석).
+9.5.5의 노드 통계에는 이 밖에 `model_inference`, `eql_sequence` breaker도 보입니다(로컬 확인). 오류 메시지의 `[parent]`, `[request]`, `[fielddata]`가 어떤 breaker인지 알려 줍니다. `[parent]`는 heap 전체가 높다는 뜻이라 특정 요청보다 heap 압박 자체를 봐야 하고, `[request]`는 대개 큰 aggregation입니다(해석).
+429는 circuit breaker만 내는 것이 아닙니다. thread pool queue가 차거나 indexing pressure 한도(기본 heap의 10%)를 넘어도 `es_rejected_execution_exception`과 함께 429가 납니다. 오류 이름으로 둘을 구분합니다([Rejected requests](https://www.elastic.co/docs/troubleshoot/elasticsearch/rejected-requests)).
+
 breaker 한도를 올리는 것은 해결이 아닙니다. 노드를 지키는 장치를 끄는 것이라 OOM으로 이어질 수 있습니다(해석).
 
 ## heap 압박의 원인 좁히기
@@ -98,8 +100,8 @@ GC가 계속 돌아도 heap이 줄지 않는 상태는 저절로 회복되지 �
 `vm.max_map_count`는 패키지 업그레이드 뒤에 바뀌어 있을 수 있습니다.
 
 - 9.5.5 RPM, Debian 패키지는 `/usr/lib/sysctl.d/elasticsearch.conf`에 `vm.max_map_count=262144`를 넣고, 설치와 업그레이드 때 `systemd-sysctl`을 다시 시작합니다(Elasticsearch 9.5.5 소스 `distribution/packages`). 9.6 개발 브랜치는 1048576입니다.
-- systemd의 sysctl.d는 디렉터리와 상관없이 파일 이름 순서로 적용하므로, `/etc/sysctl.d/99-custom.conf`에 넣은 값은 이름 순서상 뒤인 `elasticsearch.conf`에 덮어씌워질 수 있습니다. `/etc/sysctl.d/elasticsearch.conf`처럼 같은 이름으로 두면 패키지 파일을 대체합니다(systemd `sysctl.d(5)`, 해석).
-- 공식 문서는 `/etc/sysctl.conf`에 두면 패키지 기본값보다 우선한다고 적고 있습니다. 배포판마다 `/etc/sysctl.conf`를 읽는 방식이 달라, 업그레이드와 재부팅 뒤 실제 값을 확인하는 것이 확실합니다(확인 필요).
+- systemd의 sysctl.d는 디렉터리와 상관없이 파일 이름의 사전 순서로 적용하고, 같은 설정이 여러 파일에 있으면 이름이 가장 뒤인 파일이 이깁니다. `/etc/sysctl.d/99-custom.conf`의 값은 이름 순서상 뒤인 `elasticsearch.conf`(`9`보다 `e`가 뒤)에 덮입니다. `/etc/sysctl.d/elasticsearch.conf`처럼 같은 이름으로 두면 `/usr/lib/sysctl.d`의 패키지 파일을 대체합니다([systemd sysctl.d(5)](https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html)).
+- 공식 문서는 `/etc/sysctl.conf`에 두면 패키지 기본값보다 우선한다고 적고 있습니다. 다만 `/etc/sysctl.conf`를 `/etc/sysctl.d/99-sysctl.conf`로 연결해 읽는 배포판에서는 위 순서 규칙 때문에 패키지 파일이 이길 수 있습니다. 업그레이드와 재부팅 뒤 `sysctl vm.max_map_count`로 실제 값을 확인합니다(확인 필요: 배포판별 동작).
 
 THP(transparent huge pages), glibc malloc arena 같은 튜닝은 공식 important system configuration에 없습니다. 근거 없이 바꾸지 않습니다.
 

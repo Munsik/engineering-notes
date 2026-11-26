@@ -18,12 +18,15 @@ sidebar:
 
 ## 한 번에 보기: health report
 
-`GET _health_report`는 클러스터 상태를 indicator별로 나눠 green, yellow, red와 원인, 영향, 조치 방법을 함께 돌려줍니다. `_cluster/health`가 shard 할당 상태만 알려 주는 것과 달리, 디스크, shard 용량, master 안정성, ILM, SLM, repository 같은 항목을 함께 봅니다([Health report API](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-health-report)).
+`GET _health_report`는 클러스터 상태를 indicator별로 나눠 green, yellow, red와 원인, 영향, 조치 방법을 함께 돌려줍니다. `_cluster/health`가 shard 할당 상태만 알려 주는 것과 달리, 디스크, shard 용량, master 안정성, ILM, SLM, repository 같은 항목을 함께 봅니다([Health report API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-health-report)).
 
 ```console
 GET _health_report?verbose=false
-GET _health_report/disk,shards_capacity
+GET _health_report/disk
+GET _health_report/shards_capacity
 ```
+
+indicator 이름은 경로에 하나씩 넣습니다. `disk,shards_capacity`처럼 여러 개를 쉼표로 이으면 404가 납니다(로컬 9.5.5 확인).
 
 - `verbose=false`는 원인 분석 없이 상태만 빨리 돌려줍니다. 자주 부르는 모니터링 스크립트에 씁니다.
 - 상태가 green이 아닌 indicator만 상세 조회해 `diagnosis`의 조치 방법을 읽습니다.
@@ -38,7 +41,7 @@ GET _health_report/disk,shards_capacity
 | parent circuit breaker | 실제 메모리 기준 사용 시 heap의 95%에서 요청 거부(429) | [Circuit breaker settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/circuit-breaker-settings) |
 | Young GC | 완료 50ms 미만, 대략 10초에 한 번 | High JVM memory pressure |
 | Old GC | 완료 1초 미만, 10분에 한 번 이하 | 같은 문서 |
-| 디스크 | 85% low, 90% high, 95% flood-stage | [Watermark errors](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-watermark-errors) |
+| 디스크 | 85% low, 90% high, 95% flood-stage. 큰 디스크는 남은 공간 상한(200GB, 150GB, 100GB)이 먼저 적용([04](../04-disk-full/#큰-디스크에서는-남은-공간이-기준이-된다)) | [Watermark errors](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-watermark-errors) |
 | shard 크기 | 10GB에서 50GB, 2억 건 미만 | [Size your shards](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/size-shards) |
 | 노드당 shard | `cluster.max_shards_per_node` 기본 1,000(frozen 3,000) | [Miscellaneous cluster settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/miscellaneous-cluster-settings) |
 | master heap | heap 1GB당 index 3,000개 미만 | Size your shards |
@@ -90,11 +93,11 @@ GET */_ilm/explain?only_errors=true
 
 | 도구 | 특징 |
 | --- | --- |
-| AutoOps | 클러스터 지표를 분석해 문제와 권장 조치를 보여 줌. ECH는 기본 제공, self-managed, ECE, ECK는 Cloud Connect로 연결([AutoOps for self-managed clusters](https://www.elastic.co/docs/deploy-manage/monitor/autoops/cc-autoops-as-cloud-connected)) |
+| AutoOps | 클러스터 지표를 분석해 문제와 권장 조치를 보여 줌. ECH와 Serverless는 지원 region에서 자동으로 켜짐. self-managed, ECE, ECK는 Cloud Connect로 연결([AutoOps for self-managed clusters](https://www.elastic.co/docs/deploy-manage/monitor/autoops/cc-autoops-as-cloud-connected)) |
 | Stack Monitoring | 별도 monitoring 클러스터로 지표를 모아 Kibana에서 봄. 알림 규칙 기본 제공 |
 | health report + 자체 스크립트 | 외부 연결이 없는 환경에서 최소한의 상태 점검 |
 
-운영 클러스터의 지표는 운영 클러스터가 아닌 곳에 모읍니다. 운영 클러스터가 죽으면 그 안의 모니터링 데이터도 볼 수 없기 때문입니다(해석). 공식 문서도 production에서는 별도 monitoring 클러스터를 권합니다([Monitoring overview](https://www.elastic.co/docs/deploy-manage/monitor)).
+운영 클러스터의 지표는 운영 클러스터가 아닌 곳에 모읍니다. 운영 클러스터가 죽으면 그 안의 모니터링 데이터도 볼 수 없기 때문입니다(해석). 공식 Stack Monitoring 문서도 운영 클러스터와 monitoring 클러스터를 분리한 구성을 전형적인 구조로 제시합니다([Stack Monitoring](https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring)).
 
 ## 판단 기준
 

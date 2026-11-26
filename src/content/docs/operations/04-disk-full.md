@@ -16,13 +16,19 @@ sidebar:
 
 ## watermark 단계
 
-| 단계 | 기본값 | 동작 |
+| 단계 | 기본값(퍼센트 / 남은 공간 상한) | 동작 |
 | --- | --- | --- |
-| low | 85% | 그 노드에 replica를 새로 할당하지 않음(새 index의 primary는 예외) |
-| high | 90% | 그 노드에서 shard를 다른 노드로 옮김 |
-| flood-stage | 95% | 그 노드에 shard가 있는 모든 index에 쓰기 차단(read-only-allow-delete) |
+| low | 85% / 200GB | 그 노드에 replica를 새로 할당하지 않음(새 index의 primary는 예외) |
+| high | 90% / 150GB | 그 노드에서 shard를 다른 노드로 옮김 |
+| flood-stage | 95% / 100GB | 그 노드에 shard가 있는 모든 index에 쓰기 차단(read-only-allow-delete) |
 
 근거: [Watermark errors](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-watermark-errors). 같은 문서에 따르면 쓰기 차단은 디스크 사용률이 high watermark 아래로 내려가면 자동으로 풀립니다. Elastic Cloud 콘솔의 75% 빨간 표시는 시각 표시일 뿐 Elasticsearch 동작과는 관계없습니다.
+
+### 큰 디스크에서는 남은 공간이 기준이 된다
+
+퍼센트 watermark에는 남은 공간 상한(max headroom)이 함께 있습니다. 기본값은 low 200GB, high 150GB, flood-stage 100GB이고, dedicated frozen 노드의 flood-stage는 20GB입니다. 디스크가 크면 퍼센트보다 이 상한에 먼저 닿습니다. 예를 들어 10TB 디스크의 flood-stage는 95%(남은 공간 500GB)가 아니라 남은 공간 100GB, 즉 약 99%에서 걸립니다([Cluster-level shard allocation and routing settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/cluster-level-shard-allocation-routing-settings#disk-based-shard-allocation)).
+
+같은 문서에 따르면 max headroom 기본값은 해당 watermark를 직접 설정하지 않았을 때만 적용됩니다. watermark를 퍼센트로 직접 바꾸면 headroom 기본값이 사라져서, 큰 디스크에서는 오히려 더 일찍 걸립니다.
 
 flood-stage는 그 노드에 shard가 하나라도 있는 index 전체를 막습니다. 노드 하나의 디스크가 차면 여러 index의 쓰기가 한꺼번에 멈추는 이유입니다(해석).
 
@@ -66,7 +72,9 @@ PUT _cluster/settings
 }
 ```
 
-watermark를 올린 뒤에는 공간을 확보하고 `null`로 되돌립니다. 잊고 두면 다음에는 디스크가 완전히 찰 때까지 아무 경고도 없습니다(해석).
+watermark를 올린 뒤에는 공간을 확보하고 `null`로 되돌립니다. 잊고 두면 다음에는 디스크가 완전히 찰 때까지 아무 경고도 없습니다(해석). 위 예시처럼 퍼센트를 직접 넣으면 max headroom 기본값도 꺼지므로, 디스크가 큰 노드에서는 오히려 차단이 더 빨리 걸릴 수 있습니다. 큰 디스크라면 `cluster.routing.allocation.disk.watermark.flood_stage.max_headroom` 같은 headroom 값을 조정하는 편이 맞습니다.
+
+`cluster.routing.allocation.disk.threshold_enabled: false`는 disk decider를 끄고 기존 read-only 차단까지 지웁니다(같은 문서). 디스크 보호 장치 전체를 끄는 것이라 긴급 조치로도 권하지 않습니다(해석).
 master 전용 노드나 기타 노드의 디스크가 차는 경우는 [Fix master node out of disk](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-master-node-out-of-disk), [Fix other node out of disk](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-other-node-out-of-disk)를 따릅니다.
 
 ## 디스크가 이유 없이 늘 때
