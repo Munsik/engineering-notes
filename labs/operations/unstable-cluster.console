@@ -1,0 +1,15 @@
+# 07. 불안정한 클러스터
+GET _cat/master?v
+GET _cat/nodes?v&h=name,node.role,master,uptime,heap.percent,cpu,load_1m&s=name
+GET _health_report/master_is_stable
+
+# cluster state 크기
+GET _cluster/stats?filter_path=indices.count,indices.shards.total,indices.mappings.total_field_count,indices.mappings.total_deduplicated_field_count
+GET _cat/pending_tasks?v
+GET logs-app-*/_field_caps?fields=*&filter_path=fields.*.*.type
+
+# discovery, fault detection 설정 확인(바꾸지 말 것)
+GET _cluster/settings?include_defaults=true&filter_path=*.cluster.fault_detection,*.cluster.follower_lag,*.cluster.publish,*.transport.tcp,*.network.tcp
+
+# OS(쉘): sysctl net.ipv4.tcp_retries2 net.ipv4.tcp_keepalive_time
+# 로그(쉘): grep -E "node-left|node-join|elected-as-master|master node changed|warn threshold" <cluster>.log

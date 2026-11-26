@@ -1,0 +1,9 @@
+GET _cat/nodes?v&h=name,node.role,heap.percent,ram.percent,cpu,uptime&s=heap.percent:desc
+GET _cat/circuit_breaker?v
+GET _nodes/stats?filter_path=nodes.*.name,nodes.*.breakers.*.tripped,nodes.*.breakers.*.estimated_size,nodes.*.breakers.*.limit_size
+GET _nodes/stats/jvm?filter_path=nodes.*.name,nodes.*.jvm.mem.heap_used_percent,nodes.*.jvm.gc.collectors
+GET _nodes/hot_threads?threads=5
+GET _tasks?detailed=true&actions=*search*
+GET _nodes?filter_path=nodes.*.name,nodes.*.process.mlockall
+GET _nodes/stats/process?filter_path=nodes.*.name,nodes.*.process.max_file_descriptors,nodes.*.process.open_file_descriptors
+# OS(쉘): dmesg -T | grep -i -E 'killed process|out of memory' ; sysctl vm.max_map_count net.ipv4.tcp_retries2 ; swapon --show

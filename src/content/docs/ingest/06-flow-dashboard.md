@@ -74,7 +74,7 @@ Lens의 차트 종류에는 흐름(sankey) 차트가 없습니다(Kibana 문서�
 
 ### ES|QL 예시
 
-아래 쿼리는 패널 정의의 출발점입니다. 필드 이름은 integrations 패키지 정의로 확인했고, Logstash 쿼리를 뺀 나머지는 lab(Stack 9.5.5, Agent 9.5.3 데이터)에서 실행해 결과를 확인했습니다. Logstash 쿼리는 lab에 Logstash가 없어 패키지 필드 정의로만 확인했습니다.
+아래 쿼리는 패널 정의의 출발점입니다. 필드 이름은 integrations 패키지 정의로 확인했고, 모든 쿼리를 lab(Stack 9.5.5, Agent 9.5.3과 9.5.4, Logstash 두 대의 compose 구성)에서 실행해 결과를 확인했습니다([`labs/ingest/compose/`](https://github.com/Munsik/engineering-notes/tree/main/labs/ingest/compose)).
 
 쿼리를 쓰기 전에 알아 둘 점이 두 가지 있습니다(lab 확인).
 

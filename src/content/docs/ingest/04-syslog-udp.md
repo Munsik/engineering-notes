@@ -111,7 +111,7 @@ max_message_size: 64KiB
 
 ### A. rsyslog relay
 
-rsyslog 공식 tutorial의 신뢰성 있는 전달 구성은 action에 LinkedList queue와 `queue.filename`(disk assistance), `queue.saveOnShutdown`, `action.resumeRetryCount="-1"`을 주고 TCP로 보내는 것입니다([rsyslog: Reliable forwarding](https://www.rsyslog.com/doc/tutorials/reliable_forwarding.html)).
+rsyslog 공식 tutorial의 신뢰성 있는 전달 구성은 action에 LinkedList queue와 `queue.filename`(disk assistance), `queue.saveOnShutdown`, `action.resumeRetryCount="-1"`을 주고 TCP로 보내는 것입니다([rsyslog: Reliable forwarding](https://docs.rsyslog.com/doc/tutorials/reliable_forwarding.html)).
 
 ```text
 # /etc/rsyslog.d/10-relay.conf
@@ -128,7 +128,8 @@ action(type="omfwd" target="10.0.0.100" port="6514" protocol="tcp"
 ```
 
 - 뒤쪽(Agent, Logstash)이 멈추면 relay가 메모리와 디스크에 쌓아 두었다가 다시 보냅니다. 업그레이드가 잦은 수집 계층을 장비에서 떼어 놓는 효과가 있습니다.
-- 같은 tutorial은 disk-assisted queue가 프로세스 강제 종료, OOM, 시스템 장애, 전원 장애 뒤에는 순수 disk queue와 같은 보장을 하지 않는다고 적고 있습니다.
+- 같은 tutorial은 disk-assisted queue가 프로세스 강제 종료, OOM, 시스템 장애, 전원 장애 뒤에는 순수 disk queue와 같은 보장을 하지 않고, `queue.saveOnShutdown`은 정상 종료에만 적용된다고 적고 있습니다.
+- 같은 tutorial은 plain TCP syslog도 완전히 신뢰할 수 있는 전송은 아니며, 완전한 신뢰성이 필요하면 RELP를 쓰라고 안내합니다. 받는 쪽이 RELP를 지원하지 않으면 TCP가 현실적인 선택입니다(해석).
 - relay는 설정을 단순하게 두고 거의 바꾸지 않습니다. 파싱과 변환은 뒤 계층에서 합니다(해석).
 - `target`은 03의 L4 부하 분산 VIP로 두면 뒤쪽도 이중화됩니다.
 
@@ -216,5 +217,5 @@ stream {
 - [Filebeat UDP input](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-input-udp)
 - [Filebeat syslog processor](https://www.elastic.co/docs/reference/beats/filebeat/syslog)
 - [Deploying and scaling Logstash: TCP, UDP, and HTTP protocols, Centralized syslog servers](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)
-- [rsyslog: Reliable forwarding of syslog messages](https://www.rsyslog.com/doc/tutorials/reliable_forwarding.html)
+- [rsyslog: Reliable forwarding of syslog messages](https://docs.rsyslog.com/doc/tutorials/reliable_forwarding.html)
 - [nginx: TCP and UDP load balancing](https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/)

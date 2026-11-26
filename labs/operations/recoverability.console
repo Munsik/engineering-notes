@@ -1,0 +1,33 @@
+# 08. 복구 가능성
+# replica 0 index 찾기
+GET _cat/indices?v&h=index,pri,rep,store.size&s=rep,index&expand_wildcards=open
+
+# 노드 속성과 awareness
+GET _cat/nodeattrs?v
+GET _cluster/settings?include_defaults=true&filter_path=*.cluster.routing.allocation.awareness
+
+# snapshot
+GET _slm/policy
+GET _slm/stats
+GET _health_report/slm
+POST _snapshot/backup-repo/_verify
+GET _snapshot/backup-repo/_all?verbose=false
+
+# rolling restart
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.enable": "primaries" } }
+POST _flush
+# (선택) POST _ml/set_upgrade_mode?enabled=true
+# 노드 하나 재시작 후
+GET _cat/nodes?v
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.enable": null } }
+GET _cat/health?v
+GET _cat/recovery?v&active_only=true
+
+# 노드 영구 제거
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.exclude._name": "data-4" } }
+GET _cat/allocation/data-4?v
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.exclude._name": null } }

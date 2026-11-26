@@ -131,6 +131,7 @@ at-least-once 구성에서는 중복이 생길 수 있습니다. Agent가 ack를
 막는 방법은 이벤트마다 같은 `_id`를 정해 주는 것입니다. 같은 `_id`로 다시 들어오면 덮어쓰거나 거부되어 문서가 하나만 남습니다.
 
 - Beats와 Agent는 `fingerprint` processor 결과를 `@metadata._id`에 넣으면 그 값을 문서 ID로 씁니다([Deduplicate data](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-deduplication)).
+- Beats와 Agent의 Elasticsearch output은 같은 ID로 create하다 409를 받으면 다시 보내지 않고 `duplicates`로 셉니다(beats 소스 `libbeat/outputs/elasticsearch/client.go`). 이 값은 Agent 모니터링의 `beat.stats.libbeat.output.events.duplicates`로 보이고, 기본 `[Elastic Agent]` 대시보드에도 패널이 있습니다(elastic/integrations `elastic_agent` 패키지). 중복이 얼마나 막혔는지 세는 데 씁니다.
 - Logstash는 `fingerprint` filter로 만든 값을 Elasticsearch output의 `document_id`로 넘깁니다. data stream은 create만 허용하므로 같은 ID가 다시 오면 409가 나고, Logstash Elasticsearch output은 409를 경고 로그만 남기고 버립니다(logstash-output-elasticsearch 문서의 Retry policy). 중복 제거 목적이라면 이 동작이 맞습니다.
 
 ```yaml
