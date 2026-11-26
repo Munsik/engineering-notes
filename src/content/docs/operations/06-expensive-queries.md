@@ -36,6 +36,8 @@ Elasticsearch가 "expensive"로 분류해 한꺼번에 막을 수 있는 query�
 
 terms 집계와 깊은 페이지는 이 목록에 없습니다. 이 둘은 아래의 개수 한도로 막습니다.
 
+색인하지 않고 doc values만 있는 keyword 필드 검색도 expensive query입니다. `logsdb_columnar` index mode는 text가 아닌 필드를 기본으로 색인하지 않으므로, 이 mode를 쓰는 클러스터에서 `search.allow_expensive_queries: false`를 켜면 keyword term 검색까지 막힙니다([데이터 설계 03](../../data/03-storage-footprint/#저장-공간을-차지하는-네-가지-구조), 해석).
+
 ## 보호 설정
 
 | 설정 | 기본값 | 막는 것 | 동적 변경 |

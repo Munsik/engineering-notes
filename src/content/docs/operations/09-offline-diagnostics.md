@@ -34,7 +34,7 @@ Elastic의 [Support Diagnostic](https://github.com/elastic/support-diagnostics) 
 
 ## 반출할 수 있다면: 가리고 보낸다
 
-도구에는 결과를 가리는 `scrub` 기능이 따로 있습니다. 설정 없이 돌려도 노드 ID, 노드 이름, IPv4, IPv6, MAC 주소, 클러스터 이름을 임의의 값으로 바꿉니다. 같은 값은 모든 파일에서 같은 값으로 바뀌므로 노드를 구분해서 읽을 수 있습니다. 다만 실행할 때마다 바뀌는 값은 달라집니다([support-diagnostics README: File Sanitization Utility](https://github.com/elastic/support-diagnostics#file-sanitization-utility)).
+도구에는 결과를 가리는 `scrub` 기능이 따로 있습니다. 설정 없이 돌려도 노드 ID, 노드 이름, IPv4, IPv6, MAC 주소를 임의의 값으로 바꿉니다. 클러스터 이름은 기본 대상이 아니므로 가리려면 token으로 지정합니다. 같은 값은 모든 파일에서 같은 값으로 바뀌므로 노드를 구분해서 읽을 수 있습니다. 다만 실행할 때마다 바뀌는 값은 달라집니다([support-diagnostics README: File Sanitization Utility](https://github.com/elastic/support-diagnostics#file-sanitization-utility)).
 
 ```yaml
 # config/scrub.yml(도구 설치 디렉터리 안의 config 아래에 있어야 함)
@@ -83,6 +83,7 @@ ES_URL=https://localhost:9200 ES_API_KEY=<key> ./offline-collect.sh
 ```
 
 - 상태가 나쁠 때 한 번만 모으면 원인을 놓칩니다. 증상이 있는 동안 5분에서 10분 간격으로 두세 번 모으면 누적값(rejection, GC 횟수)의 증가분과 계속 같은 hot threads를 볼 수 있습니다(해석).
+- `allocation_explain`은 할당되지 않은 shard가 없으면 400을 돌려줍니다. 정상 상태에서는 이 파일이 오류여도 문제가 아닙니다(로컬 9.5.5 확인).
 - API가 401을 돌려주면 `.security` index를 못 쓰는 상태일 수 있습니다. 노드마다 file realm 사용자를 만들어 그 노드에 직접 요청합니다([10](../10-incident-runbook/#로그인이-안-될-때)). 503 `master_not_discovered_exception`이면 master가 없는 상태라 대부분의 API가 답하지 않습니다. 이때는 로그가 유일한 단서입니다([07](../07-unstable-cluster/#master가-자주-바뀔-때)).
 - 로그는 API로 모을 수 없습니다. 노드마다 `<cluster>.log`(또는 `_server.json`), `gc.log`를 장애 시간 앞뒤로 복사합니다. 불안정한 클러스터는 elected master의 로그가 가장 중요합니다.
 

@@ -86,6 +86,7 @@ GET */_ilm/explain?only_errors=true
 
 - 디스크 증가 추세로 언제 85%에 닿을지 계산합니다.
 - 사용 중인 버전의 known issue와 보안 공지를 확인합니다([Elasticsearch known issues](https://www.elastic.co/docs/release-notes/elasticsearch/known-issues)). 예를 들어 9.5.0에서 9.5.2에는 디스크와 recovery에 영향을 주는 known issue가 있어 9.5.3 이상으로 올리라고 권합니다([04](../04-disk-full/#디스크가-이유-없이-늘-때)).
+- 인증서와 라이선스 만료일을 확인합니다. TLS 인증서가 만료되면 노드 사이 연결과 클라이언트 연결이 한꺼번에 끊깁니다. `GET _ssl/certificates`는 노드가 읽은 인증서마다 만료 시각(`expiry`)을 돌려주고([SSL certificate API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-ssl-certificates)), `GET _license`는 라이선스 만료 시각을 돌려줍니다. 만료 한두 달 전에 교체 일정을 잡습니다(해석).
 - 복원 연습을 합니다. snapshot이 있어도 복원해 본 적이 없으면 장애 때 시간을 잃습니다(해석).
 
 ## 모니터링 도구
