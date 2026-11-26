@@ -30,6 +30,7 @@ APIS=(
   "cluster_settings_defaults|/_cluster/settings?include_defaults=true&flat_settings=true"
   "cluster_stats|/_cluster/stats?human"
   "cluster_pending_tasks|/_cluster/pending_tasks"
+  # 할당되지 않은 shard가 없으면 400이 정상
   "allocation_explain|/_cluster/allocation/explain"
   "nodes|/_nodes?human"
   "nodes_stats|/_nodes/stats?human"
