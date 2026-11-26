@@ -1,0 +1,11 @@
+# 매일
+GET _health_report?verbose=false
+GET _cat/nodes?v&h=name,node.role,heap.percent,ram.percent,cpu,load_1m,disk.used_percent,uptime&s=name
+GET _cat/thread_pool/write,search?v&h=node_name,name,active,queue,rejected&s=node_name
+GET _cat/allocation?v&s=disk.percent:desc
+
+# 매주
+GET _cluster/stats?filter_path=indices.count,indices.shards.total,indices.mappings.total_field_count,nodes.count
+GET _cat/shards?v&h=index,shard,prirep,store,docs&s=store:desc&bytes=gb
+GET _slm/stats
+GET */_ilm/explain?only_errors=true

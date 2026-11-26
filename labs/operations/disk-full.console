@@ -1,0 +1,8 @@
+GET _cat/allocation?v&s=disk.percent:desc
+GET _health_report/disk
+GET _cat/indices?v&h=index,pri,rep,store.size,creation.date.string&s=store.size:desc&bytes=gb
+GET _stats/translog?level=shards&filter_path=indices.*.shards.*.translog.uncommitted_size_in_bytes
+GET _cat/recovery?v&active_only=true
+# 임시 조치 후 반드시 되돌림
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.disk.watermark.high": null, "cluster.routing.allocation.disk.watermark.flood_stage": null } }

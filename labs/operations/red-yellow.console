@@ -1,0 +1,6 @@
+GET _health_report/shards_availability
+GET _cat/shards?v&h=index,shard,prirep,state,node,unassigned.reason&s=state
+GET _cluster/allocation/explain?filter_path=index,shard,primary,current_state,unassigned_info,can_allocate,allocate_explanation,node_allocation_decisions.node_name,node_allocation_decisions.deciders.*
+GET _cluster/settings?filter_path=**.routing.allocation*
+# 원인을 고친 뒤 재시도 초과 shard 다시 할당
+POST _cluster/reroute?retry_failed=true
