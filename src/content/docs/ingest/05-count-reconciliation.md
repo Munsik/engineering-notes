@@ -164,6 +164,7 @@ output {
 
 - `_id`를 직접 정하면 Elasticsearch가 같은 ID가 이미 있는지 확인해야 해서 indexing이 느려집니다. 공식 문서도 가능하면 자동 생성 ID를 쓰라고 권합니다([Tune for indexing speed](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/indexing-speed)).
 - fingerprint 대상 필드가 같으면 정당한 다른 이벤트도 하나로 합쳐집니다. 같은 초에 같은 메시지가 여러 번 찍히는 로그는 원천의 순번, 파일 offset 같은 구분 값을 대상에 넣습니다.
+- metrics(TSDS) data stream은 사용자가 정한 `_id`를 받지 않습니다. 대신 dimension과 `@timestamp`가 같은 문서를 409로 거부합니다([데이터 설계 07](../../data/07-time-series/#중복과-문서-id)).
 - 중복 검사는 같은 backing index 안에서만 됩니다. data stream은 새 문서를 write index에만 넣기 때문입니다([Data streams](https://www.elastic.co/docs/manage-data/data-store/data-streams)). lab에서 같은 `_id`로 `_create`를 두 번 보내면 두 번째는 409였지만, 그 사이에 rollover를 하면 두 번째도 성공해 backing index 두 곳에 같은 `_id` 문서가 하나씩 남았습니다. 재전송이 rollover 직후에 겹치면 중복이 남을 수 있습니다.
 
 중복 비용이 크면 막지 않고 세기만 하는 선택지도 있습니다. 위의 순번 쿼리나 fingerprint 필드를 따로 저장해 `STATS COUNT(*) BY fp | WHERE count > 1`로 셉니다.
@@ -174,7 +175,7 @@ output {
 | --- | --- |
 | failure store로 간 문서 | `FROM <data stream>::failures \| STATS COUNT(*) BY document.index, error.type` |
 | 필드 일부가 버려진 문서 | `_ignored`가 있는 문서 수. Data Set Quality(beta) 페이지의 degraded document |
-| Logstash DLQ | DLQ 디렉터리 크기와 이벤트 수. DLQ input으로 다시 읽어 셈 |
+| Logstash DLQ | DLQ 디렉터리 크기와 이벤트 수. DLQ input으로 다시 읽어 셈. 가득 찬 뒤 버려진 건수는 남지 않음 |
 | 수집기에서 drop | Agent `beat.stats.libbeat.pipeline.events.dropped`, Logstash filter 단계의 차이(`in` - `out`) |
 | Elasticsearch가 거부해 Agent가 버린 문서 | Agent `beat.stats.libbeat.output.events.dropped`. failure store가 없는 data stream의 mapping 충돌이 여기로 옴([02](../02-where-to-parse/#실패한-문서는-어디로-가나)) |
 
@@ -188,6 +189,66 @@ FROM logs-*::failures
 ```
 
 failure store 문서에는 `data_stream.dataset`이 없어서, 실패한 data stream은 `document.index`로 묶습니다(lab 9.5.5 확인). 실패가 한 번도 없었던 환경에서는 `::failures` 대상이 비어 있어 이 쿼리가 `Unknown column` 오류를 냅니다. 알림 rule로 쓸 때는 이 점을 감안합니다.
+
+## Logstash DLQ를 다시 넣기
+
+DLQ는 실패한 이벤트를 잃지 않게 붙잡아 둘 뿐, Logstash가 알아서 다시 보내지 않습니다. 원인을 고친 뒤 `dead_letter_queue` input으로 읽어 다시 넣어야 합니다. 이때 생기는 문제는 두 가지입니다. DLQ가 이미 차서 일부가 버려졌을 수 있고, 다시 넣는 과정에서 중복이 생길 수 있습니다.
+
+DLQ 설정의 기본값입니다([Dead letter queues](https://www.elastic.co/docs/reference/logstash/dead-letter-queues)).
+
+| 설정 | 기본값 | 의미 |
+| --- | --- | --- |
+| `dead_letter_queue.enable` | `false` | 켜야 쌓임 |
+| `dead_letter_queue.max_bytes` | 1024mb | pipeline마다 최대 크기 |
+| `dead_letter_queue.storage_policy` | `drop_newer` | 가득 차면 새로 거부된 이벤트를 버림. `drop_older`는 오래된 것부터 버림 |
+| `dead_letter_queue.retain.age` | 없음 | 지정한 시간보다 오래된 이벤트를 지움 |
+| input의 `clean_consumed` | `false` | `true`면 다 읽은 segment를 지움 |
+
+mapping 오류가 며칠 이어지면 1024mb는 금방 찹니다. 그 뒤의 거부분은 DLQ에도 남지 않습니다. 매일 DLQ 크기를 보고, 크기가 한도에 가까우면 원인부터 고칩니다. 한도를 키우려면 디스크도 같이 잡습니다.
+
+다시 넣는 pipeline은 원래 pipeline과 따로 둡니다. 아래 설정은 공식 문서의 input 옵션과 [중복 찾기와 막기](#중복-찾기와-막기)의 방법을 조합한 것이고, 실행해 보지는 않았습니다(문서 기준).
+
+```ruby
+input {
+  dead_letter_queue {
+    path           => "/var/lib/logstash/dead_letter_queue"
+    pipeline_id    => "main"
+    commit_offsets => true
+    clean_consumed => false
+    sincedb_path   => "/var/lib/logstash/dlq-replay-main.sincedb"
+  }
+}
+filter {
+  # 이번에 고친 오류만 다시 넣는다
+  if [@metadata][dead_letter_queue][reason] !~ /cannot be changed from type/ {
+    drop { }
+  }
+  fingerprint {
+    source              => ["message", "[host][name]", "@timestamp"]
+    concatenate_sources => true
+    method              => "SHA256"
+    target              => "[@metadata][replay_id]"
+  }
+}
+output {
+  elasticsearch {
+    hosts       => ["https://es01:9200"]
+    api_key     => "${ES_API_KEY}"
+    data_stream => true
+    document_id => "%{[@metadata][replay_id]}"
+  }
+}
+```
+
+지킬 것입니다.
+
+- **`sincedb_path`를 따로 둡니다.** 다른 DLQ 소비 pipeline과 읽은 위치가 섞이지 않습니다.
+- **다 넣고 확인할 때까지 `clean_consumed => false`로 둡니다.** 다시 넣다 실패해도 DLQ가 남아 있어야 다시 시도할 수 있습니다. 다시 넣은 이벤트가 또 실패하면 DLQ에 다시 들어가지 않고 로그만 남습니다.
+- **fingerprint를 문서 ID로 씁니다.** Logstash가 도중에 다시 시작하면 처음부터 다시 읽을 수 있습니다. 같은 ID는 409로 막힙니다.
+- **다시 넣는 동안 rollover하지 않습니다.** 같은 `_id`를 막는 것은 같은 backing index 안에서만 됩니다. 위에서 본 것처럼 rollover를 넘으면 중복이 남습니다.
+- **metrics(TSDS) data stream에는 이 방법을 쓸 수 없습니다.** TSDS는 문서 ID를 dimension과 `@timestamp`로 직접 만들고 사용자가 정한 `_id`를 거부합니다. 시각이 쓰기 가능한 backing index의 범위를 벗어난 문서도 거부합니다([데이터 설계 07](../../data/07-time-series/)).
+
+failure store에 쌓인 문서를 되살리는 방법은 [02](../02-where-to-parse/#실패한-문서-되살리기)에 있습니다.
 
 ## 자동 대조와 알림
 

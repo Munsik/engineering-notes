@@ -273,6 +273,7 @@ flowchart TD
 | 이미 `best_compression`을 쓰는 로그 | logsdb 전환 효과는 이 실험 기준 45% 안팎. host cardinality가 높으면 더 작다 |
 | 필드가 많은 보안 이벤트, 감사 로그 | `_source` 비중이 커서 logsdb 효과가 크다. 이 실험에서 73% |
 | 긴 stack trace가 많은 애플리케이션 로그 | standard에 synthetic `_source`만 켜는 조합은 피한다. 원문 보관 필드가 LZ4로 저장돼 `best_compression`보다 덜 줄었다 |
+| 운영 중인 data stream을 logsdb로 전환 | 전환 전에 노드 CPU 여유와 write thread pool `rejected`를 확인한다. 공식 문서는 indexing 비용이 10%에서 20% 늘 수 있다고 안내하고, 사내 사례에서도 이미 CPU 여유가 없던 클러스터는 전환 뒤 write rejection이 늘었다. 일부 data stream부터 전환하고 rejection을 지켜본다 |
 | 크기가 기대만큼 줄지 않을 때 | `_disk_usage`로 필드별 크기를 보고, 고 cardinality ID 필드가 색인과 doc values를 모두 갖고 있는지 확인한다 |
 | 우리 데이터의 절감률을 미리 보고 싶을 때 | 하루치 정도를 template 기반 data stream 두 개에 넣고 force merge 뒤 `store.size`와 `_disk_usage`를 비교한다. 측정 스크립트는 `labs/data/storage-footprint/run.py` |
 

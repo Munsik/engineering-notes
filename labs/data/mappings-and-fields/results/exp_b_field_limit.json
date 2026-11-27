@@ -1,0 +1,42 @@
+{
+  "standard": {
+    "status": 400,
+    "error": "[1:9546] failed to parse: Limit of total fields [1000] has been exceeded while adding new fields [1002]"
+  },
+  "logsdb": {
+    "status": 201,
+    "attr_keys_sent": 1200,
+    "attr_keys_mapped": 498,
+    "exists_query_on_unmapped_key": 0,
+    "_ignored_count": 702,
+    "_ignored_sample": [
+      "attr.k0498",
+      "attr.k0499",
+      "attr.k0500"
+    ],
+    "total_fields_settings": {
+      "lab-limit-logsdb": {
+        "defaults": {
+          "index": {
+            "mapping": {
+              "total_fields": {
+                "limit": "1000",
+                "ignore_dynamic_beyond_limit": "true"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "standard_data_stream_with_failure_store": {
+    "status": 201,
+    "failure_store": "used",
+    "failure_row": [
+      [
+        "document_parsing_exception",
+        "[1:9546] failed to parse: Limit of total fields [1000] has been exceeded while adding new fields [1001]"
+      ]
+    ]
+  }
+}

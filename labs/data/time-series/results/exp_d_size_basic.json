@@ -1,0 +1,24 @@
+{
+  "standard": {
+    "indexed": 120000,
+    "load_s": 5.3,
+    "docs": 120000,
+    "store_bytes": 7219494,
+    "bytes_per_doc": 60.2
+  },
+  "logsdb": {
+    "indexed": 120000,
+    "load_s": 5.0,
+    "docs": 120000,
+    "store_bytes": 4947263,
+    "bytes_per_doc": 41.2
+  },
+  "time_series": {
+    "indexed": 120000,
+    "load_s": 6.8,
+    "docs": 120000,
+    "store_bytes": 4218208,
+    "bytes_per_doc": 35.2
+  },
+  "license": "basic"
+}

@@ -32,6 +32,10 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 | 네트워크 구역 | 출력(Elasticsearch, Logstash)과 proxy가 다름 |
 | 변경 위험도 | canary 정책을 따로 두고 변경을 먼저 적용 |
 
+Agent 하나는 정책 하나에만 속합니다. 그래서 정책을 나누는 것은 곧 Agent를 나누는 것입니다. 같은 호스트에서 성격이 다른 수집(예: 대량 syslog 수신과 서버 자체 로그)을 다른 주기로 바꾸고 싶다면 Agent를 따로 둬야 합니다([04](../04-syslog-udp/#같은-component를-쓰는-입력은-서로-영향을-준다)).
+
+Fleet 하나에 정책은 1,000개까지 권장됩니다. 그보다 많으면 Fleet UI 성능이 떨어질 수 있습니다([Fleet Server scalability](https://www.elastic.co/docs/reference/fleet/fleet-server-scalability)).
+
 공통 설정은 integration 단위로 같은 값을 쓰고, 정책마다 다른 것은 출력, 네트워크, 역할별 integration으로 한정합니다. 정책 수가 수십 개를 넘으면 같은 변경을 여러 정책에 반복해야 하므로, API나 Terraform으로 관리합니다.
 
 ## 변경 적용 순서
@@ -69,6 +73,10 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 2. canary 정책의 Agent를 업그레이드하고 하루 이상 지켜봅니다.
 3. 정책 단위 자동 업그레이드로 비율을 단계적으로 올립니다(예: 10%, 50%, 100%). 이 기능이 없으면 유지 보수 시간 창을 지정해 정책별로 나눕니다.
 4. 문제가 생기면 진행을 멈추고, 9.3 이후라면 rollback합니다.
+
+1번에서 known issue를 꼭 봅니다. 예를 들어 Fleet 9.4.6과 9.5.3에는, Agent 모니터링 출력으로 원격 Elasticsearch 출력을 지정한 정책에서 Agent가 시작 직후나 정책 변경 뒤 crash-loop에 빠지는 문제가 있었습니다. 우회 방법은 모니터링 출력을 기본 Elasticsearch 출력으로 바꾸는 것이고, 9.4.7과 9.5.4에서 고쳐졌습니다([Fleet Server known issues](https://www.elastic.co/docs/release-notes/fleet-server/known-issues)). 이런 문제는 특정 설정 조합에서만 나타나므로, canary 정책은 운영 정책과 출력, 모니터링 설정까지 같게 둡니다.
+
+integration 업그레이드도 같은 순서로 다룹니다. 자동 업그레이드 설정과 매핑 변경 위험은 [02](../02-where-to-parse/#운영)에 정리했습니다.
 
 ## CA와 인증서 교체
 
@@ -116,6 +124,7 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 | 이기종 호스트 | OS, 역할, 네트워크 구역으로 정책 분리. 폴링은 전용 정책 |
 | 정책 변경 | lab → canary 정책 → 운영 정책 순서 |
 | 출력 변경 | 같은 클러스터면 기존 출력을 수정. 새 출력 할당은 재수집을 전제로 canary와 정책 단위로 |
+| canary 정책 | 운영 정책과 출력, 모니터링 설정까지 같게 |
 | 업그레이드 | Fleet Server 먼저, canary, 비율 단계적 확대 |
 | CA 교체 | 새 CA 추가와 재시작 → Fleet Server 교체 → 이전 CA 제거 |
 | Fleet Server | 2대 이상, 부하 분산기 timeout 조정, `/api/status` health check |

@@ -261,7 +261,7 @@ flowchart TD
 
 ## 다음 글
 
-- 데이터 설계 컬렉션은 여기까지입니다. 수집 단계의 설계는 다음 컬렉션에서 다룹니다.
+- [06. Mapping과 필드 수](../06-mappings-and-fields/): 필드 수가 heap과 master에 주는 비용, 한도에 닿았을 때의 동작, template 계층을 다룹니다.
 - 이 글의 실측 코드: [`labs/data/tiers-and-retention/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/tiers-and-retention)
 
 ## 참고 문서

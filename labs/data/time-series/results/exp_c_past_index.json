@@ -1,0 +1,79 @@
+{
+  "setting_off_minus_5h": {
+    "status": 400,
+    "failure_store": "not_enabled",
+    "error": "the document timestamp [2026-11-26T22:59:20.000Z] is outside of ranges of currently writable indices [[2026-11-27T01:59:20.000Z,2026-11-27T04:08:20.000Z]]"
+  },
+  "setting_on_minus_5h": {
+    "status": 201,
+    "failure_store": null,
+    "error": null
+  },
+  "setting_on_minus_5h_again": {
+    "status": 201,
+    "failure_store": null,
+    "error": null
+  },
+  "setting_on_minus_30d": {
+    "status": 201,
+    "failure_store": null,
+    "error": null
+  },
+  "backing_indices": [
+    ".ds-metrics-lab.past-default-2026.10.28-000003",
+    ".ds-metrics-lab.past-default-2026.11.26-000002",
+    ".ds-metrics-lab.past-default-2026.11.27-000001"
+  ],
+  "time_series_ranges": {
+    "temporal_ranges": [
+      {
+        "start": "2026-10-28T01:59:20.000Z",
+        "end": "2026-10-29T01:59:20.000Z"
+      },
+      {
+        "start": "2026-11-26T01:59:20.000Z",
+        "end": "2026-11-27T04:08:20.000Z"
+      }
+    ]
+  },
+  "index_settings": {
+    ".ds-metrics-lab.past-default-2026.10.28-000003": {
+      "settings": {
+        "index": {
+          "time_series": {
+            "end_time": "2026-10-29T01:59:20.000Z",
+            "start_time": "2026-10-28T01:59:20.000Z"
+          },
+          "lifecycle": {
+            "indexing_complete": "true",
+            "origination_date": "1793239160000"
+          }
+        }
+      }
+    },
+    ".ds-metrics-lab.past-default-2026.11.26-000002": {
+      "settings": {
+        "index": {
+          "time_series": {
+            "end_time": "2026-11-27T01:59:20.000Z",
+            "start_time": "2026-11-26T01:59:20.000Z"
+          },
+          "lifecycle": {
+            "indexing_complete": "true",
+            "origination_date": "1795744760000"
+          }
+        }
+      }
+    },
+    ".ds-metrics-lab.past-default-2026.11.27-000001": {
+      "settings": {
+        "index": {
+          "time_series": {
+            "end_time": "2026-11-27T04:08:20.000Z",
+            "start_time": "2026-11-27T01:59:20.000Z"
+          }
+        }
+      }
+    }
+  }
+}

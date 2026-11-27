@@ -1,0 +1,23 @@
+{
+  "first": {
+    "status": 201,
+    "failure_store": null,
+    "error": null
+  },
+  "same_dims_same_time_other_value": {
+    "status": 409,
+    "failure_store": "not_enabled",
+    "error": "[KEJnsAVF-b5oxDskI7PkkLY-KTmQfJav5XY9t33IYRxR7dQLO2cjyE9___5d5Nex32cmnUo][KEJnsAVF-b5oxDskI7PkkLY-KTmQfJav5XY9t33IYRxR7dQLO2cjyE8@2026-11-27T03:59:16.000Z]: ver"
+  },
+  "same_dims_next_second": {
+    "status": 201,
+    "failure_store": null,
+    "error": null
+  },
+  "custom_id": {
+    "status": 400,
+    "failure_store": "not_enabled",
+    "error": "[1:140] failed to parse: _id must be unset or set to [KEJnsAVF-b5oxDskI7PkkLY-KTmQfJav5XY9t33IYRxR7dQLO2cjyE9___5d5NeqD2cmnUo] but was [my-fingerprint] because "
+  },
+  "docs": 2
+}
