@@ -200,3 +200,16 @@ PUT _cluster/settings
 | 데이터센터 장애에 대비 | 클러스터를 걸치지 말고 데이터센터마다 클러스터 + cross-cluster replication |
 | 사람의 실수에 대비 | snapshot 주기를 잃어도 되는 시간에 맞추고 복원 연습 |
 | rolling restart가 오래 걸림 | 할당 중지, 디스크 85% 아래, green 확인 뒤 다음 노드 |
+
+## 참고 문서
+
+- [Design for resilience](https://www.elastic.co/docs/deploy-manage/production-guidance/availability-and-resilience)
+- [Resilience in small clusters](https://www.elastic.co/docs/deploy-manage/production-guidance/availability-and-resilience/resilience-in-small-clusters)
+- [Shard allocation awareness](https://www.elastic.co/docs/deploy-manage/distributed-architecture/shard-allocation-relocation-recovery/shard-allocation-awareness)
+- [Resilience in larger clusters](https://www.elastic.co/docs/deploy-manage/production-guidance/availability-and-resilience/resilience-in-larger-clusters)
+- [Snapshot and restore](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore)
+- [Create snapshots](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/create-snapshots)
+- [Full cluster restart and rolling restart procedures](https://www.elastic.co/docs/deploy-manage/maintenance/start-stop-services/full-cluster-restart-rolling-restart-procedures)
+- [Index recovery settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/index-recovery-settings)
+- [Cluster-level shard allocation settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/cluster-level-shard-allocation-routing-settings)
+- [Add and remove nodes](https://www.elastic.co/docs/deploy-manage/maintenance/add-and-remove-elasticsearch-nodes)

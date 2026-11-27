@@ -168,3 +168,15 @@ GET _search
 | 앞이 열린 wildcard가 꼭 필요함 | 그 필드만 `wildcard` 타입으로 |
 | 지금 클러스터가 느림 | Query activity나 tasks API로 찾아 취소, 그다음 원인 query를 고침 |
 | breaker 한도를 올리자는 의견 | 올리지 않음. query를 고치거나 [03](../03-node-failure-triage/)의 heap 원인부터 |
+
+## 참고 문서
+
+- [Limit expensive queries](https://www.elastic.co/docs/reference/query-languages/querydsl)
+- [Search settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/search-settings)
+- [Index settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/index-modules)
+- [The search API](https://www.elastic.co/docs/solutions/search/the-search-api)
+- [ES|QL limitations](https://www.elastic.co/docs/reference/query-languages/esql/limitations)
+- [Kibana advanced settings](https://www.elastic.co/docs/reference/kibana/advanced-settings)
+- [Query activity](https://www.elastic.co/docs/deploy-manage/monitor/query-activity)
+- [Find and cancel long-running queries](https://www.elastic.co/docs/reference/query-languages/query-task-management)
+- [Paginate search results](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/paginate-search-results)

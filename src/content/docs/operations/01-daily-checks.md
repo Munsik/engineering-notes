@@ -108,3 +108,16 @@ GET */_ilm/explain?only_errors=true
 | 외부 연결 가능 | AutoOps를 켜고, 알림을 운영 채널에 연결 |
 | 폐쇄망 | 별도 monitoring 클러스터 + health report 스크립트, 09의 수동 점검 |
 | 알림이 너무 많음 | 노드 수, health red, 디스크 90%, heap 85% 지속, rejection 증가만 먼저 |
+
+## 참고 문서
+
+- [Health report API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-health-report)
+- [High JVM memory pressure](https://www.elastic.co/docs/troubleshoot/elasticsearch/high-jvm-memory-pressure)
+- [Circuit breaker settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/circuit-breaker-settings)
+- [Watermark errors](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-watermark-errors)
+- [Size your shards](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/size-shards)
+- [Miscellaneous cluster settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/miscellaneous-cluster-settings)
+- [Elasticsearch known issues](https://www.elastic.co/docs/release-notes/elasticsearch/known-issues)
+- [SSL certificate API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-ssl-certificates)
+- [AutoOps for self-managed clusters](https://www.elastic.co/docs/deploy-manage/monitor/autoops/cc-autoops-as-cloud-connected)
+- [Stack Monitoring](https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring)

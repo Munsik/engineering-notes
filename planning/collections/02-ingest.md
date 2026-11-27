@@ -96,8 +96,8 @@
 - [x] Agent는 memory queue만 사용자가 설정 가능, disk queue는 불가(Beats and Elastic Agent capabilities 표)
 - [x] EDOT Collector의 Stack 9.x GA 상태와 log 수집 범위, Fleet 관리 여부
 - [x] Elastic Agent의 OpenTelemetry 기반 실행 모드(hybrid, otel mode) 상태
-- [ ] Logstash의 Fleet 중앙 관리(Logstash central pipeline management) 라이선스 조건
-- [ ] Agent integration이 없는 원천에서 쓸 수 있는 범용 input(custom logs, HTTP endpoint, CEL) 목록
+- [x] Logstash의 Fleet 중앙 관리(Logstash central pipeline management) 라이선스 조건
+- [ ] Agent integration이 없는 원천에서 쓸 수 있는 범용 input(custom logs, HTTP endpoint, CEL) 목록 (custom logs와 CEL은 글에 반영. HTTP endpoint input은 다루지 않음)
 
 ---
 
@@ -142,9 +142,9 @@
 ### 확인할 사실
 
 - [x] failure store의 버전별 상태(GA 여부)와 기본 동작
-- [ ] integration pipeline에서 `@custom` pipeline이 호출되는 위치와 이름 규칙
-- [ ] Logstash `filter-elastic_integration`의 요구 조건
-- [ ] Streams의 Stack GA 범위(classic stream, wired stream)
+- [x] integration pipeline에서 `@custom` pipeline이 호출되는 위치와 이름 규칙
+- [x] Logstash `filter-elastic_integration`의 요구 조건
+- [ ] Streams의 Stack GA 범위(classic stream, wired stream) (Streams GA 버전만 반영. classic, wired 구분은 다루지 않음)
 
 ---
 
@@ -225,10 +225,10 @@
 - [x] Logstash PQ 기본값과 `queue.checkpoint.writes: 1` 권고(Persistent queues, Deploying and scaling)
 - [x] TCP, UDP input은 application-level ack가 없음(Deploying and scaling)
 - [x] Agent Logstash output: `loadbalance`를 끄면 여러 host 중 하나를 무작위로 고르고, 끊기면 다른 host를 고름
-- [ ] Agent가 Logstash 연결이 끊긴 동안 memory queue가 차면 입력별로 무엇이 멈추는가(파일은 읽기를 멈춤, 네트워크 input은 drop인가)
-- [ ] Agent 업그레이드 중 재시작 구간의 길이와 그동안 네트워크 input 상태
-- [ ] Logstash `queue.drain`과 정상 종료 순서, PQ 페이지 손상 시 동작
-- [ ] Logstash 9.x에서 Agent의 lumberjack(Beats) 프로토콜 ack 시점(PQ에 쓴 뒤인가, 출력 뒤인가)
+- [x] Agent가 Logstash 연결이 끊긴 동안 memory queue가 차면 입력별로 무엇이 멈추는가(파일은 읽기를 멈춤, 네트워크 input은 drop인가)
+- [x] Agent 업그레이드 중 재시작 구간의 길이와 그동안 네트워크 input 상태
+- [x] Logstash `queue.drain`과 정상 종료 순서, PQ 페이지 손상 시 동작
+- [x] Logstash 9.x에서 Agent의 lumberjack(Beats) 프로토콜 ack 시점(PQ에 쓴 뒤인가, 출력 뒤인가)
 
 ---
 
@@ -295,10 +295,10 @@
 
 - [x] UDP input 지표 `system_packet_drops`, `receive_queue_length`는 Linux 전용
 - [x] Filebeat syslog input deprecated 8.14.0
-- [ ] Agent Custom UDP logs, System/syslog integration에서 `read_buffer`를 설정할 수 있는 위치
-- [ ] Agent UDP input 지표가 Fleet 모니터링 데이터(`metrics-elastic_agent.*`)에 들어가는지
-- [ ] HAProxy의 UDP 지원 범위(버전, 에디션). 대안으로 nginx stream, LVS
-- [ ] rsyslog disk-assisted queue 설정 항목과 재시작 시 보존 동작
+- [x] Agent Custom UDP logs, System/syslog integration에서 `read_buffer`를 설정할 수 있는 위치
+- [x] Agent UDP input 지표가 Fleet 모니터링 데이터(`metrics-elastic_agent.*`)에 들어가는지
+- [x] HAProxy의 UDP 지원 범위(버전, 에디션). 대안으로 nginx stream, LVS
+- [x] rsyslog disk-assisted queue 설정 항목과 재시작 시 보존 동작
 
 ---
 
@@ -363,11 +363,11 @@
 ### 확인할 사실
 
 - [x] Data Set Quality는 Stack, Serverless 모두 beta. degraded document는 `_ignored`가 있는 문서
-- [ ] `event.ingested`가 integration pipeline에서 기본으로 채워지는지, 직접 넣어야 하는 경우
-- [ ] Agent 모니터링 지표 중 출력 성공, 실패, drop을 나타내는 필드 이름(`metrics-elastic_agent.*`)
-- [ ] Logstash 9.x DLQ가 Elasticsearch output에서 받는 오류 종류(400, 404 등)
-- [ ] failure store에 들어가는 오류 범위(ingest pipeline 오류, mapping 오류)와 Stack GA 버전
-- [ ] fingerprint `_id`를 data stream에서 쓸 때 제약(create만 허용, 중복 시 409 처리)
+- [x] `event.ingested`가 integration pipeline에서 기본으로 채워지는지, 직접 넣어야 하는 경우
+- [x] Agent 모니터링 지표 중 출력 성공, 실패, drop을 나타내는 필드 이름(`metrics-elastic_agent.*`)
+- [x] Logstash 9.x DLQ가 Elasticsearch output에서 받는 오류 종류(400, 404 등)
+- [x] failure store에 들어가는 오류 범위(ingest pipeline 오류, mapping 오류)와 Stack GA 버전
+- [x] fingerprint `_id`를 data stream에서 쓸 때 제약(create만 허용, 중복 시 409 처리)
 
 ---
 
@@ -425,9 +425,9 @@
 - [x] Streams는 Stack 9.1 preview, 9.2부터 GA
 - [x] Streams Map, Streams sources, destinations는 Serverless preview, Stack unavailable. 수집 전 처리와 라우팅은 private preview
 - [x] Lens 차트 종류에 sankey 없음(Kibana 문서의 chart 목록 기준)
-- [ ] Logstash Stack Monitoring pipeline viewer의 9.x 상태와 Agent 기반 모니터링에서 쓸 수 있는지
-- [ ] ES|QL control과 ES|QL 차트의 dashboard GA 버전
-- [ ] Logstash integration이 flow metrics를 수집하는지와 필드 이름
+- [x] Logstash Stack Monitoring pipeline viewer의 9.x 상태와 Agent 기반 모니터링에서 쓸 수 있는지
+- [ ] ES|QL control과 ES|QL 차트의 dashboard GA 버전 (다루지 않음. 대시보드는 ES|QL 패널 기준으로 씀)
+- [x] Logstash integration이 flow metrics를 수집하는지와 필드 이름
 
 ---
 
@@ -480,8 +480,8 @@
 - [x] Agent 리소스 측정값과 디스크 표(install-elastic-agents의 Resource requirements)
 - [x] Logstash heap 4GB에서 8GB, 50%에서 75% 이내 권장
 - [x] Fleet Server scalability 표의 값. 내부 sizing 기준(2,000대 4GB, 4 vCPU 등)과 다르므로 공식 표를 기준으로 쓰고 차이를 설명
-- [ ] performance preset별 실제 설정값 표(`bulk_max_size`, `worker`, `queue.mem.events` 등)
-- [ ] Logstash `pipeline.batch.metrics.sampling_mode`(9.2 preview)를 실측에 쓸 수 있는지
+- [x] performance preset별 실제 설정값 표(`bulk_max_size`, `worker`, `queue.mem.events` 등)
+- [ ] Logstash `pipeline.batch.metrics.sampling_mode`(9.2 preview)를 실측에 쓸 수 있는지 (실측을 하지 않아 다루지 않음)
 
 ---
 
@@ -524,7 +524,7 @@
 
 ### 확인할 사실
 
-- [ ] CA 교체 시 agent 재시작이 필요한 조건
-- [ ] 업그레이드 API의 rollout 기간, 배치 관련 옵션
-- [ ] Fleet Server 확장과 이중화에 대한 공식 권장
-- [ ] agent 상태(healthy, unhealthy, offline) 판정 기준
+- [x] CA 교체 시 agent 재시작이 필요한 조건
+- [x] 업그레이드 API의 rollout 기간, 배치 관련 옵션
+- [x] Fleet Server 확장과 이중화에 대한 공식 권장
+- [x] agent 상태(healthy, unhealthy, offline) 판정 기준

@@ -202,3 +202,18 @@ PUT _cluster/settings
 | pending tasks가 계속 쌓임 | `put-mapping`이면 필드 증가, `ilm-`이면 poll 주기와 index 수 |
 | 클러스터는 정상, 클라이언트만 오류 | 클라이언트 timeout 처리, 연결 pool, 중간 장비 idle timeout |
 | 원인을 못 찾고 지나감 | 다음을 위해 query logging이나 slow log, watchdog을 켜 둠 |
+
+## 참고 문서
+
+- [High CPU usage](https://www.elastic.co/docs/troubleshoot/elasticsearch/high-cpu-usage)
+- [Task queue backlog](https://www.elastic.co/docs/troubleshoot/elasticsearch/task-queue-backlog)
+- [Rejected requests](https://www.elastic.co/docs/troubleshoot/elasticsearch/rejected-requests)
+- [Thread pool settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/thread-pool-settings)
+- [Find and cancel long-running queries](https://www.elastic.co/docs/reference/query-languages/query-task-management)
+- [Hot spotting](https://www.elastic.co/docs/troubleshoot/elasticsearch/hotspotting)
+- [Slow log settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/slow-log)
+- [Query logging](https://www.elastic.co/docs/deploy-manage/monitor/logging-configuration/query-logs)
+- [Search task watchdog settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/search-settings)
+- [Query activity](https://www.elastic.co/docs/deploy-manage/monitor/query-activity)
+- [Search cancellation](https://www.elastic.co/docs/solutions/search/the-search-api)
+- [Networking settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/networking-settings)

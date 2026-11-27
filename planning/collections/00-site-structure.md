@@ -15,6 +15,7 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 - 공개할 컬렉션 목록은 `src/site-collections.mjs` 한 곳에서 관리한다. sidebar와 홈 카드가 모두 이 목록을 따른다. 순서는 ROADMAP의 문제 축 순서다.
 - 컬렉션 이름과 설명은 각 컬렉션 `index.md`의 `title`, `description`을 그대로 쓴다. 홈 카드의 글 수는 build할 때 세고, draft는 세지 않는다.
 - 새 컬렉션을 공개할 때는 `index.md`를 발행하고 `src/site-collections.mjs`에 한 줄(`{ dir, axis }`)을 추가한다. `astro.config.mjs`와 홈 `index.mdx`는 고치지 않는다. `index.md`가 draft면 production build에서 sidebar와 홈 카드에서 자동으로 빠진다.
+- 홈의 "다음에 쓸 글"은 `src/site-upcoming.mjs` 목록을 `UpcomingTopics` 컴포넌트가 그린다(2026-11-27). 글을 발행하거나 계획 순서가 바뀌면 이 목록만 고친다. 기존 컬렉션에 더하는 글은 그 컬렉션 개요로 링크한다.
 - 홈 hero 버튼은 특정 컬렉션이 아니라 "컬렉션 보기"(홈의 컬렉션 목록으로 이동)로 둔다. 컬렉션이 늘어도 hero는 고치지 않는다.
 
 남은 것: 나머지 문제 축 컬렉션은 첫 글을 공개할 때 위 규칙대로 추가한다.

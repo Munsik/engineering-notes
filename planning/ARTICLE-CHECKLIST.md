@@ -50,3 +50,4 @@
 - [ ] `draft: true`를 지웠다
 - [ ] 컬렉션 `index.md`의 구성 표와 자주 받는 질문을 갱신했다
 - [ ] `planning/ROADMAP.md`와 컬렉션 문서의 상태와 체크박스를 갱신했다
+- [ ] 홈 "다음에 쓸 글" 목록(`src/site-upcoming.mjs`)에서 이 글을 뺐다
