@@ -44,7 +44,7 @@ Elastic이 공개한 수집 구성은 아래와 같습니다([Ingest reference a
 | Agent → Elasticsearch | 기본. integration이 있고 변환이 ingest pipeline으로 충분할 때 |
 | Agent → Logstash → Elasticsearch | Logstash에서만 되는 변환, 여러 출력, PQ 버퍼가 필요할 때 |
 | Agent → Logstash(PQ) → Elasticsearch | Elasticsearch가 잠시 멈춰도 원천 쪽에 압력을 주지 않고 버텨야 할 때 |
-| Agent → Kafka → (Logstash 또는 Elasticsearch) | 이미 Kafka가 있거나, 수신과 처리를 분리하고 다시 읽기가 필요할 때 |
+| Agent → Kafka → Agent → Elasticsearch | 이미 Kafka가 있거나, 수신과 처리를 분리하고 다시 읽기가 필요할 때. 앞뒤 모두 Fleet으로 관리하고, ingest pipeline으로 안 되는 변환이 있을 때만 소비 쪽을 Logstash로([03](../03-no-gap-ingest/#패턴-3-kafka로-수신과-처리를-나누기)) |
 | Logstash가 직접 수신 → Elasticsearch | Agent integration이 없는 원천, 특수 프로토콜 |
 | 폐쇄망 구성 | 인터넷 없이 package registry, artifact를 내부에서 제공해야 할 때 |
 
@@ -60,7 +60,7 @@ Elastic이 공개한 수집 구성은 아래와 같습니다([Ingest reference a
 | 클라우드 서비스 로그(S3, Pub/Sub, Event Hub) | Agent integration이 큐나 버킷에서 당겨 옴 | 처리량이 크면 수집 Agent를 늘리되 같은 큐를 나눠 읽는지 확인 |
 | API 폴링(SaaS 감사 로그 등) | Agent의 해당 integration 또는 CEL input | 같은 API를 여러 Agent가 동시에 폴링하지 않도록 전용 정책으로 분리 |
 | 애플리케이션 trace, OpenTelemetry 계측 | Agent 내장 OpenTelemetry Collector | 이미 upstream OpenTelemetry Collector가 있으면 Agent를 gateway로 |
-| 이미 운영 중인 Kafka 토픽 | Agent Kafka input 또는 Logstash Kafka input | 변환이 필요하면 Logstash, consumer group으로 노드 이중화 |
+| 이미 운영 중인 Kafka 토픽 | Agent Kafka Log Consumer integration | 같은 group_id로 Agent 여러 대. ingest pipeline으로 안 되는 변환이 필요할 때만 Logstash Kafka input |
 
 폴링형 원천은 Agent 여러 대에 같은 정책을 걸면 같은 데이터를 여러 번 가져옵니다. Agent끼리는 서로를 모르기 때문입니다. 폴링 정책은 전용 Agent 정책으로 분리하고, 그 정책에 들어가는 Agent 수를 제한합니다(해석).
 

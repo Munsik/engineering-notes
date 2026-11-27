@@ -1,0 +1,27 @@
+# Kafka Log Consumer integration의 Ingest Pipeline 항목에 지정합니다.
+# Kafka로 받은 Elastic Agent 이벤트를 풀어 원래 data stream으로 reroute합니다.
+PUT _ingest/pipeline/kafka-agent-unwrap
+{
+  "description": "Kafka로 받은 Elastic Agent 이벤트를 풀어 원래 data stream으로 보냅니다",
+  "processors": [
+    {
+      "json": {
+        "field": "message",
+        "add_to_root": true
+      }
+    },
+    {
+      "reroute": {
+        "if": "ctx.data_stream?.type == 'logs' && ctx.data_stream?.dataset != null && ctx.data_stream.dataset != 'kafka_log.generic'"
+      }
+    }
+  ],
+  "on_failure": [
+    {
+      "set": {
+        "field": "error.message",
+        "value": "kafka-agent-unwrap: {{{_ingest.on_failure_message}}}"
+      }
+    }
+  ]
+}

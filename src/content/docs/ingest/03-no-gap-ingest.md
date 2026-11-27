@@ -112,24 +112,103 @@ backend logstash_syslog
 
 ### 패턴 3: Kafka로 수신과 처리를 나누기
 
-공식 문서는 TCP, UDP, HTTP 원천을 Logstash로 받아 Kafka에 넣고, 다른 Logstash 그룹이 Kafka input으로 읽는 구성을 부하 분산기의 대안으로 소개합니다. Kafka에서 읽는 Logstash에도 PQ를 켜라고 권합니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
+수신 계층과 Elasticsearch 사이에 Kafka를 두면, 뒤쪽 계층을 멈추거나 바꾸는 동안 Kafka가 데이터를 들고 있습니다. 수신 계층은 Kafka에 넣기만 하고, 소비 계층이 Kafka에서 읽어 Elasticsearch로 보냅니다.
+
+앞단과 뒷단은 모두 Fleet이 관리하는 Elastic Agent로 구성합니다. 앞단 Agent는 Kafka output으로 쓰고([Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings)), 뒷단 Agent는 Kafka Log Consumer integration으로 읽습니다([Kafka Log Consumer](https://www.elastic.co/docs/reference/integrations/kafka_log)). 두 계층의 설정 배포, 업그레이드, 상태 확인을 Fleet 정책 하나의 흐름으로 처리할 수 있습니다. Logstash로 구성하면 pipeline 파일과 배포 방법을 계층마다 따로 관리해야 합니다(해석).
+
+공식 reference architecture는 Kafka 앞뒤에 Logstash를 둔 구성으로 설명합니다([Elastic Agent to Elasticsearch with Kafka as middleware message queue](https://www.elastic.co/docs/manage-data/ingest/ingest-reference-architectures/agent-kafka-es)). Logstash가 꼭 필요한 경우는 이 절 끝에 따로 적었습니다.
 
 ```mermaid
 flowchart LR
     S["장비, 애플리케이션"] --> LB["L4 LB (VIP)"]
-    LB --> R1["수신 Logstash 1"]
-    LB --> R2["수신 Logstash 2"]
+    LB --> R1["수신 Agent 1<br/>(Kafka output)"]
+    LB --> R2["수신 Agent 2<br/>(Kafka output)"]
     R1 --> K["Kafka"]
     R2 --> K
-    K --> P1["처리 Logstash 1<br/>(consumer group)"]
-    K --> P2["처리 Logstash 2<br/>(consumer group)"]
-    P1 --> ES["Elasticsearch"]
-    P2 --> ES
+    K --> C1["소비 Agent 1<br/>(Kafka Log Consumer)"]
+    K --> C2["소비 Agent 2<br/>(같은 group_id)"]
+    C1 --> ES["Elasticsearch"]
+    C2 --> ES
 ```
 
-- 수신 계층은 변환 없이 받아서 넘기기만 해서 거의 바꿀 일이 없습니다. 자주 바뀌는 파싱, enrich는 처리 계층에 둡니다.
-- 처리 계층은 같은 consumer group으로 묶이므로 한 대를 멈추면 나머지가 그 partition을 이어받습니다. Logstash 자체가 clustering을 하는 것이 아니라 Kafka consumer group이 조정합니다.
-- Kafka 보존 기간을 처리 계층이 멈출 수 있는 최대 시간보다 길게 잡습니다(해석).
+#### 앞단: 수신 Agent
+
+수신 integration(syslog, TCP, 장비별 integration)은 그대로 두고 출력만 Kafka로 바꿉니다. 출력은 Agent 정책에서 고르고, 구독 등급이 지원하면 integration마다 다른 출력을 지정할 수 있습니다([Fleet settings](https://www.elastic.co/docs/reference/fleet/fleet-settings)). 이벤트는 Agent가 Elasticsearch로 바로 보낼 때와 같은 구조의 JSON으로 Kafka에 들어가고, `data_stream.*` 필드도 함께 갑니다. 뒷단은 이 필드로 원래 data stream을 찾습니다.
+
+Kafka output에서 유실과 관련된 설정은 세 가지입니다.
+
+- ACK reliability는 기본값 Wait for local commit 대신 Wait for all replicas to commit으로 둡니다. 기본값은 leader가 기록하면 ack를 받으므로, replica에 복제되기 전에 leader가 죽으면 그 이벤트를 잃을 수 있습니다(해석). Do not wait는 오류가 나도 조용히 잃습니다.
+- Default topic은 처음에는 하나로 둡니다. 원천별로 보존 기간이나 처리량이 크게 다르면 `data_stream.dataset` 기준으로 나눕니다. 토픽을 나누면 뒷단 integration의 Topics 목록도 같이 늘려야 합니다(해석).
+- Kafka의 `log.message.timestamp.type`은 기본값 CreateTime 대신 LogAppendTime으로 둡니다. Agent는 Kafka 메시지 시각에 이벤트의 원래 시각을 넣습니다. 그래서 보존 기간보다 오래된 이벤트(예: 밀려 있던 파일 로그)는 Kafka에 들어오자마자 지워집니다. Kafka 3.6부터는 시각 차이가 크면 아예 거부될 수도 있습니다.
+
+ACK reliability와 timestamp 동작은 [Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings) 기준입니다. timestamp는 Agent 설정이 아니라 Kafka broker나 topic 설정이라 Kafka 운영 쪽과 같이 정합니다.
+
+#### 뒷단: 소비 Agent
+
+소비 Agent 여러 대에 Kafka Log Consumer integration을 같은 Group ID로 넣습니다. 같은 group 안에서는 partition 하나를 한 Agent만 읽으므로, Agent 한 대를 멈추면 남은 Agent가 그 partition을 이어받습니다. Agent끼리 clustering을 하는 것이 아니라 Kafka consumer group이 나눠 줍니다. partition 수가 소비 Agent 수보다 적으면 남는 Agent는 읽을 partition이 없습니다([Kafka Log Consumer](https://www.elastic.co/docs/reference/integrations/kafka_log)).
+
+이 integration은 Kafka 메시지를 `message` 필드에 담아 `logs-kafka_log.generic` data stream에 씁니다. 그대로 두면 앞단 integration의 mapping과 ingest pipeline을 거치지 않습니다. 그래서 integration 설정의 Ingest Pipeline 항목에 아래 pipeline을 지정합니다. JSON을 풀어 원래 필드를 되살리고, `reroute`로 원래 data stream에 보냅니다.
+
+```json
+PUT _ingest/pipeline/kafka-agent-unwrap
+{
+  "description": "Kafka로 받은 Elastic Agent 이벤트를 풀어 원래 data stream으로 보냅니다",
+  "processors": [
+    {
+      "json": {
+        "field": "message",
+        "add_to_root": true
+      }
+    },
+    {
+      "reroute": {
+        "if": "ctx.data_stream?.type == 'logs' && ctx.data_stream?.dataset != null && ctx.data_stream.dataset != 'kafka_log.generic'"
+      }
+    }
+  ],
+  "on_failure": [
+    {
+      "set": {
+        "field": "error.message",
+        "value": "kafka-agent-unwrap: {{{_ingest.on_failure_message}}}"
+      }
+    }
+  ]
+}
+```
+
+- `json`의 `add_to_root`는 겹치는 최상위 필드를 원래 이벤트 값으로 덮어씁니다(기본 `replace`). `message`, `@timestamp`, `agent`, `host`도 앞단 Agent의 값으로 돌아갑니다. Kafka Log Consumer가 붙인 `kafka.topic`, `kafka.partition`, `kafka.offset`은 원래 이벤트에 없는 필드라 그대로 남아, 나중에 어느 offset에서 왔는지 추적할 때 씁니다([JSON processor](https://www.elastic.co/docs/reference/ingest-processor/json-processor)).
+- `reroute`는 `dataset`, `namespace`를 지정하지 않으면 문서의 `data_stream.dataset`, `data_stream.namespace`를 씁니다. 옮겨 간 뒤에는 그 data stream의 ingest pipeline이 실행되므로, integration의 파싱과 `@custom` pipeline이 Elasticsearch로 바로 보낼 때와 같이 동작합니다([Reroute processor](https://www.elastic.co/docs/reference/ingest-processor/reroute-processor)).
+- `reroute`는 data stream의 type을 바꾸지 못합니다. 이 경로에는 logs 계열만 태우고, metrics는 Elasticsearch output으로 바로 보내는 편이 단순합니다(해석).
+- 옮겨 갈 data stream에 쓸 권한이 있어야 합니다. Kafka Log Consumer는 1.3.0부터 `logs-*-*`로 reroute하는 권한을 갖도록 바뀌었습니다(integration changelog).
+- JSON이 아닌 메시지나 `data_stream` 필드가 없는 메시지는 `logs-kafka_log.generic`에 `error.message`와 함께 남습니다. 이 data stream의 건수가 늘면 앞단 구성을 봅니다.
+
+이 pipeline은 공식 문서의 processor 동작을 조합한 것이고, 공식 reference architecture에 있는 구성은 아닙니다. 적용 전에 `POST _ingest/pipeline/kafka-agent-unwrap/_simulate`에 실제 Kafka 메시지 하나를 넣어 원래 data stream 이름과 필드가 나오는지 확인합니다.
+
+#### Logstash가 필요한 경우
+
+아래 중 하나가 필요할 때만 소비 계층을 Logstash로 둡니다(해석). 역할 구분은 [02](../02-where-to-parse/)에서 다룹니다.
+
+- 외부 시스템을 조회해 enrich하는 것처럼 ingest pipeline으로 할 수 없는 변환
+- Elasticsearch 말고 다른 곳에도 같은 데이터를 보내야 할 때
+
+이때는 Logstash Kafka input과 `json` codec 양쪽에서 `ecs_compatibility`를 끕니다. Agent가 만든 문서 구조를 Logstash가 바꾸면 integration data stream이 기대하는 필드와 어긋납니다([Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings)).
+
+```ruby
+input {
+  kafka {
+    bootstrap_servers => "kafka1:9092,kafka2:9092"
+    topics => ["logs-ingest"]
+    group_id => "logstash-consumer"
+    ecs_compatibility => "disabled"
+    codec => json { ecs_compatibility => "disabled" }
+  }
+}
+```
+
+공식 문서는 Kafka에서 읽는 Logstash에도 PQ를 켜라고 권합니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
+
+어느 구성이든 Kafka 보존 기간은 소비 계층이 멈출 수 있는 최대 시간보다 길게 잡습니다(해석).
 
 ### 패턴 4: 원천의 보존을 버퍼로 쓰기
 
@@ -201,7 +280,7 @@ Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 �
 | 파일 로그, Agent → Elasticsearch | 별도 이중화 불필요. 로그 보존을 수집기 최대 정지 시간보다 길게 |
 | Agent → Logstash | Logstash 2대 이상 + Agent output에 여러 host. 중복을 받아들이고 05로 제거 |
 | TCP syslog, HTTP push | L4 부하 분산(VIP) + 수신기 2대 이상. 노드는 drain 후 정지 |
-| 처리 규칙을 자주 바꾸는 환경 | 수신과 처리를 Kafka로 분리 |
+| 처리 계층을 자유롭게 멈추고 바꿔야 하는 환경 | 수신 Agent → Kafka → 소비 Agent. 모두 Fleet으로 관리. Logstash는 ingest pipeline으로 안 되는 변환이 필요할 때만 |
 | Elasticsearch 장애를 수집 계층에서 버텨야 함 | Logstash PQ. 크기는 버틸 시간 기준으로 |
 | UDP만 되는 원천 | [04](../04-syslog-udp/)의 구성 |
 
@@ -211,6 +290,11 @@ Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 �
 - [Persistent queues](https://www.elastic.co/docs/reference/logstash/persistent-queues)
 - [Logstash output for Elastic Agent](https://www.elastic.co/docs/reference/fleet/logstash-output)
 - [Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison)
+- [Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings)
+- [Kafka Log Consumer](https://www.elastic.co/docs/reference/integrations/kafka_log)
+- [Elastic Agent to Elasticsearch with Kafka as middleware message queue](https://www.elastic.co/docs/manage-data/ingest/ingest-reference-architectures/agent-kafka-es)
+- [Reroute processor](https://www.elastic.co/docs/reference/ingest-processor/reroute-processor)
+- [JSON processor](https://www.elastic.co/docs/reference/ingest-processor/json-processor)
 - [Deduplicate data](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-deduplication)
 - [Upgrade Elastic Agents](https://www.elastic.co/docs/reference/fleet/upgrade-elastic-agent)
 - [Deploy on-premises and self-managed Fleet Server](https://www.elastic.co/docs/reference/fleet/add-fleet-server-on-prem)
