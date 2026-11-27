@@ -11,7 +11,7 @@
 
 ## 진행 메모 (2026-11-26)
 
-- 8편 모두 `draft: true`로 작성. 근거는 공식 문서, elastic/integrations와 Kibana 소스, rsyslog, nginx 공식 문서. 사내 KB, Slack, Drive는 방향 확인에만 쓰고 본문에 인용하지 않음
+- 8편 모두 `draft: true`로 작성. 근거는 공식 문서, elastic/integrations와 Kibana 소스, rsyslog, nginx 공식 문서.
 - 처리량 실측은 하지 않기로 결정. 환경과 데이터마다 결과가 달라 공개 수치로서 의미가 약함. 02의 실험 A와 07의 Logstash 처리량 실험은 "직접 재는 절차"로 대체
 - 장애 주입(03, 04) 실측 수치도 넣지 않음. 송신기와 대조 쿼리를 labs에 두고 직접 재는 절차를 적음
 - Kibana 화면 캡처는 별도 작업자가 진행: `planning/captures/ingest.md`(C-01에서 C-07). 본문에는 `<!-- CAPTURE: 파일명 | ID -->` 자리표시
