@@ -107,13 +107,11 @@ Filebeat syslog input은 8.14에서 deprecated됐고, syslog processor로 바꾸
 
 ## 운영
 
-- integration을 업그레이드하기 전에, 바뀐 pipeline이 우리 데이터에서 같은 필드를 만드는지 `_simulate`로 확인합니다(해석).
+- integration을 업그레이드하기 전에, 바뀐 pipeline이 우리 데이터에서 같은 필드를 만드는지 `_simulate`로 확인합니다.
 - failure store 건수와 `_ignored` 비율을 data stream별로 매일 봅니다. [06](../06-flow-dashboard/)의 대시보드에 패널로 넣습니다.
 - Logstash를 쓰면 DLQ를 켜고, DLQ 크기와 증가 추세를 모니터링합니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

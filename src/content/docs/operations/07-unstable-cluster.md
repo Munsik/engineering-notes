@@ -55,7 +55,7 @@ GET _health_report/master_is_stable
 | `lagging` | master가 보낸 cluster state를 정해진 시간 안에 적용하지 못함 | `cluster.publish.timeout` 30초 + `cluster.follower_lag.timeout` 90초 |
 | `followers check retry count exceeded` | master가 1초마다 보내는 health check가 연속으로 실패하거나 timeout | check 하나당 10초, 연속 3번 |
 
-근거: [Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster), [Discovery and cluster formation settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/discovery-cluster-formation-settings). 이 값들은 공식 문서가 바꾸지 말라고 경고하는 설정입니다. timeout을 늘리면 노드가 덜 빠지는 것처럼 보이지만, 응답 없는 노드를 더 오래 붙잡게 됩니다(해석).
+근거: [Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster), [Discovery and cluster formation settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/discovery-cluster-formation-settings). 이 값들은 공식 문서가 바꾸지 말라고 경고하는 설정입니다. timeout을 늘리면 노드가 덜 빠지는 것처럼 보이지만, 응답 없는 노드를 더 오래 붙잡게 됩니다.
 
 `lagging`과 `followers check retry count exceeded`는 네트워크 지연 때문일 수도, 노드 과부하 때문일 수도 있습니다. reason만으로는 둘을 가를 수 없습니다.
 
@@ -98,7 +98,7 @@ Elasticsearch는 노드 사이에 여러 TCP 연결을 열고 영원히 유지�
 | zero-window 상태를 오래 두지 않는 장비 | 바쁜 노드는 TCP window를 0으로 알려 잠시 받기를 멈춤. 이 상태를 끊는 정책이 있는지 |
 | 패킷 손실, 장비 고장, 혼잡 | 양쪽 노드에서 동시에 packet capture |
 
-- `*.tcp.keep_alive`는 끄지 않습니다. transport의 `keep_idle`과 `keep_interval`은 300초를 넘을 수 없고, OS 값이 300보다 크면 자동으로 300으로 낮춥니다(같은 문서). 그래서 장비 idle timeout이 300초보다 짧은 곳에서는 `transport.tcp.keep_idle`을 그보다 짧게 직접 줍니다(해석).
+- `*.tcp.keep_alive`는 끄지 않습니다. transport의 `keep_idle`과 `keep_interval`은 300초를 넘을 수 없고, OS 값이 300보다 크면 자동으로 300으로 낮춥니다(같은 문서). 그래서 장비 idle timeout이 300초보다 짧은 곳에서는 `transport.tcp.keep_idle`을 그보다 짧게 직접 줍니다.
 - 로그의 `Connection timed out`은 데이터나 keepalive가 여러 번 재전송해도 응답을 받지 못했다는 뜻입니다. OS가 판단한 결과이므로 Elasticsearch가 아니라 환경 문제입니다(공식 문서).
 - 더 자세한 로그가 필요하면 `logger.org.elasticsearch.transport.TcpTransport: DEBUG`를 켭니다.
 
@@ -111,7 +111,7 @@ Elasticsearch는 노드 사이에 여러 TCP 연결을 열고 영원히 유지�
 | 긴 GC | GC 로그, 노드 로그의 `JvmMonitorService` 경고. [03의 heap 압박](../03-node-failure-triage/#heap-압박의-원인-좁히기) |
 | VM 정지(hypervisor, 스냅숏, live migration) | 같은 호스트의 다른 프로세스도 멈췄는지, 로그의 시계 불연속 경고 |
 | 특정 thread를 오래 기다림 | 빠지기 직전 몇 초의 `jstack`, `InboundHandler` 경고 로그 |
-| 디스크가 느림 | cluster state 적용에도 디스크 쓰기가 들어감. `iostat`(해석) |
+| 디스크가 느림 | cluster state 적용에도 디스크 쓰기가 들어감. `iostat` |
 
 로그에 `warn threshold`가 들어간 줄이 원인을 알려 주는 경우가 많습니다. `lagging`이 반복되면 elected master에 아래 logger를 켭니다. 빠지는 순간 그 노드의 hot threads를 master 로그에 남깁니다.
 
@@ -137,7 +137,7 @@ master 노드 구성의 공식 권장입니다([Node roles](https://www.elastic.
 
 ## cluster state가 클 때
 
-cluster state는 모든 노드가 같은 내용을 들고 있어야 하는 metadata입니다. index, shard, mapping이 많을수록 커지고, 바뀔 때마다 모든 노드에 보내 적용해야 합니다. 커질수록 `lagging`이 쉽게 납니다(해석).
+cluster state는 모든 노드가 같은 내용을 들고 있어야 하는 metadata입니다. index, shard, mapping이 많을수록 커지고, 바뀔 때마다 모든 노드에 보내 적용해야 합니다. 커질수록 `lagging`이 쉽게 납니다.
 
 | 원인 | 신호 | 조치 |
 | --- | --- | --- |
@@ -159,8 +159,6 @@ GET logs-app-*/_field_caps?fields=*&filter_path=fields.*.*.type
 - 한도를 크게 올리는 것은 해결이 아닙니다. 원천에서 데이터 모양을 바로잡는 것이 먼저라고 공식 문서가 적고 있습니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 먼저 할 것 |
 | --- | --- |

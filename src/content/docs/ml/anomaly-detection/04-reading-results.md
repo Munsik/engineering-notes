@@ -33,7 +33,7 @@ Kibana Anomaly Explorer에서 timeline은 bucket score를, influencer swim lane�
 
 :::tip[원인 entity를 고를 때]
 bucket score는 그 시간대 전체를 요약한 값이라 "누가"에 대한 답은 주지 않습니다. 원인 후보를 고를 때는 그 bucket의 influencer 결과를 `influencer_score` 순으로 보세요.
-여러 job에서 동시에 높게 나오는 entity는 근본 원인일 가능성이 크고, 한 job에만 나오는 entity는 영향을 받은 쪽인 경우가 많습니다(해석).
+여러 job에서 동시에 높게 나오는 entity는 근본 원인일 가능성이 크고, 한 job에만 나오는 entity는 영향을 받은 쪽인 경우가 많습니다.
 [09장](../09-manufacturing-aiops/#같은-traceid가-여러-job에-나왔는지-확인)은 같은 `trace.id`가 로그 job과 APM job에 함께 나오는지로 이걸 확인합니다.
 :::
 
@@ -85,7 +85,7 @@ score를 깎는 요인도 두 가지 있습니다.
 
 Kibana는 score에 따라 이상을 아래처럼 나눠 표시합니다. 구간 경계는 Kibana 소스 코드([`anomaly_threshold.ts`](https://github.com/elastic/kibana/blob/main/x-pack/platform/packages/shared/ml/anomaly_utils/anomaly_threshold.ts))에 정의된 값이고, Anomaly Explorer의 Anomaly score 범례(0-3, 3-25, 25-50, 50-75, 75-100)도 같습니다.
 
-오른쪽 열은 제가 쓰는 방식입니다(해석).
+오른쪽 열은 제가 쓰는 방식입니다.
 
 | score | 표기 | 운영에서 이렇게 쓸 수 있습니다 |
 | --- | --- | --- |

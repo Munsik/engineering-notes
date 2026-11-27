@@ -32,7 +32,7 @@ data tier와 searchable snapshot은 이 사이를 메우는 기능입니다. 다
 - cold의 fully mounted index는 shard 전체를 로컬에 둡니다. 검색 성능은 보통 regular index와 비슷합니다. replica가 없어도 노드가 죽으면 snapshot에서 다시 받아 오므로, 같은 데이터를 regular index로 둘 때보다 노드와 디스크가 절반이면 됩니다.
 - frozen의 partially mounted index는 최근에 검색한 부분만 노드의 shared cache에 둡니다. cache에 없는 부분은 검색할 때 repository에서 받아 옵니다. cache는 노드를 재시작하면 비워집니다.
 - shared cache 크기는 dedicated frozen node에서 기본으로 "디스크의 90%"와 "디스크에서 100GB를 뺀 값" 중 큰 쪽입니다. 4,000GB 디스크면 3,900GB, 400GB 디스크면 360GB입니다. dedicated frozen node가 아니면 기본 0이라 `xpack.searchable.snapshot.shared_cache.size`를 직접 잡아야 합니다(같은 문서).
-- cold와 frozen tier의 데이터도 repository에는 전체가 있어야 합니다. object storage 용량은 frozen까지 보관할 전체 기간의 primary 크기로 잡습니다(해석). 크기 자체를 줄이는 방법은 [03. 저장 용량 비교](../03-storage-footprint/)에서 다뤘습니다.
+- cold와 frozen tier의 데이터도 repository에는 전체가 있어야 합니다. object storage 용량은 frozen까지 보관할 전체 기간의 primary 크기로 잡습니다. 크기 자체를 줄이는 방법은 [03. 저장 용량 비교](../03-storage-footprint/)에서 다뤘습니다.
 
 ## 설계 결정
 
@@ -96,7 +96,7 @@ ILM `searchable_snapshot` action에서 알아 둘 동작입니다([Searchable sn
 | partially mounted | 0MB | `data_frozen` | 0.3초 |
 
 snapshot은 3.2초 걸렸습니다. 로컬 `fs` repository라서 mount와 snapshot이 모두 빨랐습니다.
-partially mounted index는 `store.size`가 0으로 나왔습니다. 데이터는 노드의 shared cache에 올라가고, index 자체의 저장 크기로 잡히지 않습니다. frozen node의 디스크 사용량은 index 크기가 아니라 shared cache 크기로 봐야 합니다(해석).
+partially mounted index는 `store.size`가 0으로 나왔습니다. 데이터는 노드의 shared cache에 올라가고, index 자체의 저장 크기로 잡히지 않습니다. frozen node의 디스크 사용량은 index 크기가 아니라 shared cache 크기로 봐야 합니다.
 
 ### 첫 조회와 반복 조회
 
@@ -112,7 +112,7 @@ partially mounted index는 `store.size`가 0으로 나왔습니다. 데이터는
 
 - **fully mounted는 regular index와 같은 수준이었습니다.** 노드를 재시작한 뒤에도 다시 받아 오지 않고 로컬 데이터를 그대로 썼습니다. 공식 문서도 fully mounted index의 로컬 데이터는 재시작 뒤에도 유지된다고 설명합니다.
 - **partially mounted는 첫 조회만 느렸습니다.** 같은 디스크의 `fs` repository인데도 `_source`를 읽는 fetch는 첫 실행이 1.9초였습니다. 반복 조회는 regular index와 비슷했습니다.
-- shared cache 통계(`GET _searchable_snapshots/cache/stats`)를 보면, 위 요청들이 16MB region 7개, 약 116MB를 cache에 썼습니다. 110MB짜리 index를 거의 통째로 올린 셈입니다. 이 실험의 index가 작아서 생긴 결과입니다. 실제 frozen 데이터는 cache보다 훨씬 크므로, 검색 범위가 넓으면 cache에서 밀려나고 다시 받아 오는 일이 반복됩니다(해석).
+- shared cache 통계(`GET _searchable_snapshots/cache/stats`)를 보면, 위 요청들이 16MB region 7개, 약 116MB를 cache에 썼습니다. 110MB짜리 index를 거의 통째로 올린 셈입니다. 이 실험의 index가 작아서 생긴 결과입니다. 실제 frozen 데이터는 cache보다 훨씬 크므로, 검색 범위가 넓으면 cache에서 밀려나고 다시 받아 오는 일이 반복됩니다.
 - object storage에서는 첫 조회 지연이 이 값보다 훨씬 클 수 있습니다(확인 필요: 이 실험에서 S3는 재지 않았습니다). 오래 걸리는 frozen 검색은 async search로 보내라고 공식 문서가 권합니다.
 
 ### ILM이 frozen으로 보내는 과정
@@ -217,13 +217,13 @@ searchable snapshot index의 유일한 완전한 사본은 repository의 snapsho
 | snapshot repository와 클러스터는 같은 region에 둔다 | Searchable snapshots |
 | S3 호환 저장소(MinIO 등)는 repository analysis API로 적합성을 확인한다 | Searchable snapshots |
 
-저장소 점검처럼 repository에 쓰기를 멈춰야 할 때의 순서는 아래가 제가 쓰는 방법입니다(해석).
+저장소 점검처럼 repository에 쓰기를 멈춰야 할 때의 순서는 아래가 제가 쓰는 방법입니다.
 
 1. `POST _slm/stop`으로 SLM을 멈추고, 진행 중인 snapshot이 끝났는지 `GET _snapshot/_current`로 확인합니다.
 2. 점검 시간 안에 searchable snapshot action이나 delete phase에 들어갈 index가 있는지 `GET */_ilm/explain`으로 봅니다. 있으면 `POST _ilm/stop`으로 ILM도 멈춥니다. data stream lifecycle의 `frozen_after` 전환도 같은 repository를 씁니다.
 3. 점검이 끝나면 repository 연결을 `POST _snapshot/<repo>/_verify`로 확인하고 ILM, SLM을 다시 시작합니다.
 
-mount된 index는 점검 중에도 cache에 있는 부분은 검색됩니다. cache에 없는 부분을 읽는 검색과 shard 복구는 실패합니다(해석).
+mount된 index는 점검 중에도 cache에 있는 부분은 검색됩니다. cache에 없는 부분을 읽는 검색과 shard 복구는 실패합니다.
 
 ## Frozen보다 더 싸게 보관하기
 
@@ -236,8 +236,6 @@ Elastic Search Labs의 Deepfreeze 글은 여기서 한 단계 더 나가, reposi
 Elasticsearch에 내장된 기능이 아니라 cron 등으로 돌리는 별도 Python 도구이고, 글 작성 시점에는 AWS만 지원합니다. Glacier에서 꺼낼 때는 AWS 복원 시간을 기다린 뒤 다시 mount합니다. 운영에 쓰려면 도구의 지원 범위를 따로 확인해야 합니다(확인 필요).
 
 ## 판단 기준
-
-이 절은 위의 사실과 실측을 바탕으로 한 제 판단입니다(해석).
 
 ```mermaid
 flowchart TD

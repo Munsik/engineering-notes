@@ -11,7 +11,7 @@ export async function GET() {
       'Practitioner notes on designing and running Elasticsearch, Kibana and Elastic solutions in production.',
     [
       '- 글은 한국어로 쓰고, 기술 용어와 API 이름은 영어 원어 그대로 둡니다. Content is written in Korean; technical terms stay in English.',
-      '- 글마다 맨 위에 기준 버전과 공식 문서를 다시 확인한 날짜가 있습니다. 글쓴이의 판단은 "(해석)", 확인하지 못한 내용은 "확인 필요"로 표시합니다.',
+      '- 글마다 맨 위에 기준 버전과 공식 문서를 다시 확인한 날짜가 있습니다. 공식 문서로 확인한 사실에는 출처 링크가 있고, 출처가 없는 판단과 권장은 글쓴이의 현장 경험입니다. 확인하지 못한 내용은 "확인 필요"로 표시합니다.',
       '- 실측 수치는 실제로 돌린 lab 결과이고, 재현용 코드와 원본 결과는 GitHub 저장소의 labs/ 폴더에 있습니다.',
       `- 글쓴이: ${author.name}(${author.alternateName}), ${author.jobTitle} at ${author.worksFor}. 개인의 경험과 의견을 바탕으로 썼습니다.`,
       '- 모든 글은 주소 끝의 "/"를 ".md"로 바꾸면 Markdown 원문을 받을 수 있습니다. 아래 목록의 (Markdown) 링크가 그 주소입니다.',

@@ -69,7 +69,7 @@ GET _cluster/allocation/explain?filter_path=index,shard,primary,current_state,un
 
 `max_retry`의 기준인 `index.allocation.max_retries` 기본값 5와 `node_left.delayed_timeout` 기본값 1분은 로컬 9.5.5에서도 확인했습니다. 근거: [Diagnose unassigned shards](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnose-unassigned-shards), [Cluster allocation API examples](https://www.elastic.co/docs/troubleshoot/elasticsearch/cluster-allocation-api-examples), [Full cluster restart and rolling restart procedures](https://www.elastic.co/docs/deploy-manage/maintenance/start-stop-services/full-cluster-restart-rolling-restart-procedures).
 
-rolling restart 뒤에 `cluster.routing.allocation.enable`을 되돌리지 않아 YELLOW가 계속되는 경우가 흔합니다. 작업 뒤에는 항상 `GET _cluster/settings`로 확인합니다(해석).
+rolling restart 뒤에 `cluster.routing.allocation.enable`을 되돌리지 않아 YELLOW가 계속되는 경우가 흔합니다. 작업 뒤에는 항상 `GET _cluster/settings`로 확인합니다.
 
 ## 사본이 없을 때
 
@@ -79,11 +79,9 @@ primary를 가진 노드를 잃고 replica도 없으면 선택지는 아래 순�
 2. **snapshot에서 그 index를 복원한다.** 마지막 snapshot 이후에 들어온 데이터는 잃습니다([Restore from snapshot](https://www.elastic.co/docs/troubleshoot/elasticsearch/restore-from-snapshot)).
 3. **빈 primary를 할당한다(`allocate_empty_primary`).** 그 shard의 데이터를 모두 버리는 조치입니다. 다시 수집할 수 있는 데이터일 때만 씁니다.
 
-`allocate_stale_primary`는 오래된 사본을 primary로 올려 그 뒤의 변경을 잃습니다. 두 명령 모두 `accept_data_loss: true`를 요구할 만큼 위험합니다([Cluster reroute API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-cluster-reroute)). 노드를 되살릴 가능성이 남아 있으면 쓰지 않습니다(해석).
+`allocate_stale_primary`는 오래된 사본을 primary로 올려 그 뒤의 변경을 잃습니다. 두 명령 모두 `accept_data_loss: true`를 요구할 만큼 위험합니다([Cluster reroute API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-cluster-reroute)). 노드를 되살릴 가능성이 남아 있으면 쓰지 않습니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

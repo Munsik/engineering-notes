@@ -17,7 +17,7 @@ UDP는 받았다는 확인을 돌려주지 않습니다. 그래서 수신 쪽이
 
 ## 먼저 받아들일 전제
 
-UDP 구간이 남아 있는 한 유실 0을 보장할 수 없습니다. 할 수 있는 것은 세 가지입니다(해석).
+UDP 구간이 남아 있는 한 유실 0을 보장할 수 없습니다. 할 수 있는 것은 세 가지입니다.
 
 1. UDP 구간을 짧게 만든다. 장비 가장 가까운 곳에서 받아 그 뒤로는 TCP로 넘긴다.
 2. 남은 UDP 구간에서 drop이 생기면 바로 알 수 있게 계측한다.
@@ -40,7 +40,7 @@ flowchart LR
 | ③ UDP input 읽기 | 입력이 버퍼를 비우는 속도가 들어오는 속도보다 느림 | Agent UDP input 지표 `receive_queue_length`, `system_packet_drops` |
 | ④ 출력 지연 | Elasticsearch나 Logstash가 느려 memory queue가 가득 참. 입력이 버퍼를 비우지 못해 ②가 넘침 | Agent의 pipeline queue 사용률, output 오류 |
 
-④가 가장 놓치기 쉽습니다. UDP에는 송신 측에 "천천히 보내라"고 알릴 방법이 없어서, 뒤쪽이 느려지면 그 압력이 결국 커널 수신 버퍼의 drop으로 나타납니다. ingest pipeline에 무거운 처리를 추가한 뒤 UDP drop이 늘었다면 이 경우입니다(해석).
+④가 가장 놓치기 쉽습니다. UDP에는 송신 측에 "천천히 보내라"고 알릴 방법이 없어서, 뒤쪽이 느려지면 그 압력이 결국 커널 수신 버퍼의 drop으로 나타납니다. ingest pipeline에 무거운 처리를 추가한 뒤 UDP drop이 늘었다면 이 경우입니다.
 
 ## 계측
 
@@ -99,7 +99,7 @@ read_buffer_size: 32MiB
 max_message_size: 64KiB
 ```
 
-버퍼를 키우면 순간적인 피크를 흡수할 시간이 늘어날 뿐, 평균 수신 속도가 처리 속도보다 빠른 상황은 해결하지 못합니다. 그 경우는 수신기를 늘리거나 뒤쪽 처리를 가볍게 해야 합니다(해석). 값은 예시입니다. 피크 초당 건수와 메시지 크기로 몇 초를 버틸지 계산해 정합니다.
+버퍼를 키우면 순간적인 피크를 흡수할 시간이 늘어날 뿐, 평균 수신 속도가 처리 속도보다 빠른 상황은 해결하지 못합니다. 그 경우는 수신기를 늘리거나 뒤쪽 처리를 가볍게 해야 합니다. 값은 예시입니다. 피크 초당 건수와 메시지 크기로 몇 초를 버틸지 계산해 정합니다.
 
 ## 구성 패턴
 
@@ -129,8 +129,8 @@ action(type="omfwd" target="10.0.0.100" port="6514" protocol="tcp"
 
 - 뒤쪽(Agent, Logstash)이 멈추면 relay가 메모리와 디스크에 쌓아 두었다가 다시 보냅니다. 업그레이드가 잦은 수집 계층을 장비에서 떼어 놓는 효과가 있습니다.
 - 같은 tutorial은 disk-assisted queue가 프로세스 강제 종료, OOM, 시스템 장애, 전원 장애 뒤에는 순수 disk queue와 같은 보장을 하지 않고, `queue.saveOnShutdown`은 정상 종료에만 적용된다고 적고 있습니다.
-- 같은 tutorial은 plain TCP syslog도 완전히 신뢰할 수 있는 전송은 아니며, 완전한 신뢰성이 필요하면 RELP를 쓰라고 안내합니다. 받는 쪽이 RELP를 지원하지 않으면 TCP가 현실적인 선택입니다(해석).
-- relay는 설정을 단순하게 두고 거의 바꾸지 않습니다. 파싱과 변환은 뒤 계층에서 합니다(해석).
+- 같은 tutorial은 plain TCP syslog도 완전히 신뢰할 수 있는 전송은 아니며, 완전한 신뢰성이 필요하면 RELP를 쓰라고 안내합니다. 받는 쪽이 RELP를 지원하지 않으면 TCP가 현실적인 선택입니다.
+- relay는 설정을 단순하게 두고 거의 바꾸지 않습니다. 파싱과 변환은 뒤 계층에서 합니다.
 - `target`은 03의 L4 부하 분산 VIP로 두면 뒤쪽도 이중화됩니다.
 
 ### B. UDP 부하 분산
@@ -152,14 +152,14 @@ stream {
 ```
 
 - 오픈소스 nginx의 UDP health check는 passive 방식뿐입니다. upstream이 오류를 돌려주거나 응답 시간이 지나면 실패로 세고, `fail_timeout`(기본 10초) 동안 `max_fails`(기본 1)번 실패하면 그 시간만큼 뺍니다. 능동 health check는 NGINX Plus 기능입니다([UDP health checks](https://docs.nginx.com/nginx/admin-guide/load-balancer/udp-health-check/)).
-- syslog는 응답을 돌려주지 않으므로 위 예처럼 `proxy_responses 0`으로 둡니다. 이러면 nginx가 기다릴 응답이 없어, 수신 Agent가 멈춰도 실패로 판단할 근거가 거의 없습니다. 오픈소스 nginx만으로는 죽은 수신기를 빼지 못한다고 보고, keepalived의 health check 스크립트로 수신기 프로세스나 Agent 상태를 보고 upstream을 바꾸는 식으로 보완합니다(해석).
-- LVS(keepalived)나 네트워크 장비의 부하 분산 기능도 선택지입니다. 커널에서 처리하므로 송신 IP를 보존하는 구성(DR 방식)을 고르기 쉽습니다(해석).
+- syslog는 응답을 돌려주지 않으므로 위 예처럼 `proxy_responses 0`으로 둡니다. 이러면 nginx가 기다릴 응답이 없어, 수신 Agent가 멈춰도 실패로 판단할 근거가 거의 없습니다. 오픈소스 nginx만으로는 죽은 수신기를 빼지 못한다고 보고, keepalived의 health check 스크립트로 수신기 프로세스나 Agent 상태를 보고 upstream을 바꾸는 식으로 보완합니다.
+- LVS(keepalived)나 네트워크 장비의 부하 분산 기능도 선택지입니다. 커널에서 처리하므로 송신 IP를 보존하는 구성(DR 방식)을 고르기 쉽습니다.
 - HAProxy 오픈소스 판은 범용 UDP 부하 분산을 하지 않습니다. 대신 syslog 전용 기능이 있습니다. 2.3부터 `log-forward` 섹션에서 `dgram-bind`로 UDP syslog를 받아 넘길 수 있고([Syslog forwarding](https://www.haproxy.com/documentation/haproxy-configuration-tutorials/syslog-forwarding/)), 2.9부터 `mode log` backend로 여러 수신기에 나눠 보낼 수 있습니다. 다만 UDP syslog 서버에는 health check를 걸 수 없습니다([Load balance syslog messages](https://www.haproxy.com/documentation/haproxy-configuration-tutorials/load-balancing/syslog/)). 범용 UDP 부하 분산은 HAProxy Enterprise의 UDP module(2.8r1 이후)이나 ALOHA가 맡습니다([UDP load balancing](https://www.haproxy.com/documentation/haproxy-enterprise/enterprise-modules/udp/)).
-- 부하 분산기를 거치면 수신기가 보는 송신 IP가 바뀔 수 있습니다. `host.ip`나 `log.source.address`로 장비를 구분한다면 원래 주소를 보존하는 방식(DSR, transparent proxy)을 확인합니다(해석).
+- 부하 분산기를 거치면 수신기가 보는 송신 IP가 바뀔 수 있습니다. `host.ip`나 `log.source.address`로 장비를 구분한다면 원래 주소를 보존하는 방식(DSR, transparent proxy)을 확인합니다.
 
 ### C. 이중 송신
 
-장비가 syslog 대상을 두 개 지원하면 두 수신기로 같은 로그를 보냅니다. 한쪽이 멈춰도 다른 쪽이 받습니다. 대신 평소에는 모든 로그가 두 번 들어오므로 저장 전에 중복을 제거해야 합니다. 메시지 내용과 장비, 시각으로 fingerprint를 만들어 `_id`로 쓰는 방법은 [05](../05-count-reconciliation/#중복-찾기와-막기)에서 다룹니다. 같은 내용의 로그가 같은 초에 정당하게 여러 번 찍히는 장비라면 이 방법은 쓸 수 없습니다(해석).
+장비가 syslog 대상을 두 개 지원하면 두 수신기로 같은 로그를 보냅니다. 한쪽이 멈춰도 다른 쪽이 받습니다. 대신 평소에는 모든 로그가 두 번 들어오므로 저장 전에 중복을 제거해야 합니다. 메시지 내용과 장비, 시각으로 fingerprint를 만들어 `_id`로 쓰는 방법은 [05](../05-count-reconciliation/#중복-찾기와-막기)에서 다룹니다. 같은 내용의 로그가 같은 초에 정당하게 여러 번 찍히는 장비라면 이 방법은 쓸 수 없습니다.
 
 ## 직접 재는 절차
 
@@ -194,15 +194,13 @@ stream {
 - `cap-12` 구간에는 Logstash 두 대의 worker 사용률이 99%, `queue_backpressure`가 0.9 안팎까지 올랐습니다. 처리 계층이 따라가지 못한 구간입니다.
 - 두 시험 내내 Agent UDP input의 `system_packet_drops`와 `receive_queue_length`는 0이었습니다.
 
-여기서 얻은 판단입니다(해석).
+여기서 얻은 판단입니다.
 
 - Agent의 drop 지표는 그 socket에서 커널이 버린 것만 셉니다. 이 lab에서는 유실이 그 바깥(컨테이너 사이 가상 네트워크 구간으로 추정)에서 생겨 지표에 잡히지 않았습니다. 정확한 지점은 확인하지 못했습니다. 운영에서도 NIC, 스위치, 부하 분산기에서 생긴 유실은 이 지표에 나오지 않습니다.
 - 그래서 drop 지표만 보고 "유실 없음"이라고 판단하지 않습니다. 도입 시험은 순번 송신으로 끝에서 세고, 운영에서는 수신 호스트의 `RcvbufErrors`, NIC drop 같은 커널 카운터를 같이 봅니다.
 - 출력 경로가 바뀌자 유실률이 크게 달라졌습니다. UDP 수신 성능은 수신기 단독이 아니라 출력까지 포함한 전체 경로로 잽니다. 처리 계층을 바꾸면 위 절차를 다시 돌립니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

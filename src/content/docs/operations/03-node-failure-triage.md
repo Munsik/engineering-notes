@@ -35,7 +35,7 @@ sidebar:
 
 종료 코드 143은 128 + 15(SIGTERM)입니다. heap dump 기본 위치는 [JVM settings](https://www.elastic.co/docs/reference/elasticsearch/jvm-settings)에 있습니다.
 
-OS OOM killer라면 heap이 아니라 프로세스 전체 메모리가 원인입니다. heap을 물리 메모리의 50% 넘게 잡았거나, 같은 호스트의 다른 프로세스가 메모리를 쓰거나, 컨테이너 메모리 한도가 heap에 비해 작은 경우가 흔합니다(해석).
+OS OOM killer라면 heap이 아니라 프로세스 전체 메모리가 원인입니다. heap을 물리 메모리의 50% 넘게 잡았거나, 같은 호스트의 다른 프로세스가 메모리를 쓰거나, 컨테이너 메모리 한도가 heap에 비해 작은 경우가 흔합니다.
 
 ## circuit breaker 429
 
@@ -55,10 +55,10 @@ GET _cat/circuit_breaker?v
 GET _nodes/stats?filter_path=nodes.*.name,nodes.*.breakers.*.tripped,nodes.*.breakers.*.estimated_size,nodes.*.breakers.*.limit_size
 ```
 
-9.5.5의 노드 통계에는 이 밖에 `model_inference`, `eql_sequence` breaker도 보입니다(로컬 확인). 오류 메시지의 `[parent]`, `[request]`, `[fielddata]`가 어떤 breaker인지 알려 줍니다. `[parent]`는 heap 전체가 높다는 뜻이라 특정 요청보다 heap 압박 자체를 봐야 하고, `[request]`는 대개 큰 aggregation입니다(해석).
+9.5.5의 노드 통계에는 이 밖에 `model_inference`, `eql_sequence` breaker도 보입니다(로컬 확인). 오류 메시지의 `[parent]`, `[request]`, `[fielddata]`가 어떤 breaker인지 알려 줍니다. `[parent]`는 heap 전체가 높다는 뜻이라 특정 요청보다 heap 압박 자체를 봐야 하고, `[request]`는 대개 큰 aggregation입니다.
 429는 circuit breaker만 내는 것이 아닙니다. thread pool queue가 차거나 indexing pressure 한도(기본 heap의 10%)를 넘어도 `es_rejected_execution_exception`과 함께 429가 납니다. 오류 이름으로 둘을 구분합니다([Rejected requests](https://www.elastic.co/docs/troubleshoot/elasticsearch/rejected-requests)).
 
-breaker 한도를 올리는 것은 해결이 아닙니다. 노드를 지키는 장치를 끄는 것이라 OOM으로 이어질 수 있습니다(해석).
+breaker 한도를 올리는 것은 해결이 아닙니다. 노드를 지키는 장치를 끄는 것이라 OOM으로 이어질 수 있습니다.
 
 ## heap 압박의 원인 좁히기
 
@@ -81,7 +81,7 @@ breaker 한도를 올리는 것은 해결이 아닙니다. 노드를 지키는 �
 | shard, index, 필드가 너무 많음 | 평소에도 heap이 높고 내려가지 않음 | shard 정리, rollover 크기 기준, mapping explosion 방지 |
 | fielddata(text 필드 집계) | fielddata breaker | text 필드 집계를 keyword로 |
 
-GC가 계속 돌아도 heap이 줄지 않는 상태는 저절로 회복되지 않는 경우가 많습니다. 원인 요청을 취소할 수 없으면 해당 노드를 재시작하는 편이 장애 시간을 줄입니다. 재시작 전에 hot threads와 tasks를 저장해 둡니다(해석).
+GC가 계속 돌아도 heap이 줄지 않는 상태는 저절로 회복되지 않는 경우가 많습니다. 원인 요청을 취소할 수 없으면 해당 노드를 재시작하는 편이 장애 시간을 줄입니다. 재시작 전에 hot threads와 tasks를 저장해 둡니다.
 
 ## OS 설정 점검
 
@@ -112,13 +112,11 @@ GC가 계속 돌아도 heap이 줄지 않는 상태는 저절로 회복되지 �
 - Ubuntu 24.04는 자체 기본값으로 `/etc/sysctl.d/10-map-count.conf`에 1048576을 둡니다. Elasticsearch 패키지가 넣는 `elasticsearch.conf`는 이름 순서상 뒤라 이 값을 262144로 낮춥니다.
 - 링크가 있는 배포판은 Ubuntu 24.04(위 재현), RHEL 7 이후([Red Hat solution 3726391](https://access.redhat.com/solutions/3726391)), Debian 12입니다. Debian 13은 이 링크를 없애서 `systemd-sysctl`이 `/etc/sysctl.conf`를 아예 읽지 않습니다([Debian 13 release notes 5.1.15](https://www.debian.org/releases/trixie/release-notes/issues.html#etc-sysctl-conf-is-no-longer-honored)).
 - RHEL에서 tuned가 돌면 tuned의 sysctl plugin이 `/etc/sysctl.conf`를 마지막에 다시 적용합니다([RHEL-6884](https://issues.redhat.com/browse/RHEL-6884)). 그래서 같은 설정이라도 tuned 유무에 따라 결과가 달라질 수 있습니다.
-- 정리하면 배포판과 상관없이 `/etc/sysctl.d/elasticsearch.conf`에 두는 방법이 확실합니다. 업그레이드와 재부팅 뒤에는 `sysctl vm.max_map_count`로 실제 값을 확인합니다(해석).
+- 정리하면 배포판과 상관없이 `/etc/sysctl.d/elasticsearch.conf`에 두는 방법이 확실합니다. 업그레이드와 재부팅 뒤에는 `sysctl vm.max_map_count`로 실제 값을 확인합니다.
 
 THP(transparent huge pages), glibc malloc arena 같은 튜닝은 공식 important system configuration에 없습니다. 근거 없이 바꾸지 않습니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 먼저 할 것 |
 | --- | --- |

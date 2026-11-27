@@ -15,7 +15,7 @@ Elastic이 Kibana에 기본으로 넣어 둔 job들의 실제 설정을 뜯어�
 :::note[기준]
 - Elasticsearch, Kibana 9.x 기준입니다. 버전이나 배포 형태(Elastic Cloud Serverless 등)에 따라 다른 부분은 본문에 따로 적었습니다.
 - 공식 문서와 API reference는 2026년 11월에 다시 확인했습니다. Kibana 제공 job 설정은 GitHub [elastic/kibana](https://github.com/elastic/kibana/tree/main/x-pack/platform/plugins/shared/ml/server/models/data_recognizer/modules) 저장소의 main 브랜치를 봤습니다.
-- 공식 문서로 확인하지 못한 내용에는 "확인 필요", 제 해석이 들어간 부분에는 "해석"이라고 표시했습니다. 소스 코드나 직접 실행한 결과로 확인한 내용은 그 근거를 같이 적었습니다.
+- 공식 문서로 확인한 내용에는 출처를 달았습니다. 출처가 없는 판단과 권장은 제 현장 경험에서 나온 것이고, 아직 확인하지 못한 내용에는 "확인 필요"라고 표시했습니다. 소스 코드나 직접 실행한 결과로 확인한 내용은 그 근거를 같이 적었습니다.
 - 각 장 맨 위에도 그 장의 기준을 적어 두었습니다.
 :::
 

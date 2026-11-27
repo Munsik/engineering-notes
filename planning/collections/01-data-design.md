@@ -76,7 +76,7 @@
 5. 구현: index template과 `logs@custom` component template 예시
 6. 검증: labs 실측 결과 표와 해석
 7. 운영 고려사항: 기존 data stream 전환 시 rollover 이후부터 적용, 통합(integration) data stream 적용 방법, 전환 전 `_source` 소비자 점검
-8. 판단 기준 요약 (해석)
+8. 판단 기준 요약
 
 ### labs 실험 설계
 
@@ -169,7 +169,7 @@
 5. multi-tenant 설계 비교 표
 6. 검증: labs 실측
 7. 운영: hot spotting 진단 순서, 노드당 shard 한도에 다가갈 때의 신호
-8. 판단 기준 요약 (해석)
+8. 판단 기준 요약
 
 ### labs 실험 설계
 
@@ -253,7 +253,7 @@
 4. 구현: ILM 정책, repository 등록 예시
 5. 검증: frozen 조회 지연 실측, 재시작 시나리오
 6. 운영: frozen을 피해야 할 query와 rule, repository 운영 규칙, 복원 절차
-7. 판단 기준 요약 (해석)
+7. 판단 기준 요약
 
 ### labs 실험 설계
 

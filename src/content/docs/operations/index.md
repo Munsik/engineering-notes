@@ -11,7 +11,7 @@ sidebar:
 
 :::note[기준]
 - Elasticsearch 9.x, Linux, self-managed 기준입니다. Elastic Cloud Hosted와 다른 점은 글마다 적었습니다.
-- 근거는 공식 troubleshooting 문서, production guidance, Elasticsearch 소스와 release notes입니다. 공식 문서로 확인하지 못한 내용에는 "확인 필요", 제 해석에는 "해석"이라고 표시했습니다.
+- 근거는 공식 troubleshooting 문서, production guidance, Elasticsearch 소스와 release notes입니다. 출처가 없는 판단과 권장은 제 현장 경험에서 나온 것이고, 공식 문서로 확인하지 못한 내용에는 "확인 필요"라고 표시했습니다.
 - 진단 명령 모음은 저장소의 [`labs/operations/`](https://github.com/Munsik/engineering-notes/tree/main/labs/operations)에 있습니다.
 :::
 

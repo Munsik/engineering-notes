@@ -45,7 +45,7 @@ indicator 이름은 경로에 하나씩 넣습니다. `disk,shards_capacity`처�
 | 노드당 shard | `cluster.max_shards_per_node` 기본 1,000(frozen 3,000) | [Miscellaneous cluster settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/miscellaneous-cluster-settings) |
 | master heap | heap 1GB당 index 3,000개 미만 | Size your shards |
 
-공식 수치가 없는 항목은 제 기준입니다(해석).
+공식 수치가 없는 항목은 제 기준입니다.
 
 | 지표 | 기준 |
 | --- | --- |
@@ -86,8 +86,8 @@ GET */_ilm/explain?only_errors=true
 
 - 디스크 증가 추세로 언제 85%에 닿을지 계산합니다.
 - 사용 중인 버전의 known issue와 보안 공지를 확인합니다([Elasticsearch known issues](https://www.elastic.co/docs/release-notes/elasticsearch/known-issues)). 예를 들어 9.5.0에서 9.5.2에는 디스크와 recovery에 영향을 주는 known issue가 있어 9.5.3 이상으로 올리라고 권합니다([04](../04-disk-full/#디스크가-이유-없이-늘-때)).
-- 인증서와 라이선스 만료일을 확인합니다. TLS 인증서가 만료되면 노드 사이 연결과 클라이언트 연결이 한꺼번에 끊깁니다. `GET _ssl/certificates`는 노드가 읽은 인증서마다 만료 시각(`expiry`)을 돌려주고([SSL certificate API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-ssl-certificates)), `GET _license`는 라이선스 만료 시각을 돌려줍니다. 만료 한두 달 전에 교체 일정을 잡습니다(해석).
-- 복원 연습을 합니다. snapshot이 있어도 복원해 본 적이 없으면 장애 때 시간을 잃습니다(해석).
+- 인증서와 라이선스 만료일을 확인합니다. TLS 인증서가 만료되면 노드 사이 연결과 클라이언트 연결이 한꺼번에 끊깁니다. `GET _ssl/certificates`는 노드가 읽은 인증서마다 만료 시각(`expiry`)을 돌려주고([SSL certificate API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-ssl-certificates)), `GET _license`는 라이선스 만료 시각을 돌려줍니다. 만료 한두 달 전에 교체 일정을 잡습니다.
+- 복원 연습을 합니다. snapshot이 있어도 복원해 본 적이 없으면 장애 때 시간을 잃습니다.
 
 ## 모니터링 도구
 
@@ -97,11 +97,9 @@ GET */_ilm/explain?only_errors=true
 | Stack Monitoring | 별도 monitoring 클러스터로 지표를 모아 Kibana에서 봄. 알림 규칙 기본 제공 |
 | health report + 자체 스크립트 | 외부 연결이 없는 환경에서 최소한의 상태 점검 |
 
-운영 클러스터의 지표는 운영 클러스터가 아닌 곳에 모읍니다. 운영 클러스터가 죽으면 그 안의 모니터링 데이터도 볼 수 없기 때문입니다(해석). 공식 Stack Monitoring 문서도 운영 클러스터와 monitoring 클러스터를 분리한 구성을 전형적인 구조로 제시합니다([Stack Monitoring](https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring)).
+운영 클러스터의 지표는 운영 클러스터가 아닌 곳에 모읍니다. 운영 클러스터가 죽으면 그 안의 모니터링 데이터도 볼 수 없기 때문입니다. 공식 Stack Monitoring 문서도 운영 클러스터와 monitoring 클러스터를 분리한 구성을 전형적인 구조로 제시합니다([Stack Monitoring](https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring)).
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

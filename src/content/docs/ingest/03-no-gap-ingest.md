@@ -31,7 +31,7 @@ sidebar:
 
 - Beats와 Agent는 ack를 지원하는 출력(Elasticsearch, Logstash, Kafka 등)에 at-least-once로 보냅니다. 출력이 이벤트를 받았지만 ack를 돌려주지 못하면 같은 이벤트를 다시 보내 중복이 생길 수 있습니다([Deduplicate data](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-deduplication)).
 - Logstash의 TCP, UDP, HTTP 입력은 애플리케이션 수준의 ack가 없어서 연결 문제가 생기면 데이터를 잃을 수 있습니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
-- Agent는 사용자가 disk queue를 설정할 수 없습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison)). Agent의 memory queue가 차면, 파일 입력은 읽기를 멈추고 기다리지만 UDP 입력은 받은 패킷을 둘 곳이 없습니다(해석). 이 차이가 [04](../04-syslog-udp/)의 출발점입니다.
+- Agent는 사용자가 disk queue를 설정할 수 없습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison)). Agent의 memory queue가 차면, 파일 입력은 읽기를 멈추고 기다리지만 UDP 입력은 받은 패킷을 둘 곳이 없습니다. 이 차이가 [04](../04-syslog-udp/)의 출발점입니다.
 
 ```mermaid
 flowchart LR
@@ -84,7 +84,7 @@ lab에서 이 구성으로 Logstash 한 대를 멈춰 봤습니다. 수신 Agent
 | `lab-ls-01` 정지 5분 | 0 | 약 1,850 | 약 10만 5천 |
 | `lab-ls-01` 재시작 후 | 약 900 | 약 900 | 약 10만 5천 |
 
-남은 한 대가 곧바로 두 배를 받아 저장량이 꺼지지 않았습니다. 순번으로 세어 본 중복은 0건이었습니다. `docker compose stop`은 Logstash에 종료 신호를 보내 처리 중인 batch를 마무리하게 하므로, 프로세스가 갑자기 죽는 경우보다 중복이 덜 생기는 조건입니다(해석). 저장량이 송신량(분당 12만 건)보다 적은 것은 UDP 구간의 유실이고, [04](../04-syslog-udp/#lab에서-본-것)에서 다룹니다.
+남은 한 대가 곧바로 두 배를 받아 저장량이 꺼지지 않았습니다. 순번으로 세어 본 중복은 0건이었습니다. `docker compose stop`은 Logstash에 종료 신호를 보내 처리 중인 batch를 마무리하게 하므로, 프로세스가 갑자기 죽는 경우보다 중복이 덜 생기는 조건입니다. 저장량이 송신량(분당 12만 건)보다 적은 것은 UDP 구간의 유실이고, [04](../04-syslog-udp/#lab에서-본-것)에서 다룹니다.
 
 ### 패턴 2: TCP, HTTP 원천 앞에 L4 부하 분산
 
@@ -104,7 +104,7 @@ backend logstash_syslog
     server ls2 10.0.0.12:6514 check inter 2s fall 2 rise 3
 ```
 
-부하 분산기를 넣을 때 알아 둘 것입니다(해석).
+부하 분산기를 넣을 때 알아 둘 것입니다.
 
 - **연결 단위로 나뉩니다.** 방화벽처럼 TCP 연결 하나를 오래 유지하는 원천은 처음 붙은 노드에 계속 머뭅니다. 원천 수가 적으면 부하가 고르게 나뉘지 않습니다.
 - **노드를 뺄 때는 연결을 먼저 비웁니다.** 부하 분산기에서 해당 노드를 drain 상태로 바꾸고, 원천이 다른 노드로 다시 붙은 것을 확인한 뒤 멈춥니다. 바로 멈추면 그 노드에 붙어 있던 연결의 송신 버퍼에 있던 데이터를 잃을 수 있습니다.
@@ -114,7 +114,7 @@ backend logstash_syslog
 
 수신 계층과 Elasticsearch 사이에 Kafka를 두면, 뒤쪽 계층을 멈추거나 바꾸는 동안 Kafka가 데이터를 들고 있습니다. 수신 계층은 Kafka에 넣기만 하고, 소비 계층이 Kafka에서 읽어 Elasticsearch로 보냅니다.
 
-앞단과 뒷단은 모두 Fleet이 관리하는 Elastic Agent로 구성합니다. 앞단 Agent는 Kafka output으로 쓰고([Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings)), 뒷단 Agent는 Kafka Log Consumer integration으로 읽습니다([Kafka Log Consumer](https://www.elastic.co/docs/reference/integrations/kafka_log)). 두 계층의 설정 배포, 업그레이드, 상태 확인을 Fleet 정책 하나의 흐름으로 처리할 수 있습니다. Logstash로 구성하면 pipeline 파일과 배포 방법을 계층마다 따로 관리해야 합니다(해석).
+앞단과 뒷단은 모두 Fleet이 관리하는 Elastic Agent로 구성합니다. 앞단 Agent는 Kafka output으로 쓰고([Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings)), 뒷단 Agent는 Kafka Log Consumer integration으로 읽습니다([Kafka Log Consumer](https://www.elastic.co/docs/reference/integrations/kafka_log)). 두 계층의 설정 배포, 업그레이드, 상태 확인을 Fleet 정책 하나의 흐름으로 처리할 수 있습니다. Logstash로 구성하면 pipeline 파일과 배포 방법을 계층마다 따로 관리해야 합니다.
 
 공식 reference architecture는 Kafka 앞뒤에 Logstash를 둔 구성으로 설명합니다([Elastic Agent to Elasticsearch with Kafka as middleware message queue](https://www.elastic.co/docs/manage-data/ingest/ingest-reference-architectures/agent-kafka-es)). Logstash가 꼭 필요한 경우는 이 절 끝에 따로 적었습니다.
 
@@ -137,8 +137,8 @@ flowchart LR
 
 Kafka output에서 유실과 관련된 설정은 세 가지입니다.
 
-- ACK reliability는 기본값 Wait for local commit 대신 Wait for all replicas to commit으로 둡니다. 기본값은 leader가 기록하면 ack를 받으므로, replica에 복제되기 전에 leader가 죽으면 그 이벤트를 잃을 수 있습니다(해석). Do not wait는 오류가 나도 조용히 잃습니다.
-- Default topic은 처음에는 하나로 둡니다. 원천별로 보존 기간이나 처리량이 크게 다르면 `data_stream.dataset` 기준으로 나눕니다. 토픽을 나누면 뒷단 integration의 Topics 목록도 같이 늘려야 합니다(해석).
+- ACK reliability는 기본값 Wait for local commit 대신 Wait for all replicas to commit으로 둡니다. 기본값은 leader가 기록하면 ack를 받으므로, replica에 복제되기 전에 leader가 죽으면 그 이벤트를 잃을 수 있습니다. Do not wait는 오류가 나도 조용히 잃습니다.
+- Default topic은 처음에는 하나로 둡니다. 원천별로 보존 기간이나 처리량이 크게 다르면 `data_stream.dataset` 기준으로 나눕니다. 토픽을 나누면 뒷단 integration의 Topics 목록도 같이 늘려야 합니다.
 - Kafka의 `log.message.timestamp.type`은 기본값 CreateTime 대신 LogAppendTime으로 둡니다. Agent는 Kafka 메시지 시각에 이벤트의 원래 시각을 넣습니다. 그래서 보존 기간보다 오래된 이벤트(예: 밀려 있던 파일 로그)는 Kafka에 들어오자마자 지워집니다. Kafka 3.6부터는 시각 차이가 크면 아예 거부될 수도 있습니다.
 
 ACK reliability와 timestamp 동작은 [Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings) 기준입니다. timestamp는 Agent 설정이 아니라 Kafka broker나 topic 설정이라 Kafka 운영 쪽과 같이 정합니다.
@@ -179,7 +179,7 @@ PUT _ingest/pipeline/kafka-agent-unwrap
 
 - `json`의 `add_to_root`는 겹치는 최상위 필드를 원래 이벤트 값으로 덮어씁니다(기본 `replace`). `message`, `@timestamp`, `agent`, `host`도 앞단 Agent의 값으로 돌아갑니다. Kafka Log Consumer가 붙인 `kafka.topic`, `kafka.partition`, `kafka.offset`은 원래 이벤트에 없는 필드라 그대로 남아, 나중에 어느 offset에서 왔는지 추적할 때 씁니다([JSON processor](https://www.elastic.co/docs/reference/ingest-processor/json-processor)).
 - `reroute`는 `dataset`, `namespace`를 지정하지 않으면 문서의 `data_stream.dataset`, `data_stream.namespace`를 씁니다. 옮겨 간 뒤에는 그 data stream의 ingest pipeline이 실행되므로, integration의 파싱과 `@custom` pipeline이 Elasticsearch로 바로 보낼 때와 같이 동작합니다([Reroute processor](https://www.elastic.co/docs/reference/ingest-processor/reroute-processor)).
-- `reroute`는 data stream의 type을 바꾸지 못합니다. 이 경로에는 logs 계열만 태우고, metrics는 Elasticsearch output으로 바로 보내는 편이 단순합니다(해석).
+- `reroute`는 data stream의 type을 바꾸지 못합니다. 이 경로에는 logs 계열만 태우고, metrics는 Elasticsearch output으로 바로 보내는 편이 단순합니다.
 - 옮겨 갈 data stream에 쓸 권한이 있어야 합니다. Kafka Log Consumer는 1.3.0부터 `logs-*-*`로 reroute하는 권한을 갖도록 바뀌었습니다(integration changelog).
 - JSON이 아닌 메시지나 `data_stream` 필드가 없는 메시지는 `logs-kafka_log.generic`에 `error.message`와 함께 남습니다. 이 data stream의 건수가 늘면 앞단 구성을 봅니다.
 
@@ -187,7 +187,7 @@ PUT _ingest/pipeline/kafka-agent-unwrap
 
 #### Logstash가 필요한 경우
 
-아래 중 하나가 필요할 때만 소비 계층을 Logstash로 둡니다(해석). 역할 구분은 [02](../02-where-to-parse/)에서 다룹니다.
+아래 중 하나가 필요할 때만 소비 계층을 Logstash로 둡니다. 역할 구분은 [02](../02-where-to-parse/)에서 다룹니다.
 
 - 외부 시스템을 조회해 enrich하는 것처럼 ingest pipeline으로 할 수 없는 변환
 - Elasticsearch 말고 다른 곳에도 같은 데이터를 보내야 할 때
@@ -208,11 +208,11 @@ input {
 
 공식 문서는 Kafka에서 읽는 Logstash에도 PQ를 켜라고 권합니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
 
-어느 구성이든 Kafka 보존 기간은 소비 계층이 멈출 수 있는 최대 시간보다 길게 잡습니다(해석).
+어느 구성이든 Kafka 보존 기간은 소비 계층이 멈출 수 있는 최대 시간보다 길게 잡습니다.
 
 ### 패턴 4: 원천의 보존을 버퍼로 쓰기
 
-파일 로그는 수집기가 멈춰도 디스크에 남아 있고, Agent는 다시 시작하면 기록해 둔 위치부터 읽습니다. 이 경우 "무중단"의 조건은 수집기가 아니라 로그 회전 정책입니다. 수집기가 멈춰 있는 동안 회전으로 파일이 지워지면 그 부분은 잃습니다(해석). 업그레이드나 장애로 수집기가 멈출 수 있는 최대 시간보다 로그 보존을 길게 둡니다.
+파일 로그는 수집기가 멈춰도 디스크에 남아 있고, Agent는 다시 시작하면 기록해 둔 위치부터 읽습니다. 이 경우 "무중단"의 조건은 수집기가 아니라 로그 회전 정책입니다. 수집기가 멈춰 있는 동안 회전으로 파일이 지워지면 그 부분은 잃습니다. 업그레이드나 장애로 수집기가 멈출 수 있는 최대 시간보다 로그 보존을 길게 둡니다.
 
 ## Logstash persistent queue
 
@@ -234,7 +234,7 @@ queue.checkpoint.writes: 1
 
 PQ를 쓸 때 알아 둘 것입니다.
 
-- **PQ는 그 노드에만 있습니다.** 노드가 멈추면 그 안의 이벤트는 노드가 돌아올 때까지 처리되지 않습니다. 다른 노드가 이어받지 못합니다. 그래서 PQ는 이중화가 아니라 "그 노드가 잠시 멈췄다 다시 올 때 잃지 않게" 하는 장치입니다(해석).
+- **PQ는 그 노드에만 있습니다.** 노드가 멈추면 그 안의 이벤트는 노드가 돌아올 때까지 처리되지 않습니다. 다른 노드가 이어받지 못합니다. 그래서 PQ는 이중화가 아니라 "그 노드가 잠시 멈췄다 다시 올 때 잃지 않게" 하는 장치입니다.
 - **at-least-once를 원하면 `queue.checkpoint.writes: 1`을 씁니다.** 공식 문서가 권하는 값이고, 디스크 쓰기가 늘어납니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
 - **디스크를 이중화합니다.** 온프레미스는 RAID, 클라우드는 복제되는 볼륨을 권합니다(같은 문서).
 - **PQ는 처리량을 낮추고 CPU를 더 씁니다.** 얼마나인지는 환경마다 달라서 직접 재야 합니다. 공식 Elastic 블로그는 병렬 pipeline으로 PQ 성능을 보완하는 방법을 소개합니다.
@@ -244,7 +244,7 @@ PQ 크기 산정은 [07](../07-collector-sizing/#persistent-queue-디스크)에�
 
 ## 순차 업그레이드 절차
 
-아래 순서는 제가 쓰는 방법입니다(해석).
+아래 순서는 제가 쓰는 방법입니다.
 
 ### Logstash N대
 
@@ -257,13 +257,13 @@ PQ 크기 산정은 [07](../07-collector-sizing/#persistent-queue-디스크)에�
 ### Agent
 
 - Fleet 업그레이드는 대상이 10대 이상이면 rollout 기간이 자동으로 붙어 나눠서 진행됩니다. 기간은 10분과 `대수 x 0.03`초 중 큰 값입니다. 유지 보수 시간 창을 직접 지정할 수도 있습니다([Upgrade Elastic Agents](https://www.elastic.co/docs/reference/fleet/upgrade-elastic-agent)).
-- 업그레이드하는 동안 Agent는 다시 시작합니다. 파일 입력은 이어서 읽지만, 그 Agent가 받던 TCP, UDP 수신은 그동안 멈춥니다(해석). 수신 전용 Agent는 두 대 이상을 두고 한 대씩 업그레이드합니다.
+- 업그레이드하는 동안 Agent는 다시 시작합니다. 파일 입력은 이어서 읽지만, 그 Agent가 받던 TCP, UDP 수신은 그동안 멈춥니다. 수신 전용 Agent는 두 대 이상을 두고 한 대씩 업그레이드합니다.
 - 9.3부터는 Fleet 관리 Agent의 업그레이드를 되돌릴 수 있습니다(구독 등급 조건)(같은 문서).
 
 ### Fleet Server
 
 Fleet Server는 여러 대를 부하 분산기 뒤에 두라고 권합니다. 부하 분산기 timeout은 Agent의 long-polling 연결에 맞춰 늘리고, health check에는 `GET /api/status`를 씁니다([Deploy on-premises and self-managed Fleet Server](https://www.elastic.co/docs/reference/fleet/add-fleet-server-on-prem)).
-Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 변경, 업그레이드 같은 관리 작업만 멈춥니다(해석).
+Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 변경, 업그레이드 같은 관리 작업만 멈춥니다.
 
 ## 운영
 
@@ -272,8 +272,6 @@ Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 �
 - PQ 사용량(`queue_backpressure`, queue 크기)이 계속 늘면 출력 쪽, 대개 Elasticsearch가 받는 속도가 모자란 것입니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 구성 |
 | --- | --- |

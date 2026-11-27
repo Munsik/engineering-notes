@@ -14,7 +14,7 @@ sidebar:
 :::note[기준]
 - Elastic Agent, Fleet, Logstash, Elasticsearch, Kibana 9.x 기준입니다. 글마다 맨 위에 기준 버전을 따로 적었습니다.
 - self-managed와 Elastic Cloud Hosted를 기준으로 썼고, Serverless와 다른 점은 본문에 따로 적었습니다.
-- 공식 문서로 확인하지 못한 내용에는 "확인 필요", 제 해석이 들어간 부분에는 "해석"이라고 표시했습니다. 소스 코드로 확인한 내용은 근거를 같이 적었습니다.
+- 공식 문서로 확인한 내용에는 출처를 달았습니다. 출처가 없는 판단과 권장은 제 현장 경험에서 나온 것이고, 아직 확인하지 못한 내용에는 "확인 필요"라고 표시했습니다. 소스 코드로 확인한 내용은 근거를 같이 적었습니다.
 - 설정 예시는 저장소의 [`labs/ingest/`](https://github.com/Munsik/engineering-notes/tree/main/labs/ingest)에 있습니다.
 :::
 

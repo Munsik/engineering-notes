@@ -138,7 +138,7 @@ buffer가 가득 차면 refresh 주기와 상관없이 segment가 디스크에 �
 고른 shard에서는 보통 가장 큰 대기 segment 하나를 디스크에 씁니다. 이 segment는 디스크에 있지만 다음 refresh 전까지 검색에는 안 보입니다.
 예외가 있습니다. 같은 `_id`를 덮어쓰는 작업이 많아 version map이 buffer보다 메모리를 더 쓰고 있으면, segment 하나만 쓰는 대신 refresh를 합니다. flush 기준(크기나 시간)의 절반을 이미 넘었다면 flush를 합니다. 이때는 그 시점까지의 문서가 검색에 보이게 됩니다(소스 `InternalEngine.writeIndexingBuffer`, `reclaimVersionMapMemory`).
 
-shard가 많을수록 buffer가 잘게 나뉘고, segment도 작아집니다. 노드당 shard 수가 indexing 성능에 영향을 주는 이유 중 하나입니다(해석).
+shard가 많을수록 buffer가 잘게 나뉘고, segment도 작아집니다. 노드당 shard 수가 indexing 성능에 영향을 주는 이유 중 하나입니다.
 
 ### translog와 flush
 
@@ -190,7 +190,7 @@ refresh 횟수는 `_stats`의 `refresh.external_total`입니다. 미설정과 `-
 - **refresh를 꺼도 segment는 디스크에 쓰입니다.** `-1`과 미설정 인덱스에도 commit된 segment가 있습니다. 적재가 1분을 넘기자 `flush_threshold_age`(1분) 때문에 flush가 일어났기 때문입니다. refresh를 꺼도 디스크 기록과 commit은 계속됩니다.
 - **1초 refresh는 segment를 많이 만들고 merge를 부릅니다.** `1s` 인덱스는 segment가 적재 중 최대 40개까지 쌓였고, 40만 건 정도를 한 번에 합치는 merge가 두 번 있었습니다. merge는 IO 제한(throttle)에 22초 동안 걸렸습니다. 이 merge 방식은 [다음 글](../02-merge-and-force-merge/#merge-policy는-두-가지다)에서 설명합니다.
 
-대량 적재 중에는 `refresh_interval`을 `-1`로 두라는 공식 권장(같은 문서)은 이 결과와 맞습니다. 적재 중 검색을 안 한다면 기본값으로 둬도 search idle 덕분에 비슷하게 움직입니다. 다만 대시보드나 alert rule이 그 인덱스를 30초 안에 한 번이라도 검색하면 1초 refresh로 돌아갑니다(해석).
+대량 적재 중에는 `refresh_interval`을 `-1`로 두라는 공식 권장(같은 문서)은 이 결과와 맞습니다. 적재 중 검색을 안 한다면 기본값으로 둬도 search idle 덕분에 비슷하게 움직입니다. 다만 대시보드나 alert rule이 그 인덱스를 30초 안에 한 번이라도 검색하면 1초 refresh로 돌아갑니다.
 
 ### commit point가 잡고 있는 파일
 
@@ -211,7 +211,7 @@ segment는 고칠 수 없기 때문에 "지운다"는 것은 표시를 붙이는
 - Elasticsearch는 여기에 soft delete를 씁니다. 지운 문서를 바로 버리지 않고 `__soft_deletes`라는 doc values 필드로 표시해 둡니다(소스 `Lucene.java`). 복구 중인 replica나 cross-cluster replication follower에게 삭제 작업을 다시 보내려면 지운 문서 정보가 필요하기 때문입니다.
 - 어떤 작업까지 남겨 둘지는 shard history retention lease가 정합니다. lease가 잡고 있는 작업은 merge 때도 버리지 않습니다. lease는 기본 12시간 뒤 만료됩니다(`index.soft_deletes.retention_lease.period`, 같은 문서).
 
-결국 지운 문서가 차지한 공간은 merge가 그 segment를 다시 쓸 때 돌아옵니다. replica가 오래 떨어져 있거나 CCR follower가 밀리면, lease가 풀릴 때까지 merge를 해도 공간이 돌아오지 않을 수 있습니다(해석).
+결국 지운 문서가 차지한 공간은 merge가 그 segment를 다시 쓸 때 돌아옵니다. replica가 오래 떨어져 있거나 CCR follower가 밀리면, lease가 풀릴 때까지 merge를 해도 공간이 돌아오지 않을 수 있습니다.
 
 ### 실측: 같은 문서를 반복 update
 
@@ -238,7 +238,7 @@ segment는 고칠 수 없기 때문에 "지운다"는 것은 표시를 붙이는
 
 같은 실험을 replica 1개로 한 번 더 했습니다. 시점마다 남은 삭제 문서 수는 0에서 5만 건 사이로 오르내렸습니다. merge가 언제 끝났는지에 따라 달라지는 값이라 회차 사이 비교에는 의미가 없습니다.
 retention lease는 shard copy마다 하나씩 있었습니다. 마지막 update가 끝나고 15초 뒤에 보니 lease가 가장 최근 작업보다 9만 건 정도 뒤에 있었습니다(`retaining_seq_no` 1,110,000, `max_seq_no` 1,199,999). 그래도 `expunge_deletes_allowed: 0`으로 정리하자 삭제 문서가 모두 사라졌습니다.
-replica가 정상일 때는 lease가 공간 회수를 막지 않았습니다(실측). lease 때문에 공간이 안 돌아오는 경우는 replica가 내려가 있거나 CCR follower가 밀린 경우로 보면 됩니다(해석). 결과 원본은 [`results/B_update_replica1.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/B_update_replica1.csv)에 있습니다.
+replica가 정상일 때는 lease가 공간 회수를 막지 않았습니다(실측). lease 때문에 공간이 안 돌아오는 경우는 replica가 내려가 있거나 CCR follower가 밀린 경우로 보면 됩니다. 결과 원본은 [`results/B_update_replica1.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/B_update_replica1.csv)에 있습니다.
 
 ## Segment의 생애 한눈에 보기
 
@@ -266,7 +266,7 @@ stateDiagram-v2
 
 ## 운영에서 볼 것
 
-아래는 제가 운영 점검 때 보는 순서입니다(해석).
+아래는 제가 운영 점검 때 보는 순서입니다.
 
 | 확인할 것 | 요청 | 이상 신호 |
 | --- | --- | --- |

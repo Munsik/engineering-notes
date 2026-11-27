@@ -16,7 +16,7 @@ sidebar:
 
 ## 범위부터 가른다
 
-아래 순서는 제가 쓰는 방법입니다(해석). 앞 단계에서 범위가 좁혀지면 그 범위의 절로 바로 갑니다.
+아래 순서는 제가 쓰는 방법입니다. 앞 단계에서 범위가 좁혀지면 그 범위의 절로 바로 갑니다.
 
 ```mermaid
 flowchart TD
@@ -122,7 +122,7 @@ GET _tasks?detailed=true&human=true&actions=indices:*write*
 
 쓰기 쏠림에는 공식 문서가 두 가지를 권합니다. 쓰기가 많은 index의 primary와 replica 수를 indexing 노드 수에 맞추고, `index.routing.allocation.total_shards_per_node`로 한 노드에 들어가는 shard 수를 제한하는 것입니다(같은 문서). 실측과 진단 순서는 [데이터 설계 04](../../data/04-shards-and-bulk/#한-shard나-노드에-쓰기가-몰릴-때)에 있습니다.
 
-`total_shards_per_node`를 너무 빠듯하게 잡으면 노드 하나가 빠졌을 때 shard를 둘 곳이 없어 YELLOW나 RED가 됩니다. 남는 노드 수로 계산해서 정합니다(해석).
+`total_shards_per_node`를 너무 빠듯하게 잡으면 노드 하나가 빠졌을 때 shard를 둘 곳이 없어 YELLOW나 RED가 됩니다. 남는 노드 수로 계산해서 정합니다.
 
 ## 느린 요청을 기록해 두기
 
@@ -168,17 +168,17 @@ PUT _cluster/settings
 - data stream에 `_settings`로 준 slow log 설정은 지금 있는 backing index에만 들어갑니다. rollover 뒤에도 남기려면 index template의 settings에도 넣습니다.
 - query logging의 `threshold` 기본값은 0이라 모든 query를 남깁니다. 켤 때는 값을 꼭 줍니다. 처리량을 넘는 기록은 버려질 수 있습니다(Query logging 문서).
 - watchdog은 coordinating node와 data node 모두 기본 3초 기준입니다(`search.task_watchdog.coordinator_threshold`, `data_node_threshold`). 로그의 hot threads는 gzip으로 압축하고 base64로 인코딩한 값이라 `base64 --decode | gzip --decompress`로 풉니다.
-- 찾은 query 하나를 자세히 보려면 `"profile": true`를 붙여 다시 실행하거나 Kibana의 Search Profiler를 씁니다. profile은 그 요청만 느려지므로 운영 시간에는 범위를 줄여서 돌립니다(해석).
+- 찾은 query 하나를 자세히 보려면 `"profile": true`를 붙여 다시 실행하거나 Kibana의 Search Profiler를 씁니다. profile은 그 요청만 느려지므로 운영 시간에는 범위를 줄여서 돌립니다.
 
 ## 클러스터는 정상인데 클라이언트만 느릴 때
 
 클러스터 지표가 정상인데 애플리케이션에서만 timeout이나 연결 오류가 나면 클라이언트와 그 사이 네트워크를 봅니다.
 
-**timeout 뒤에도 검색은 계속 돈다.** 클라이언트 timeout은 클라이언트가 기다리기를 멈출 뿐입니다. Elasticsearch는 HTTP 연결이 닫혀야 검색을 자동으로 취소합니다. 공식 문서는 요청을 중단하거나 timeout이 나면 HTTP 연결을 닫도록 클라이언트를 설정하라고 권합니다([Search cancellation](https://www.elastic.co/docs/solutions/search/the-search-api#global-search-cancellation)). 연결을 닫지 않고 같은 요청을 다시 보내는 재시도는 클러스터에 같은 검색을 쌓습니다(해석).
+**timeout 뒤에도 검색은 계속 돈다.** 클라이언트 timeout은 클라이언트가 기다리기를 멈출 뿐입니다. Elasticsearch는 HTTP 연결이 닫혀야 검색을 자동으로 취소합니다. 공식 문서는 요청을 중단하거나 timeout이 나면 HTTP 연결을 닫도록 클라이언트를 설정하라고 권합니다([Search cancellation](https://www.elastic.co/docs/solutions/search/the-search-api#global-search-cancellation)). 연결을 닫지 않고 같은 요청을 다시 보내는 재시도는 클러스터에 같은 검색을 쌓습니다.
 
 **search API의 `timeout`은 shard 단위다.** 요청 본문의 `timeout`은 shard마다 query 단계에 적용되고, 넘으면 그 shard까지의 부분 결과와 `"timed_out": true`를 돌려줍니다. 전체 요청 시간을 막는 장치가 아닙니다([Search timeout](https://www.elastic.co/docs/solutions/search/the-search-api#search-timeout)).
 
-**한가한 시간대에만 연결 오류가 난다.** 낮에는 괜찮다가 새벽이나 주말에 첫 요청이 실패하면, 중간 장비(방화벽, NAT, 부하 분산기)의 idle timeout을 의심합니다. 연결 pool에 남은 연결을 장비가 먼저 끊었는데 클라이언트는 모르고 그 연결로 요청을 보내 RST나 timeout을 받는 경우입니다(해석).
+**한가한 시간대에만 연결 오류가 난다.** 낮에는 괜찮다가 새벽이나 주말에 첫 요청이 실패하면, 중간 장비(방화벽, NAT, 부하 분산기)의 idle timeout을 의심합니다. 연결 pool에 남은 연결을 장비가 먼저 끊었는데 클라이언트는 모르고 그 연결로 요청을 보내 RST나 timeout을 받는 경우입니다.
 
 | 확인 | 내용 |
 | --- | --- |
@@ -190,8 +190,6 @@ PUT _cluster/settings
 근거: [Networking settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/networking-settings). keepalive 값을 장비 idle timeout보다 짧게 두면 연결이 살아 있는 동안 장비가 끊지 않습니다. 노드 사이 transport 연결도 같은 이유로 끊기면 클러스터가 불안정해집니다. 그 경우는 [07](../07-unstable-cluster/#연결이-밖에서-끊길-때)에서 다룹니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 먼저 할 것 |
 | --- | --- |
