@@ -1,0 +1,40 @@
+{
+  "backing_indices": [
+    ".ds-metrics-lab.ds-default-2026.11.26-000002",
+    ".ds-metrics-lab.ds-default-2026.11.27-000001"
+  ],
+  "source": {
+    "index": ".ds-metrics-lab.ds-default-2026.11.26-000002",
+    "docs": 72000,
+    "store_bytes": 990344
+  },
+  "downsample_status": 200,
+  "downsample_error": null,
+  "downsample_s": 1.4,
+  "target": {
+    "index": ".ds-metrics-lab.ds-default-2026.11.26-000002-ds-5m",
+    "docs": 2600,
+    "store_bytes": 175144
+  },
+  "target_sample_source": {
+    "@timestamp": "2026-11-27T00:45:00.000Z",
+    "_doc_count": 20,
+    "cpu": {
+      "pct": {
+        "min": 0.012,
+        "max": 0.997,
+        "sum": 9.632,
+        "value_count": 20
+      }
+    },
+    "host": {
+      "name": "host-0001"
+    },
+    "metric": {
+      "name": "system"
+    },
+    "net": {
+      "bytes": 645405367
+    }
+  }
+}

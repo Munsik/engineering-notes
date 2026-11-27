@@ -81,6 +81,14 @@ Elastic Agent 패키지가 설치하는 `[Elastic Agent] UDP Input Metrics` 대�
 
 위 화면은 아래 "lab에서 본 것"의 고속 송신 구간입니다. 이 지표가 0이라고 유실이 없었던 것은 아니었습니다.
 
+### 같은 component를 쓰는 입력은 서로 영향을 준다
+
+Agent 지표의 `component.id`는 입력 종류와 출력 이름으로 만들어집니다(`udp-default`, `tcp-default`처럼). 같은 정책에서 같은 종류의 입력을 여러 integration으로 받고 같은 출력으로 보내면, 지표상 하나의 component로 묶이고 queue 지표도 component 단위로 나옵니다([06](../06-flow-dashboard/)의 lab 관찰). 저는 이 입력들이 출력 쪽 queue를 함께 쓰는 것으로 봅니다(해석).
+
+이 경우 한 장비의 로그가 처리에서 오래 걸리면 같은 component의 다른 장비 수집도 같이 밀릴 수 있습니다. 사내 진단 사례에서는 형식이 깨진 메시지를 보내는 방화벽 하나 때문에 처리 지연이 커졌고, 같은 component로 받던 다른 장비의 수집도 늦어졌습니다. 그 방화벽을 별도 Agent로 옮긴 뒤 나머지가 정상으로 돌아왔습니다.
+
+대량이거나 형식이 불안정한 syslog 원천은 별도 정책의 Agent로 받습니다. 한 Agent는 정책 하나에만 속하므로, 분리는 Agent를 나누는 것으로 합니다([08](../08-fleet-at-scale/#정책-설계)).
+
 ## 수신 버퍼 조정
 
 Custom UDP Logs integration은 고급 설정에서 `read_buffer_size`와 `max_message_size`(기본 10KiB)를 바꿀 수 있습니다(elastic/integrations의 `udp` 패키지 manifest 기준).
@@ -209,6 +217,7 @@ stream {
 | UDP만 되고 relay를 둘 수 없음 | UDP 부하 분산 + 수신 Agent 2대 이상 + 버퍼 조정 |
 | 감사 요구가 강함 | relay + 이중 송신 + 중복 제거, drop 지표 알림 |
 | 피크 때만 건수가 줄어듦 | 커널 카운터와 Agent 지표로 ②, ③, ④ 중 어디인지 먼저 가린다 |
+| 한 장비 때문에 다른 장비 수집까지 늦어짐 | 그 장비를 별도 정책의 Agent로 분리 |
 
 ## 참고 문서
 

@@ -1,0 +1,37 @@
+[
+  {
+    "fields": 100,
+    "mapping_json_bytes": 2882,
+    "estimated_overhead_delta_bytes": 119808,
+    "first_doc_ms(dynamic mapping update)": 50,
+    "second_doc_ms(same fields)": 23
+  },
+  {
+    "fields": 1000,
+    "mapping_json_bytes": 28083,
+    "estimated_overhead_delta_bytes": 1041408,
+    "first_doc_ms(dynamic mapping update)": 130,
+    "second_doc_ms(same fields)": 51
+  },
+  {
+    "fields": 5000,
+    "mapping_json_bytes": 140083,
+    "estimated_overhead_delta_bytes": 5137408,
+    "first_doc_ms(dynamic mapping update)": 363,
+    "second_doc_ms(same fields)": 171
+  },
+  {
+    "fields": 20000,
+    "mapping_json_bytes": 560084,
+    "estimated_overhead_delta_bytes": 20497408,
+    "first_doc_ms(dynamic mapping update)": 1202,
+    "second_doc_ms(same fields)": 640
+  },
+  {
+    "fields": 50000,
+    "mapping_json_bytes": 1400084,
+    "estimated_overhead_delta_bytes": 51217408,
+    "first_doc_ms(dynamic mapping update)": 2764,
+    "second_doc_ms(same fields)": 1932
+  }
+]

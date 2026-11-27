@@ -1,0 +1,25 @@
+{
+  "object_default_limit": {
+    "docs_indexed": 123,
+    "first_error": [
+      "[1:190] failed to parse: Limit of total fields [1000] has been exceeded while adding new fields [3]"
+    ],
+    "mapped_fields": 997,
+    "term_query_hits_on_first_doc_key": 1,
+    "term_query_hits_on_last_doc_key": 0
+  },
+  "object_logsdb": {
+    "docs_indexed": 2000,
+    "first_error": [],
+    "mapped_fields": 999,
+    "term_query_hits_on_first_doc_key": 1,
+    "term_query_hits_on_last_doc_key": 0
+  },
+  "flattened": {
+    "docs_indexed": 2000,
+    "first_error": [],
+    "mapped_fields": 4,
+    "term_query_hits_on_first_doc_key": 1,
+    "term_query_hits_on_last_doc_key": 1
+  }
+}

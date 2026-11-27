@@ -70,6 +70,7 @@ Lens의 차트 종류에는 흐름(sankey) 차트가 없습니다(Kibana 문서�
 | 2행 | Logstash backpressure | 선 차트 | 출력 쪽이 받는 속도가 모자란 시점 |
 | 3행 | UDP drop | 선 차트 | UDP 수신기별 `system_packet_drops` 증가분 |
 | 3행 | 실패 문서 | 표 | data stream, 오류 종류별 failure store 건수 |
+| 3행 | 출력 이상 신호 | 표 | Agent별 `duplicates`, `toomany`, `dropped` 증가분 |
 | 4행 | 원천별 마지막 수신 | 표 | 기준 시간 이상 들어오지 않은 dataset, 호스트 |
 
 ### ES|QL 예시
@@ -143,6 +144,28 @@ FROM metrics-logstash.pipeline-*
 
 위 화면은 lab의 30분입니다. 세 선이 거의 겹칩니다. Logstash 한 대를 멈춘 5분에도 남은 한 대가 받아 선이 벌어지지 않았습니다. 그런데 같은 시간 순번으로 세어 보면 송신량의 13%가 UDP 구간에서 사라졌습니다([04](../04-syslog-udp/#lab에서-본-것)). 이 대시보드는 Agent가 받은 뒤의 구간만 보여 줍니다. 원천에서 Agent까지의 유실은 원천 쪽 건수와 대조해야 보입니다([05](../05-count-reconciliation/)).
 
+Agent 출력의 이상 신호입니다. 정상이면 세 값 모두 0에 가깝습니다.
+
+```sql
+TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
+| WHERE @timestamp >= NOW() - 6 hours
+  AND NOT component.id LIKE "*monitoring*" AND NOT component.id LIKE "elasticsearch-*"
+| STATS dup = SUM(INCREASE(beat.stats.libbeat.output.events.duplicates)),
+        too_many = SUM(INCREASE(beat.stats.libbeat.output.events.toomany)),
+        dropped = SUM(INCREASE(beat.stats.libbeat.output.events.dropped)),
+        acked = SUM(INCREASE(beat.stats.libbeat.output.events.acked))
+  BY agent.name, component.id
+| EVAL dup_pct = ROUND(dup * 100.0 / acked, 1)
+| WHERE dup > 0 OR too_many > 0 OR dropped > 0
+| SORT dropped DESC, dup_pct DESC
+```
+
+이 쿼리는 실행해 보지 않았습니다(문서 기준). 필드는 elastic_agent 패키지 2.9.6의 필드 정의에서 확인했습니다.
+
+- `duplicates`는 다시 보낸 문서가 409로 막힌 수입니다. fingerprint `_id`를 쓰면 생깁니다. 상시 비율이 높으면 출력이 응답을 늦게 받아 다시 보내고 있다는 신호입니다. 사내 사례에서 15%, 38%처럼 계속 높은 비율이 나온 경우가 있었습니다.
+- `toomany`는 Elasticsearch가 429로 밀어낸 수입니다. 버리지 않고 다시 보내지만, 계속 생기면 클러스터 쓰기 용량이 모자란 것입니다.
+- `dropped`는 Elasticsearch가 거부해 Agent가 버린 수입니다. failure store가 없는 data stream의 mapping 충돌이 여기로 옵니다([02](../02-where-to-parse/#실패한-문서는-어디로-가나)). beats는 failure store로 간 수를 `output.events.failure_store`로도 세지만, 패키지 2.9.6에는 이 필드 정의가 없습니다. failure store 건수는 위의 `::failures` 쿼리로 셉니다.
+
 ## 끊김 알림
 
 | 알림 | 조건 | 만드는 방법 |
@@ -152,6 +175,7 @@ FROM metrics-logstash.pipeline-*
 | Agent drop | drop 비율 5% 이상 | Agent 내장 규칙 "Dropped events" |
 | Agent 출력 오류 | 분당 오류 6건 이상 | Agent 내장 규칙 "Output errors" |
 | 실패 문서 | failure store 건수 증가 | `::failures` 쿼리로 ES\|QL rule |
+| Agent가 버린 문서 | `output.events.dropped` 증가 | 위의 출력 이상 신호 쿼리로 ES\|QL rule |
 | UDP drop | `system_packet_drops` 증가 | ES\|QL rule |
 
 Agent 내장 규칙은 9.2부터 GA이고, Agent를 설치하거나 업그레이드할 때 자동으로 만들어집니다. 기본은 꺼져 있고, 구독 등급에 따라 제공됩니다. 라이선스가 먼저 있어야 규칙이 만들어집니다([Elastic Agent built-in alerts](https://www.elastic.co/docs/reference/fleet/alert-templates)).

@@ -1,0 +1,64 @@
+# failure store에 쌓인 문서를 고쳐서 원래 data stream으로 되돌리는 절차
+# 로컬 Elasticsearch 9.5.5에서 확인(labs/ingest/failure-remediation/run.sh가 같은 요청을 순서대로 보냄)
+
+# 0) 시험용 data stream: response는 객체(response.bytes는 long), default pipeline은 message에서 user를 꺼냄
+#    logs-*-* 이름이라 logsdb가 적용되고 ignore_malformed가 기본 true다. "12kb" 같은 값은 거부되지 않고 _ignored로 간다.
+#    그래서 mapping 실패는 객체 자리에 문자열이 온 경우(response: "12kb")로 만든다.
+PUT _ingest/pipeline/lab-remedy-default
+{
+  "processors": [
+    { "dissect": { "field": "message", "pattern": "user=%{user.name} action=%{event.action}" } }
+  ]
+}
+PUT _index_template/lab-remedy
+{
+  "index_patterns": ["logs-lab.remedy-*"],
+  "data_stream": {},
+  "priority": 500,
+  "template": {
+    "settings": { "number_of_replicas": 0, "index.default_pipeline": "lab-remedy-default" },
+    "mappings": { "properties": { "response": { "properties": { "bytes": { "type": "long" } } } } },
+    "data_stream_options": { "failure_store": { "enabled": true } }
+  }
+}
+
+# 1) 되살리기 전에 failure store를 rollover해서, 작업 중 새로 생기는 실패와 섞이지 않게 한다
+POST logs-lab.remedy-default::failures/_rollover
+
+# 2) 실패 종류를 나눈다: error.pipeline이 있으면 ingest pipeline 실패, 없으면 mapping(색인) 실패
+GET logs-lab.remedy-default::failures/_search
+{
+  "size": 0,
+  "aggs": { "kind": { "terms": { "field": "error.type" } }, "pipeline": { "missing": { "field": "error.pipeline" } } }
+}
+
+# 3) 되살리기 pipeline: failure 문서에서 원본(document.source)을 꺼내고, 잘못된 값을 고친 뒤 원래 data stream으로 보낸다
+PUT _ingest/pipeline/lab-remedy-restore
+{
+  "processors": [
+    {
+      "script": {
+        "lang": "painless",
+        "source": "ctx._index = ctx.document.index; def s = ctx.document.source; ctx.remove('error'); ctx.remove('document'); ctx.remove('@timestamp'); for (e in s.entrySet()) { ctx[e.key] = e.value; }"
+      }
+    },
+    {
+      "rename": {
+        "if": "ctx.response instanceof String",
+        "field": "response", "target_field": "labels.response_raw"
+      }
+    },
+    { "reroute": { "destination": "logs-lab.remedy-default" } }
+  ]
+}
+
+# 4) 먼저 simulate로 결과 모양과 다시 실패하지 않는지 확인
+POST _ingest/_simulate?pipeline=lab-remedy-restore
+{ "docs": [ { "_index": "x", "_source": { "@timestamp": "2026-11-27T00:00:00Z", "document": { "index": "logs-lab.remedy-default", "source": { "@timestamp": "2026-11-26T10:00:00Z", "message": "user=kim action=login", "response": "12kb" } }, "error": { "type": "document_parsing_exception" } } } ] }
+
+# 5) reindex로 되돌린다. op_type create는 data stream에 쓰기 위해 필요
+POST _reindex
+{
+  "source": { "index": "logs-lab.remedy-default::failures", "query": { "range": { "@timestamp": { "lte": "now" } } } },
+  "dest": { "index": "logs-lab.remedy-default", "op_type": "create", "pipeline": "lab-remedy-restore" }
+}

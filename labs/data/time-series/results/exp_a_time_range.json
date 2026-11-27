@@ -1,0 +1,62 @@
+{
+  "without_failure_store": {
+    "time_series_ranges": {
+      "temporal_ranges": [
+        {
+          "start": "2026-11-27T01:59:15.000Z",
+          "end": "2026-11-27T04:08:15.000Z"
+        }
+      ]
+    },
+    "now": {
+      "status": 201,
+      "failure_store": null,
+      "error": null
+    },
+    "minus_1h": {
+      "status": 201,
+      "failure_store": null,
+      "error": null
+    },
+    "minus_3h": {
+      "status": 400,
+      "failure_store": "not_enabled",
+      "error": "the document timestamp [2026-11-27T00:59:15.000Z] is outside of ranges of currently writable indices [[2026-11-27T01:59:15.000Z,2026-11-27T04:08:15.000Z]]"
+    },
+    "plus_1h": {
+      "status": 400,
+      "failure_store": "not_enabled",
+      "error": "the document timestamp [2026-11-27T04:59:15.000Z] is outside of ranges of currently writable indices [[2026-11-27T01:59:15.000Z,2026-11-27T04:08:15.000Z]]"
+    }
+  },
+  "with_failure_store": {
+    "time_series_ranges": {
+      "temporal_ranges": [
+        {
+          "start": "2026-11-27T01:59:16.000Z",
+          "end": "2026-11-27T04:08:16.000Z"
+        }
+      ]
+    },
+    "now": {
+      "status": 201,
+      "failure_store": null,
+      "error": null
+    },
+    "minus_1h": {
+      "status": 201,
+      "failure_store": null,
+      "error": null
+    },
+    "minus_3h": {
+      "status": 201,
+      "failure_store": "used",
+      "error": null
+    },
+    "plus_1h": {
+      "status": 201,
+      "failure_store": "used",
+      "error": null
+    }
+  }
+}

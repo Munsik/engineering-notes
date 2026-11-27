@@ -1,0 +1,14 @@
+{
+  "default": {
+    "object_mappers": 7,
+    "leaf_and_multi_fields": 30,
+    "counted_toward_limit": 37,
+    "query_host.os.name": 1
+  },
+  "subobjects_false": {
+    "object_mappers": 0,
+    "leaf_and_multi_fields": 30,
+    "counted_toward_limit": 30,
+    "query_host.os.name": 1
+  }
+}

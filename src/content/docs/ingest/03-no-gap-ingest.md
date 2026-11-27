@@ -300,6 +300,19 @@ input {
 
 파일 로그는 수집기가 멈춰도 디스크에 남아 있고, Agent는 다시 시작하면 기록해 둔 위치부터 읽습니다. 이 경우 "무중단"의 조건은 수집기가 아니라 로그 회전 정책입니다. 수집기가 멈춰 있는 동안 회전으로 파일이 지워지면 그 부분은 잃습니다. 업그레이드나 장애로 수집기가 멈출 수 있는 최대 시간보다 로그 보존을 길게 둡니다.
 
+"기록해 둔 위치"는 파일을 무엇으로 알아보느냐(file identity)에 달려 있습니다. 9.x의 filestream은 기본으로 파일 앞부분 1024 byte의 hash(fingerprint)로 파일을 알아봅니다. inode를 다시 쓰는 경우에도 같은 파일로 착각하지 않게 하려는 것입니다([filestream input](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-input-filestream)). 이 방식 때문에 생기는 동작을 알아 둡니다.
+
+| 상황 | 동작 | 근거와 대응 |
+| --- | --- | --- |
+| 1024 byte보다 작은 파일 | 9.5 이전에는 파일이 그 크기가 될 때까지 읽지 않음. 9.5부터는 growing fingerprint(GA, 기본 켜짐)로 바로 읽음 | 9.5 이전 Agent에서 작은 파일이 늦게 들어오면 이 경우를 의심 |
+| copytruncate 회전 | 9.5부터 fingerprint 기본 설정이면 따로 설정하지 않아도 감지 | 9.5 이전은 `rotation.external.strategy.copytruncate` 설정 필요 |
+| fingerprint 설정(offset, length) 변경 | 경로에 맞는 모든 파일을 처음부터 다시 읽음 | 운영 중에 바꾸지 않음 |
+| filestream input의 `id` 변경 | 파일 상태를 잃고 처음부터 다시 읽음 | integration을 지우고 다시 추가하는 것도 같은 결과가 될 수 있음(확인 필요) |
+| `file_identity`를 다른 방식으로 변경 | `native`나 `path`에서 `fingerprint`로 바꾸는 것만 상태를 옮겨 줌. 그 밖의 변경은 중복을 만들 수 있음 | 같은 문서 |
+| Custom Logs(`log` input)에서 filestream으로 이전 | 두 입력이 같은 파일을 읽으면 중복. `log` input은 9.0부터 기본으로 꺼져 있음 | `take_over`로 상태를 넘기거나 `ignore_older`로 범위를 줄임([Migrate to filestream](https://www.elastic.co/docs/reference/beats/filebeat/migrate-to-filestream)) |
+
+다시 읽힌 RFC 3164 syslog 파일은 연도가 없어서 현재 연도가 다시 붙습니다([02](../02-where-to-parse/#자주-깨지는-지점)). 과거 이벤트가 최근 이벤트처럼 저장되고, 탐지 rule이 다시 알림을 낼 수 있습니다(해석).
+
 ## Logstash persistent queue
 
 PQ는 Logstash의 입력과 filter 사이에 디스크 queue를 둡니다. 비정상 종료에도 queue에 있던 이벤트를 다시 시작하면 처리합니다([Persistent queues](https://www.elastic.co/docs/reference/logstash/persistent-queues)).

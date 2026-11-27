@@ -10,5 +10,6 @@
 | [`syslog-udp/`](syslog-udp/) | rsyslog relay, nginx UDP 부하 분산, sysctl, Custom UDP Logs 고급 설정, 커널 drop 확인 스크립트 | 04 | `check-drops.sh`: Linux에서 느린 수신기로 drop을 일으켜 `RcvbufErrors` 증가 확인. 나머지는 문서 기준이며 실행하지 않음 |
 | [`reconciliation/`](reconciliation/) | 유실, 중복, 실패 문서를 세는 ES\|QL, fingerprint 설정 | 05 | 쿼리 4개 lab 9.5.5에서 실행 확인(순번 쿼리, failure store 쿼리 수정). fingerprint 설정은 문서 기준 |
 | [`flow-dashboard/`](flow-dashboard/) | 흐름 대시보드 패널 정의(ES\|QL), Dashboards API JSON | 06 | lab 9.5.5에서 대시보드 생성 확인. 패널별 상태는 폴더 README |
+| [`failure-remediation/`](failure-remediation/) | failure store에 쌓인 mapping 실패와 pipeline 실패를 고쳐 원래 data stream으로 되돌리는 절차(`remediate.console`, `run.py`) | 02 | 로컬 Elasticsearch 9.5.5(trial)에서 실행. 결과는 `results/remediation.json` |
 
 lab은 Elastic Cloud Hosted 9.5.5와, Mac의 Rancher Desktop에 띄운 `compose/` 구성입니다. 위 표에서 "문서 기준"으로 적은 것은 실행하지 않은 설정입니다.

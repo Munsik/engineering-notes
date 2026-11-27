@@ -1,0 +1,53 @@
+{
+  "sent": 300,
+  "expected_good": 240,
+  "expected_mapping_fail": 30,
+  "expected_pipeline_fail": 30,
+  "failure_store_used": 60,
+  "failure_types": {
+    "document_parsing_exception": 30,
+    "find_match": 30
+  },
+  "failures_without_error_pipeline(mapping)": 30,
+  "simulate": {
+    "index": "logs-lab.remedy-default",
+    "source": {
+      "@timestamp": "2026-11-26T10:00:00Z",
+      "message": "user=kim action=login",
+      "event": {
+        "action": "login"
+      },
+      "user": {
+        "name": "kim"
+      },
+      "labels": {
+        "response_raw": "12kb"
+      }
+    },
+    "executed_pipelines": [
+      "lab-remedy-restore",
+      "lab-remedy-default"
+    ]
+  },
+  "reindex": {
+    "total": 60,
+    "created": 60,
+    "version_conflicts": 0,
+    "failures": []
+  },
+  "after": {
+    "data_stream_docs": 300,
+    "failure_store_docs_total(including old)": 60,
+    "docs_with_labels.response_raw": 30,
+    "docs_with_user.name": 270,
+    "index_mode": {
+      ".ds-logs-lab.remedy-default-2026.11.27-000001": {
+        "settings": {
+          "index": {
+            "mode": "logsdb"
+          }
+        }
+      }
+    }
+  }
+}
