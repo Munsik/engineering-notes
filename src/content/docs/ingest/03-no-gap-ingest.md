@@ -59,6 +59,37 @@ flowchart LR
 | 3. Kafka로 분리 | push 원천, 처리 계층을 자주 바꾸는 환경 | 처리 계층은 자유롭게 재시작. 수신 계층은 패턴 2로 이중화 | Kafka 운영 |
 | 4. 원천 보존 활용 | 파일, 큐 | 다시 시작하면 이어서 읽음 | 로그 회전, 큐 보존 기간을 수집기 정지 시간보다 길게 |
 
+### 출력을 바꿀 때: 수정과 교체는 다르다
+
+패턴 1과 패턴 3은 Agent의 출력을 Elasticsearch에서 Logstash나 Kafka로 바꾸는 데서 시작합니다. 이때 기존 출력의 설정을 고치는지, 정책에 새로 등록한 출력을 할당하는지에 따라 결과가 크게 다릅니다.
+
+| 작업 | 예 | 결과 |
+| --- | --- | --- |
+| 정책에 할당된 출력을 그대로 두고 설정만 수정 | 같은 클러스터를 가리키는 host 추가, 고정 IP를 같은 클러스터 앞의 부하 분산기 주소로 변경 | 다시 수집하지 않음 |
+| 새 출력을 등록해 정책에 할당 | Fleet Settings에서 Logstash 출력을 새로 만들고 정책의 Output for integrations를 그 출력으로 변경 | 수집 대상 로그를 처음부터 다시 보낼 가능성이 높음 |
+
+공식 문서의 설명은 다음과 같습니다([Considerations when changing outputs](https://www.elastic.co/docs/reference/fleet/fleet-settings-changing-outputs)).
+
+- 정책에 새 출력을 할당하면 Agent는 그 출력에 연결된 integration을 모두 지우고 다시 만듭니다. 새 출력에는 새 UUID가 붙습니다.
+- UUID가 바뀌면서 수집 위치를 기록하는 registry가 새로 만들어집니다. 그래서 Agent가 수집하도록 설정된 이벤트와 로그를 다시 보냅니다.
+- 출력을 바꿔야 한다면 새 출력을 만드는 것보다 기존 출력을 수정하는 편이 낫습니다. 예로, 고정 IP를 같은 클러스터를 가리키는 global load balancer로 바꿀 때 새 출력으로 바꾸면 다시 수집되고, 기존 출력을 수정하면 다시 수집되지 않는다고 적고 있습니다.
+
+다시 수집되는 양은 원천에 남아 있는 만큼입니다. 호스트마다 30일치 로그가 디스크에 있다면, 출력을 바꾼 정책의 Agent가 그 30일치를 거의 동시에 다시 보냅니다. 정책 변경은 그 정책의 Agent에 거의 동시에 퍼지기 때문입니다([08](../08-fleet-at-scale/#fleet-구조-정책-revision-check-in)). 수집 계층과 Elasticsearch에 부하가 몰리고, 저장 단계에서는 중복이 됩니다.
+
+판단은 이렇게 나눕니다.
+
+- **목적지 클러스터가 같다면** 새 출력을 만들지 않습니다. host 추가, 주소를 부하 분산기로 바꾸기, TLS나 preset 조정은 기존 출력을 수정합니다.
+- **목적지가 실제로 바뀐다면**(Elasticsearch 직결에서 Logstash나 Kafka 경유로, 다른 클러스터로) 새 출력을 할당할 수밖에 없습니다. 아래 순서로 범위를 줄입니다.
+
+아래 순서는 제가 쓰는 방법입니다.
+
+1. 같은 integration 구성의 canary 정책에서 먼저 바꾸고, 다시 들어온 건수를 [05](../05-count-reconciliation/)의 방법으로 셉니다.
+2. 파일 입력에는 바꾸기 전에 `ignore_older`를 걸어 오래된 파일을 건너뛰게 합니다. Filestream integration 문서는 Custom Logs가 이미 읽은 파일을 새 입력이 읽을 때 생기는 중복을 줄이는 방법으로 `ignore_older`와 임시 `ignore_inactive: since_first_start`를 안내합니다([Custom Filestream logs](https://www.elastic.co/docs/reference/integrations/filestream)). 출력 교체도 registry가 새로 생긴다는 점이 같아서 같은 방법을 씁니다. 중복을 줄일 뿐 없애지는 못합니다.
+3. 큰 정책은 여러 정책으로 나눠 두고 정책 단위로 순서대로 바꿉니다.
+4. 남는 중복은 fingerprint `_id`로 막습니다([05](../05-count-reconciliation/#중복-찾기와-막기)). 다만 이 방법은 바꾸기 전부터 fingerprint가 켜져 있어야 효과가 있습니다. 이전 문서가 자동 생성 ID로 저장돼 있으면 같은 이벤트가 다른 `_id`로 다시 들어옵니다. 같은 `_id`도 다른 backing index에 있으면 막지 못합니다.
+
+이미 등록돼 있던 다른 출력으로 바꾸는 경우도 정책에 할당된 출력이 바뀐다는 점에서 같은 동작이 일어날 수 있습니다. 공식 문서는 이 경우를 따로 적지 않아서, 적용 전에 lab에서 확인하기를 권합니다(확인 필요).
+
 ### 패턴 1: Agent에서 Logstash 여러 대로
 
 Agent의 Logstash output에 host를 여러 개 넣습니다. `loadbalance`를 끄면 그중 하나를 무작위로 골라 보내고, 그 host에 닿지 못하면 다른 host를 무작위로 고릅니다([Logstash output](https://www.elastic.co/docs/reference/fleet/logstash-output)). `loadbalance`를 켜면 여러 host에 나눠 보냅니다.
@@ -74,7 +105,47 @@ loadbalance: true
 
 ![Fleet의 Logstash 출력 설정. Logstash hosts에 두 대가 있고, Advanced YAML configuration에 loadbalance가 켜져 있습니다.](../../../assets/ingest/ingest-fleet-logstash-output.jpg)
 
-이 출력을 정책에 지정하지 않으면 Agent는 계속 기존 출력으로 보냅니다. 출력은 Agent 정책의 Output for integrations에서 고릅니다.
+이 출력을 정책에 지정하지 않으면 Agent는 계속 기존 출력으로 보냅니다. 출력은 Agent 정책의 Output for integrations에서 고릅니다. 기존 Elasticsearch 출력에서 이 출력으로 바꾸면 파일 로그를 다시 수집할 수 있으니, 바꾸기 전에 [위의 절](#출력을-바꿀-때-수정과-교체는-다르다)을 봅니다.
+
+Logstash 쪽 pipeline은 공식 문서의 예시를 기준으로 둡니다([Logstash output](https://www.elastic.co/docs/reference/fleet/logstash-output)).
+
+```ruby
+input {
+  elastic_agent {
+    port => 5044
+    enrich => none
+    ssl_enabled => true
+    ssl_certificate_authorities => ["/etc/logstash/certs/ca.crt"]
+    ssl_certificate => "/etc/logstash/certs/logstash.crt"
+    ssl_key => "/etc/logstash/certs/logstash.pkcs8.key"
+    ssl_client_authentication => "required"
+  }
+}
+output {
+  if [@metadata][_id] {
+    elasticsearch {
+      hosts => ["https://es01:9200", "https://es02:9200"]
+      api_key => "${ES_API_KEY}"
+      data_stream => true
+      document_id => "%{[@metadata][_id]}"
+      manage_template => false
+      ssl_certificate_authorities => ["/etc/logstash/certs/ca.crt"]
+    }
+  } else {
+    elasticsearch {
+      hosts => ["https://es01:9200", "https://es02:9200"]
+      api_key => "${ES_API_KEY}"
+      data_stream => true
+      manage_template => false
+      ssl_certificate_authorities => ["/etc/logstash/certs/ca.crt"]
+    }
+  }
+}
+```
+
+- `enrich => none`은 input이 이벤트에 필드를 덧붙이지 않게 합니다. 같은 문서는 Agent가 보낸 문서 구조를 pipeline에서 바꾸지 말라고 권합니다. 구조가 바뀌면 integration의 ingest pipeline이 기대한 대로 동작하지 않을 수 있습니다.
+- `ssl_client_authentication => "required"`로 인증서가 있는 Agent만 받습니다. 이 설정이 없으면 5044 포트에 닿는 누구나 이벤트를 넣을 수 있습니다.
+- `[@metadata][_id]` 분기는 Agent에서 fingerprint로 정한 문서 ID를 Elasticsearch까지 넘깁니다. 이 분기가 없으면 Agent 쪽 중복 제거가 Logstash를 거치면서 사라집니다([05](../05-count-reconciliation/#중복-찾기와-막기)).
 
 lab에서 이 구성으로 Logstash 한 대를 멈춰 봤습니다. 수신 Agent 2대(9.5.4), Logstash 2대(9.5.5), 송신기가 초당 2,000건의 UDP syslog를 25분 보내는 동안 8분째에 `lab-ls-01`을 `docker compose stop`으로 5분간 멈췄습니다(실측).
 
@@ -133,7 +204,7 @@ flowchart LR
 
 #### 앞단: 수신 Agent
 
-수신 integration(syslog, TCP, 장비별 integration)은 그대로 두고 출력만 Kafka로 바꿉니다. 출력은 Agent 정책에서 고르고, 구독 등급이 지원하면 integration마다 다른 출력을 지정할 수 있습니다([Fleet settings](https://www.elastic.co/docs/reference/fleet/fleet-settings)). 이벤트는 Agent가 Elasticsearch로 바로 보낼 때와 같은 구조의 JSON으로 Kafka에 들어가고, `data_stream.*` 필드도 함께 갑니다. 뒷단은 이 필드로 원래 data stream을 찾습니다.
+수신 integration(syslog, TCP, 장비별 integration)은 그대로 두고 출력만 Kafka로 바꿉니다. 파일 입력이 같은 정책에 있다면 출력 교체로 다시 수집될 수 있습니다([위의 절](#출력을-바꿀-때-수정과-교체는-다르다)). 출력은 Agent 정책에서 고르고, 구독 등급이 지원하면 integration마다 다른 출력을 지정할 수 있습니다([Fleet settings](https://www.elastic.co/docs/reference/fleet/fleet-settings)). 이벤트는 Agent가 Elasticsearch로 바로 보낼 때와 같은 구조의 JSON으로 Kafka에 들어가고, `data_stream.*` 필드도 함께 갑니다. 뒷단은 이 필드로 원래 data stream을 찾습니다.
 
 Kafka output에서 유실과 관련된 설정은 세 가지입니다.
 
@@ -161,6 +232,19 @@ PUT _ingest/pipeline/kafka-agent-unwrap
       }
     },
     {
+      "set": {
+        "if": "ctx['@metadata']?._id != null",
+        "field": "_id",
+        "copy_from": "@metadata._id"
+      }
+    },
+    {
+      "remove": {
+        "field": "@metadata",
+        "ignore_missing": true
+      }
+    },
+    {
       "reroute": {
         "if": "ctx.data_stream?.type == 'logs' && ctx.data_stream?.dataset != null && ctx.data_stream.dataset != 'kafka_log.generic'"
       }
@@ -178,6 +262,8 @@ PUT _ingest/pipeline/kafka-agent-unwrap
 ```
 
 - `json`의 `add_to_root`는 겹치는 최상위 필드를 원래 이벤트 값으로 덮어씁니다(기본 `replace`). `message`, `@timestamp`, `agent`, `host`도 앞단 Agent의 값으로 돌아갑니다. Kafka Log Consumer가 붙인 `kafka.topic`, `kafka.partition`, `kafka.offset`은 원래 이벤트에 없는 필드라 그대로 남아, 나중에 어느 offset에서 왔는지 추적할 때 씁니다([JSON processor](https://www.elastic.co/docs/reference/ingest-processor/json-processor)).
+- Agent의 Kafka output은 이벤트를 JSON으로 쓸 때 `@metadata`(`beat`, `type`, `version`과 Agent가 정한 `_id`, `pipeline` 같은 값)를 함께 넣습니다(beats 소스 `libbeat/outputs/codec/json/event.go` 기준). Elasticsearch에서 `json`으로 풀면 이 값은 문서 ID가 아니라 `@metadata`라는 일반 필드로 저장됩니다. 그래서 `_id`가 있으면 문서 ID로 옮기고 `@metadata`는 지웁니다. 로컬 Elasticsearch 9.5.5에서 `remove`가 없는 pipeline으로 넣으면 문서에 `@metadata` 객체가 남았고, 위 pipeline으로 같은 `_id`의 메시지를 두 번 넣으면 두 번째가 409로 거부됐습니다(실측).
+- `@metadata.pipeline`은 실행되지 않고 지워집니다. integration 입력 설정에서 ingest pipeline을 직접 지정해 쓰고 있었다면 Kafka 경로에서는 적용되지 않으므로, 그 처리는 `@custom` pipeline으로 옮깁니다([02](../02-where-to-parse/#custom-pipeline으로-보완하기)).
 - `reroute`는 `dataset`, `namespace`를 지정하지 않으면 문서의 `data_stream.dataset`, `data_stream.namespace`를 씁니다. 옮겨 간 뒤에는 그 data stream의 ingest pipeline이 실행되므로, integration의 파싱과 `@custom` pipeline이 Elasticsearch로 바로 보낼 때와 같이 동작합니다([Reroute processor](https://www.elastic.co/docs/reference/ingest-processor/reroute-processor)).
 - `reroute`는 data stream의 type을 바꾸지 못합니다. 이 경로에는 logs 계열만 태우고, metrics는 Elasticsearch output으로 바로 보내는 편이 단순합니다.
 - 옮겨 갈 data stream에 쓸 권한이 있어야 합니다. Kafka Log Consumer는 1.3.0부터 `logs-*-*`로 reroute하는 권한을 갖도록 바뀌었습니다(integration changelog).
@@ -277,6 +363,7 @@ Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 �
 | --- | --- |
 | 파일 로그, Agent → Elasticsearch | 별도 이중화 불필요. 로그 보존을 수집기 최대 정지 시간보다 길게 |
 | Agent → Logstash | Logstash 2대 이상 + Agent output에 여러 host. 중복을 받아들이고 05로 제거 |
+| Agent 출력을 바꿔야 함 | 같은 클러스터면 기존 출력을 수정. 목적지가 바뀌어 새 출력을 할당하면 재수집을 전제로 canary, `ignore_older`, 정책 단위 순서 |
 | TCP syslog, HTTP push | L4 부하 분산(VIP) + 수신기 2대 이상. 노드는 drain 후 정지 |
 | 처리 계층을 자유롭게 멈추고 바꿔야 하는 환경 | 수신 Agent → Kafka → 소비 Agent. 모두 Fleet으로 관리. Logstash는 ingest pipeline으로 안 되는 변환이 필요할 때만 |
 | Elasticsearch 장애를 수집 계층에서 버텨야 함 | Logstash PQ. 크기는 버틸 시간 기준으로 |

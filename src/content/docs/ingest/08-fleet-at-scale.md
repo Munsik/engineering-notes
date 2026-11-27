@@ -43,6 +43,8 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 
 정책 하나 안에서 일부 Agent에만 먼저 적용하는 기능은 없으므로, 단계적 적용은 정책을 나눠서 만듭니다.
 
+출력 변경은 따로 조심합니다. 정책에 할당된 출력의 설정(host, 부하 분산기 주소, TLS)을 수정하는 것은 다시 수집을 일으키지 않습니다. 새 출력을 등록해 정책에 할당하면 Agent가 integration을 다시 만들고 registry가 새로 생겨, 원천에 남아 있는 로그를 다시 보낼 가능성이 높습니다([Considerations when changing outputs](https://www.elastic.co/docs/reference/fleet/fleet-settings-changing-outputs)). 목적지 클러스터가 같다면 기존 출력을 수정하고, 목적지가 실제로 바뀔 때만 새 출력을 할당합니다. 절차는 [03](../03-no-gap-ingest/#출력을-바꿀-때-수정과-교체는-다르다)에 있습니다.
+
 ## Agent 업그레이드
 
 | 방법 | 동작 | 근거 |
@@ -113,6 +115,7 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 | --- | --- |
 | 이기종 호스트 | OS, 역할, 네트워크 구역으로 정책 분리. 폴링은 전용 정책 |
 | 정책 변경 | lab → canary 정책 → 운영 정책 순서 |
+| 출력 변경 | 같은 클러스터면 기존 출력을 수정. 새 출력 할당은 재수집을 전제로 canary와 정책 단위로 |
 | 업그레이드 | Fleet Server 먼저, canary, 비율 단계적 확대 |
 | CA 교체 | 새 CA 추가와 재시작 → Fleet Server 교체 → 이전 CA 제거 |
 | Fleet Server | 2대 이상, 부하 분산기 timeout 조정, `/api/status` health check |
