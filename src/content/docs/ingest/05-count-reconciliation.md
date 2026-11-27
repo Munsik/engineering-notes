@@ -30,7 +30,7 @@ flowchart LR
 | --- | --- | --- |
 | ① 원천 | 장비의 송신 통계, 파일 줄 수, 애플리케이션 순번, 큐의 메시지 수 | 원천 시스템 |
 | ② 수집기 입력 | Agent 입력 지표, Logstash pipeline events `in` | Agent 모니터링 data stream, Logstash node stats API |
-| ③ 수집기 출력 | Agent output events acked, dropped, failed. Logstash events `out`, `filtered`, DLQ | 위와 같음 |
+| ③ 수집기 출력 | Agent output events acked, dropped, failed, duplicates, toomany, failure_store. Logstash events `out`, `filtered`, DLQ | 위와 같음 |
 | ④ Elasticsearch | bulk 실패, failure store로 redirect된 문서 | failure store, 수집기 로그 |
 | ⑤ 저장 | data stream별 문서 수 | `_count`, ES\|QL |
 
@@ -132,6 +132,7 @@ at-least-once 구성에서는 중복이 생길 수 있습니다. Agent가 ack를
 
 - Beats와 Agent는 `fingerprint` processor 결과를 `@metadata._id`에 넣으면 그 값을 문서 ID로 씁니다([Deduplicate data](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-deduplication)).
 - Beats와 Agent의 Elasticsearch output은 같은 ID로 create하다 409를 받으면 다시 보내지 않고 `duplicates`로 셉니다(beats 소스 `libbeat/outputs/elasticsearch/client.go`). 이 값은 Agent 모니터링의 `beat.stats.libbeat.output.events.duplicates`로 보이고, 기본 `[Elastic Agent]` 대시보드에도 패널이 있습니다(elastic/integrations `elastic_agent` 패키지). 중복이 얼마나 막혔는지 세는 데 씁니다.
+- Agent에서 fingerprint를 만들고 Logstash를 거쳐 보낸다면, Logstash Elasticsearch output에 `document_id => "%{[@metadata][_id]}"`를 넣어야 그 값이 문서 ID가 됩니다. 공식 Logstash output 예시도 `[@metadata][_id]`가 있을 때만 `document_id`를 넘기는 분기를 둡니다([Logstash output](https://www.elastic.co/docs/reference/fleet/logstash-output), [03](../03-no-gap-ingest/#패턴-1-agent에서-logstash-여러-대로)). Kafka를 거치는 경로는 Elasticsearch ingest pipeline에서 `_id`를 다시 정합니다([03](../03-no-gap-ingest/#뒷단-소비-agent)).
 - Logstash는 `fingerprint` filter로 만든 값을 Elasticsearch output의 `document_id`로 넘깁니다. data stream은 create만 허용하므로 같은 ID가 다시 오면 409가 나고, Logstash Elasticsearch output은 409를 경고 로그만 남기고 버립니다(logstash-output-elasticsearch 문서의 Retry policy). 중복 제거 목적이라면 이 동작이 맞습니다.
 
 ```yaml
@@ -175,6 +176,7 @@ output {
 | 필드 일부가 버려진 문서 | `_ignored`가 있는 문서 수. Data Set Quality(beta) 페이지의 degraded document |
 | Logstash DLQ | DLQ 디렉터리 크기와 이벤트 수. DLQ input으로 다시 읽어 셈 |
 | 수집기에서 drop | Agent `beat.stats.libbeat.pipeline.events.dropped`, Logstash filter 단계의 차이(`in` - `out`) |
+| Elasticsearch가 거부해 Agent가 버린 문서 | Agent `beat.stats.libbeat.output.events.dropped`. failure store가 없는 data stream의 mapping 충돌이 여기로 옴([02](../02-where-to-parse/#실패한-문서는-어디로-가나)) |
 
 failure store는 9.2부터 새로 만드는 `logs-*-*` data stream에 기본으로 켜져 있고, 다른 data stream은 index template의 `data_stream_options`로 켭니다([Failure store](https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store)).
 

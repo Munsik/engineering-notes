@@ -37,6 +37,7 @@ sidebar:
 | --- | --- | --- |
 | Logstash를 꼭 써야 하나 | 변환, 다중 출력, 디스크 버퍼가 필요할 때만 넣습니다. 넣는다면 2대 이상으로 넣습니다. | [01](01-choose-collector/) |
 | Logstash나 Agent를 cluster로 묶을 수 있나 | 없습니다. 송신 측 부하 분산, L4 부하 분산, Kafka 분리로 구성합니다. | [03](03-no-gap-ingest/) |
+| Agent 출력을 Logstash로 바꾸면 로그가 다시 들어오나 | 기존 출력의 설정을 고치면 다시 들어오지 않습니다. 새 출력을 등록해 정책에 할당하면 registry가 새로 생겨 원천에 남은 로그를 다시 보낼 가능성이 높습니다. | [03](03-no-gap-ingest/#출력을-바꿀-때-수정과-교체는-다르다) |
 | UDP syslog 유실을 0으로 만들 수 있나 | UDP 구간이 남아 있는 한 보장할 수 없습니다. 장비 가까이에서 TCP로 바꾸고, 남은 구간의 drop을 계측합니다. | [04](04-syslog-udp/) |
 | 다 받았다는 것을 어떻게 증명하나 | 원천, 수집기 입력, 출력, Elasticsearch 저장 건수를 같은 시간 창으로 대조합니다. | [05](05-count-reconciliation/) |
 | 실패해 저장되지 않은 문서는 어디서 보나 | failure store에 쌓입니다. Streams의 Data quality 탭에서 건수와 오류 종류를 보고, ES\|QL은 `FROM logs-*::failures`를 `document.index`로 묶어 셉니다. | [02](02-where-to-parse/), [05](05-count-reconciliation/) |

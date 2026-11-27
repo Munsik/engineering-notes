@@ -66,8 +66,8 @@ integration의 pipeline 자체를 고치면 integration을 업그레이드할 �
 
 | 실패 지점 | 기본 동작 | 남기는 방법 |
 | --- | --- | --- |
-| ingest pipeline processor 오류 | 문서 거부. 클라이언트가 오류를 받음 | processor의 `on_failure`, pipeline 수준 `on_failure`, failure store |
-| mapping 충돌(예: 숫자 필드에 문자열) | 문서 거부 | failure store, `ignore_malformed`(logsdb는 기본 `true`) |
+| ingest pipeline processor 오류 | failure store가 꺼져 있으면 문서 거부. Agent는 그 문서를 버리고, Logstash는 DLQ로 보내거나 버림 | processor의 `on_failure`, pipeline 수준 `on_failure`, failure store |
+| mapping 충돌(예: 숫자 필드에 문자열) | 위와 같음 | failure store, `ignore_malformed`(logsdb는 기본 `true`) |
 | 필드 일부를 버린 경우(`ignore_above`, `ignore_malformed`) | 문서는 저장, 해당 필드만 빠짐 | `_ignored` 필드에 기록. Data Set Quality(beta)의 degraded document |
 | Logstash Elasticsearch output에서 400, 404 | DLQ가 켜져 있으면 DLQ, 아니면 경고 로그만 남기고 버림 | Logstash DLQ |
 | Logstash Elasticsearch output에서 409 | 경고 로그를 남기고 버림 | 중복 제거 목적이면 의도한 동작([05](../05-count-reconciliation/)) |
@@ -75,6 +75,8 @@ integration의 pipeline 자체를 고치면 integration을 업그레이드할 �
 근거는 다음과 같습니다.
 
 - failure store가 켜지면, pipeline 예외나 mapping 충돌로 실패할 문서를 별도 index에 저장하고 클라이언트에는 성공 응답과 함께 redirect 표시를 돌려줍니다([Failure store](https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store)). 실패 문서는 `FROM <data stream>::failures`로 조회합니다.
+- failure store는 backpressure(429 등), 보안 오류, version conflict(409)로 실패한 문서는 담지 않습니다. 이런 실패는 클라이언트가 대응해야 하므로 그대로 응답에 돌려줍니다(같은 문서).
+- Agent(Beats)의 Elasticsearch output은 문서별 응답이 429를 뺀 4xx면 `non_indexable_policy`를 적용하고, 기본값은 버리는 것(`drop`)입니다. 거부된 문서를 다른 index에 남기던 `dead_letter_index`는 9.0에서 9.4까지 beta였고 9.5에서 deprecated됐습니다. 공식 문서는 대신 failure store를 쓰라고 안내합니다. 429는 버리지 않고 다시 보내며 `events.toomany`로 셉니다([Elasticsearch output](https://www.elastic.co/docs/reference/beats/filebeat/elasticsearch-output)). failure store가 없는 data stream에서 mapping 충돌이 나면 문서가 Agent 쪽에서 버려진다는 뜻입니다. 버린 건수는 출력 지표 `output.events.dropped`에, failure store로 간 건수는 `output.events.failure_store`에 쌓입니다(beats 소스 `libbeat/outputs/metrics.go` 기준).
 - Logstash Elasticsearch output은 400, 404를 DLQ로 보내고, DLQ가 없으면 로그만 남기고 버립니다. 409는 경고 로그를 남기고 버립니다. bulk 요청 자체의 200이 아닌 응답은 무한히 다시 시도합니다(logstash-output-elasticsearch 문서의 Retry policy).
 - Data Set Quality 페이지는 `_ignored`가 있는 문서를 degraded document로 세어 data set별 품질을 보여 줍니다. Stack과 Serverless 모두 beta입니다([Data set quality](https://www.elastic.co/docs/solutions/observability/data-set-quality-monitoring)).
 

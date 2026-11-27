@@ -104,18 +104,21 @@ queue.max_bytes ≈ 초당 이벤트 x 이벤트 크기 x 버틸 초 x 1.1
 
 ## Fleet Server
 
-공식 scalability 표입니다([Fleet Server scalability](https://www.elastic.co/docs/reference/fleet/fleet-server-scalability)).
+Elastic Cloud Hosted 기준 공식 scalability 표입니다([Fleet Server scalability](https://www.elastic.co/docs/reference/fleet/fleet-server-scalability)). 메모리는 여러 zone에 나눠 담은 합계입니다.
 
-| Agent 수 | Fleet Server 메모리 | Fleet Server vCPU | Elasticsearch hot tier |
-| --- | --- | --- | --- |
-| 2,000 | 2GB | 최대 8 | 32GB RAM, 8 vCPU |
-| 5,000 | 4GB | 최대 8 | 32GB RAM, 8 vCPU |
-| 10,000 | 8GB | 최대 8 | 128GB RAM, 32 vCPU |
-| 25,000 | 8GB | 최대 8 | 256GB RAM, 64 vCPU |
-| 50,000 | 8GB | 최대 8 | 384GB RAM, 96 vCPU |
-| 100,000 | 16GB | 16 | 512GB RAM, 128 vCPU |
+| Agent 수 | Fleet Server 메모리 | Fleet Server vCPU | Elasticsearch hot tier | Kibana 메모리 |
+| --- | --- | --- | --- | --- |
+| 2,000 | 2GiB | 8 | 16GiB RAM, 8 vCPU | 4GiB |
+| 5,000 | 2GiB | 8 | 16GiB RAM, 8 vCPU | 4GiB |
+| 10,000 | 4GiB | 8 | 32GiB RAM, 16 vCPU | 4GiB |
+| 15,000 | 8GiB | 8 | 32GiB RAM, 16 vCPU | 4GiB |
+| 25,000 | 8GiB | 8 | 32GiB RAM, 16 vCPU | 4GiB |
+| 50,000 | 16GiB | 16 | 256GiB RAM, 96 vCPU | 16GiB |
+| 75,000 | 16GiB | 16 | 256GiB RAM, 96 vCPU | 16GiB |
+| 100,000 | 32GiB | 24 | 512GiB RAM, 128 vCPU | 32GiB |
 
-- 표는 Elastic Cloud에서 측정한 값입니다. self-managed에서 같은 환경을 만들기 어려우면 여유를 두고 잡습니다.
+- 표는 설치, 업그레이드, 정책 변경, integration 추가와 삭제 뒤 Agent가 `Healthy`가 되는지를 기준으로 Elastic Cloud에서 정기적으로 시험한 값입니다(같은 문서). self-managed에서 같은 환경을 만들기 어려우면 여유를 두고 잡습니다.
+- self-managed 기준으로 같은 문서가 따로 적은 권장이 두 가지 있습니다. Fleet 하나에 Agent 정책은 1,000개까지이고, 그보다 많으면 UI 성능이 떨어질 수 있습니다. Agent가 1만 대 이상이면 check-in마다 API key 인증이 일어나므로 Elasticsearch의 `xpack.security.authc.api_key.cache.max_keys`를 최대 Agent 수의 두 배로 잡습니다.
 - 가용성을 위해 여러 대를 부하 분산기 뒤에 둡니다([03](../03-no-gap-ingest/#fleet-server)).
 
 ## syslog relay, Kafka

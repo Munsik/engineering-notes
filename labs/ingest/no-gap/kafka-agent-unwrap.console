@@ -1,5 +1,7 @@
 # Kafka Log Consumer integration의 Ingest Pipeline 항목에 지정합니다.
 # Kafka로 받은 Elastic Agent 이벤트를 풀어 원래 data stream으로 reroute합니다.
+# Agent Kafka output은 JSON에 @metadata를 함께 넣습니다. _id가 있으면 문서 ID로 옮기고 @metadata는 지웁니다.
+# 로컬 Elasticsearch 9.5.5에서 bulk create로 확인: 같은 @metadata._id를 두 번 보내면 두 번째는 409.
 PUT _ingest/pipeline/kafka-agent-unwrap
 {
   "description": "Kafka로 받은 Elastic Agent 이벤트를 풀어 원래 data stream으로 보냅니다",
@@ -8,6 +10,19 @@ PUT _ingest/pipeline/kafka-agent-unwrap
       "json": {
         "field": "message",
         "add_to_root": true
+      }
+    },
+    {
+      "set": {
+        "if": "ctx['@metadata']?._id != null",
+        "field": "_id",
+        "copy_from": "@metadata._id"
+      }
+    },
+    {
+      "remove": {
+        "field": "@metadata",
+        "ignore_missing": true
       }
     },
     {
