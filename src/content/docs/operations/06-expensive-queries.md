@@ -69,7 +69,7 @@ PUT _cluster/settings
 
 설정마다 알아 둘 동작입니다.
 
-- `search.allow_expensive_queries: false`는 해당 query를 실행하지 않고 설정 이름이 들어간 오류를 돌려줍니다. Kibana에서 wildcard 검색이나 runtime field를 쓰는 화면이 함께 막힐 수 있으므로 사용자에게 먼저 알립니다(해석).
+- `search.allow_expensive_queries: false`는 해당 query를 실행하지 않고 설정 이름이 들어간 오류를 돌려줍니다. Kibana에서 wildcard 검색이나 runtime field를 쓰는 화면이 함께 막힐 수 있으므로 사용자에게 먼저 알립니다.
 - `search.default_search_timeout`은 요청에 `timeout`이 없을 때만 적용되고, 시간을 넘으면 task 취소 API로 요청을 취소합니다. 판정 해상도는 `thread_pool.estimated_time_interval`(기본 200ms)을 따르므로 200ms보다 짧은 값은 의미가 없습니다([The search API](https://www.elastic.co/docs/solutions/search/the-search-api#search-timeout)).
 - 요청 본문의 `timeout`은 shard마다 query 단계에 적용되고, 넘으면 부분 결과를 돌려줍니다. 요청 전체를 끝내는 장치가 아닙니다(같은 문서).
 - ES|QL의 `LIMIT`과 결과 상한은 돌려주는 행 수만 제한합니다. `WHERE`와 `STATS`는 대상 데이터 전체에서 돕니다. 상한이 있다고 비싼 ES|QL이 싸지지는 않습니다([ES|QL limitations](https://www.elastic.co/docs/reference/query-languages/esql/limitations)).
@@ -88,7 +88,7 @@ Kibana에서 오는 query는 Kibana 설정으로도 줄일 수 있습니다. Adv
 | `discover:sampleSize` | 500 | Discover 문서 표에 가져오는 최대 문서 수 |
 | `data_views:fields_excluded_data_tiers` | 없음 | 필드 목록을 읽을 때 뺄 tier(예: `data_cold,data_frozen`) |
 
-`histogram:maxBars`는 `search.max_buckets`를 한 시각화의 최대 집계 수로 나눈 값보다 작게 둡니다(같은 문서). 대시보드 기본 시간 범위를 짧게 두는 것도 효과가 큽니다. 30일 범위로 열리는 대시보드는 열 때마다 30일치를 집계합니다(해석).
+`histogram:maxBars`는 `search.max_buckets`를 한 시각화의 최대 집계 수로 나눈 값보다 작게 둡니다(같은 문서). 대시보드 기본 시간 범위를 짧게 두는 것도 효과가 큽니다. 30일 범위로 열리는 대시보드는 열 때마다 30일치를 집계합니다.
 
 ## 실행 중인 query를 찾아 취소하기
 
@@ -157,8 +157,6 @@ GET _search
 **오래 걸리는 분석**은 async search로 보내 연결을 붙잡지 않게 합니다. Kibana의 background search도 async search로 돌고, Query activity에 Async search로 보입니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

@@ -30,7 +30,7 @@ Elastic의 [Support Diagnostic](https://github.com/elastic/support-diagnostics) 
 ./diagnostics.sh --type local --host localhost --port 9200 -u elastic -p --bypassDiagVerify --ssl --noVerify
 ```
 
-`--bypassDiagVerify`는 시작할 때 새 버전이 있는지 인터넷으로 확인하는 단계를 건너뜁니다. 폐쇄망에서는 이 옵션을 줍니다. 도구는 Java 런타임이 필요하므로, 배포본 zip과 함께 반입 절차를 미리 밟아 둡니다(해석).
+`--bypassDiagVerify`는 시작할 때 새 버전이 있는지 인터넷으로 확인하는 단계를 건너뜁니다. 폐쇄망에서는 이 옵션을 줍니다. 도구는 Java 런타임이 필요하므로, 배포본 zip과 함께 반입 절차를 미리 밟아 둡니다.
 
 ## 반출할 수 있다면: 가리고 보낸다
 
@@ -49,7 +49,7 @@ remove:
 ./scrub.sh -i /path/to/local-diagnostics-20261127-101500.zip
 ```
 
-결과는 원래 파일 이름 앞에 `scrubbed-`가 붙은 압축 파일로 나옵니다. 자동으로 가려지지 않는 것은 직접 token으로 지정해야 합니다(해석).
+결과는 원래 파일 이름 앞에 `scrubbed-`가 붙은 압축 파일로 나옵니다. 자동으로 가려지지 않는 것은 직접 token으로 지정해야 합니다.
 
 | 가려야 할 수 있는 것 | 들어 있는 파일 |
 | --- | --- |
@@ -60,11 +60,11 @@ remove:
 | ingest pipeline 안의 값 | `pipelines` |
 | 로그 메시지 안의 문서 내용 | Elasticsearch 로그, slow log |
 
-반출 심의에는 "어떤 API를 불렀는지(읽기 전용 목록), 무엇을 가렸는지(scrub 설정)"를 같이 제출하면 승인이 빨라지는 경우가 많습니다(해석).
+반출 심의에는 "어떤 API를 불렀는지(읽기 전용 목록), 무엇을 가렸는지(scrub 설정)"를 같이 제출하면 승인이 빨라지는 경우가 많습니다.
 
 ## 반출할 수 없다면: 같은 정보를 직접 모은다
 
-도구를 반입하지 못하거나 결과를 낼 수 없으면, 목적에 맞는 API만 직접 모아 현장에서 읽습니다. 아래는 support diagnostic이 모으는 API 가운데 장애 원인을 가르는 데 자주 쓰는 것을 고른 목록입니다(해석). 수집 스크립트는 이 목록을 그대로 돌려 파일로 남깁니다.
+도구를 반입하지 못하거나 결과를 낼 수 없으면, 목적에 맞는 API만 직접 모아 현장에서 읽습니다. 아래는 support diagnostic이 모으는 API 가운데 장애 원인을 가르는 데 자주 쓰는 것을 고른 목록입니다. 수집 스크립트는 이 목록을 그대로 돌려 파일로 남깁니다.
 
 | 목적 | API |
 | --- | --- |
@@ -82,14 +82,14 @@ ES_URL=https://localhost:9200 ES_API_KEY=<key> ./offline-collect.sh
 # 결과: es-collect-<시각>/ 아래 API별 파일, _status.txt(HTTP 코드), os.txt
 ```
 
-- 상태가 나쁠 때 한 번만 모으면 원인을 놓칩니다. 증상이 있는 동안 5분에서 10분 간격으로 두세 번 모으면 누적값(rejection, GC 횟수)의 증가분과 계속 같은 hot threads를 볼 수 있습니다(해석).
+- 상태가 나쁠 때 한 번만 모으면 원인을 놓칩니다. 증상이 있는 동안 5분에서 10분 간격으로 두세 번 모으면 누적값(rejection, GC 횟수)의 증가분과 계속 같은 hot threads를 볼 수 있습니다.
 - `allocation_explain`은 할당되지 않은 shard가 없으면 400을 돌려줍니다. 정상 상태에서는 이 파일이 오류여도 문제가 아닙니다(로컬 9.5.5 확인).
 - API가 401을 돌려주면 `.security` index를 못 쓰는 상태일 수 있습니다. 노드마다 file realm 사용자를 만들어 그 노드에 직접 요청합니다([10](../10-incident-runbook/#로그인이-안-될-때)). 503 `master_not_discovered_exception`이면 master가 없는 상태라 대부분의 API가 답하지 않습니다. 이때는 로그가 유일한 단서입니다([07](../07-unstable-cluster/#master가-자주-바뀔-때)).
 - 로그는 API로 모을 수 없습니다. 노드마다 `<cluster>.log`(또는 `_server.json`), `gc.log`를 장애 시간 앞뒤로 복사합니다. 불안정한 클러스터는 elected master의 로그가 가장 중요합니다.
 
 ## 읽는 순서
 
-아래 순서는 제가 현장에서 쓰는 방법입니다(해석).
+아래 순서는 제가 현장에서 쓰는 방법입니다.
 
 ```mermaid
 flowchart TD
@@ -114,11 +114,9 @@ flowchart TD
 | `nodes_stats` | `jvm.gc.collectors`, `breakers.*.tripped`, `indexing_pressure` 거부 수 | [03](../03-node-failure-triage/#circuit-breaker-429) |
 | `cluster_stats` | 전체 shard 수, `mappings.total_field_count` | [07의 cluster state가 클 때](../07-unstable-cluster/#cluster-state가-클-때) |
 
-`cluster_settings`는 기본값을 뺀 것과 포함한 것을 둘 다 모읍니다. 앞의 파일이 "누가 무엇을 바꿨는지"를 바로 보여 주기 때문에, 원인이 설정 변경인 장애를 빨리 찾을 수 있습니다(해석).
+`cluster_settings`는 기본값을 뺀 것과 포함한 것을 둘 다 모읍니다. 앞의 파일이 "누가 무엇을 바꿨는지"를 바로 보여 주기 때문에, 원인이 설정 변경인 장애를 빨리 찾을 수 있습니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

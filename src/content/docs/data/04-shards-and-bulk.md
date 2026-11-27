@@ -95,7 +95,7 @@ flowchart LR
 
 write thread pool rejection은 모든 조건에서 0이었습니다. 결과 원본은 [`results/A_bulk_shards.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/shards-and-bulk/results/A_bulk_shards.csv)에 있습니다.
 
-- **한 건씩 보내면 bulk 1,000건보다 40배에서 100배 느립니다.** 문서 1천 건을 넣는 데 CPU를 0.9초에서 2.5초 썼습니다. bulk 1,000건이면 25ms에서 40ms였습니다. 요청 하나를 받고 처리하고 응답하는 고정 비용이 문서 처리 비용보다 훨씬 크기 때문입니다(해석).
+- **한 건씩 보내면 bulk 1,000건보다 40배에서 100배 느립니다.** 문서 1천 건을 넣는 데 CPU를 0.9초에서 2.5초 썼습니다. bulk 1,000건이면 25ms에서 40ms였습니다. 요청 하나를 받고 처리하고 응답하는 고정 비용이 문서 처리 비용보다 훨씬 크기 때문입니다.
 - **shard가 많을수록 같은 bulk가 작아집니다.** primary 20개에 100건씩 보내면 shard마다 5건씩 20조각이 됩니다. 처리량은 primary 1개일 때의 4분의 1에서 3분의 1로 떨어졌고, CPU는 문서당 두 배에서 세 배를 썼습니다. "bulk 100건"이 shard 입장에서는 "bulk 5건"이 된 셈입니다.
 - **bulk가 충분히 크면 shard 수 차이가 줄어듭니다.** 5,000건(3.7MB)에서는 primary 1개와 20개의 처리량 차이가 12% 안팎이었습니다. 처리량은 primary 1개 기준 1,000건 근처에서 이미 거의 평평해졌습니다.
 - bulk 1건 조건만 shard가 많을수록 오히려 조금 빨랐습니다. primary 1개 칸이 매 라운드 맨 처음에 돌았기 때문일 수 있어서 이 차이는 해석하지 않습니다.
@@ -103,7 +103,7 @@ write thread pool rejection은 모든 조건에서 0이었습니다. 결과 원�
 ### 공식 권장과 맞춰 보기
 
 공식 문서는 bulk 크기를 문서 수로 정하지 않고, shard 하나짜리 단일 노드에서 100건부터 두 배씩 늘리며 처리량이 평평해지는 지점을 찾으라고 권합니다. 비슷하면 작은 쪽을 고르고, 동시 요청이 많을 때 메모리 압박이 생기니 요청 하나가 수십 MB를 넘지 않게 하라고 합니다([Tune for indexing speed](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/indexing-speed)).
-이 실측에서 평평해진 지점은 1,000건, 약 750KB 근처였습니다. 문서 크기가 다르면 건수도 달라지므로, 실제 기준은 요청 크기(MB)로 잡는 편이 옮겨 쓰기 쉽습니다(해석).
+이 실측에서 평평해진 지점은 1,000건, 약 750KB 근처였습니다. 문서 크기가 다르면 건수도 달라지므로, 실제 기준은 요청 크기(MB)로 잡는 편이 옮겨 쓰기 쉽습니다.
 
 함께 볼 기본값입니다.
 
@@ -150,13 +150,13 @@ tenant 100개 x dataset 3종(app, access, audit)을 가정했습니다. 같은 3
 필드 매핑 heap 추정치는 `GET _nodes/stats`의 `indices.mappings.total_estimated_overhead_in_bytes`입니다. 결과 원본은 [`results/B_multitenant.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/shards-and-bulk/results/B_multitenant.csv)에 있습니다.
 
 - **적재가 3.3배에서 3.5배 느렸습니다.** bulk 5,000건이 data stream 300개로 흩어져 shard마다 평균 17건이 됐습니다. 위 실험 A에서 본 "shard가 많으면 bulk가 작아진다"가 그대로 나타났습니다.
-- **저장 크기가 1.7배였습니다.** shard가 작으면 logsdb 정렬과 압축이 묶을 수 있는 문서가 적고, shard마다 고정으로 드는 파일도 있습니다(해석).
+- **저장 크기가 1.7배였습니다.** shard가 작으면 logsdb 정렬과 압축이 묶을 수 있는 문서가 적고, shard마다 고정으로 드는 파일도 있습니다.
 - **tenant 하나만 조회할 때는 차이가 거의 없었습니다.** 공용 data stream도 `tenant.id` term 조건이면 충분히 빨랐습니다. 반면 여러 tenant를 한꺼번에 보는 집계는 shard 300개를 돌아야 해서 16배에서 19배 느렸습니다.
-- cluster state와 필드 매핑 heap이 100배 늘었습니다. 300개로는 문제가 되지 않지만, tenant 1,000개에 dataset 10종이면 data stream 1만 개가 되고, rollover가 돌 때마다 index 수는 더 늘어납니다. 그때는 master heap 기준(1GB당 3,000개)과 shard 한도에 바로 걸립니다(해석).
+- cluster state와 필드 매핑 heap이 100배 늘었습니다. 300개로는 문제가 되지 않지만, tenant 1,000개에 dataset 10종이면 data stream 1만 개가 되고, rollover가 돌 때마다 index 수는 더 늘어납니다. 그때는 master heap 기준(1GB당 3,000개)과 shard 한도에 바로 걸립니다.
 
 매핑 원본 크기(`total_deduplicated_mapping_size`)는 두 구조 모두 357바이트 증가로 같았습니다. 같은 매핑은 cluster state에서 중복 제거되기 때문입니다. 줄지 않는 것은 data node의 필드별 heap입니다.
 
-이 실측을 바탕으로 한 제 기준은 이렇습니다(해석).
+이 실측을 바탕으로 한 제 기준은 이렇습니다.
 
 - 기본은 공용 data stream + `tenant.id`로 둡니다.
 - 보관 기간이나 규제 요구가 다른 소수의 큰 tenant만 별도 data stream으로 뺍니다.
@@ -178,11 +178,11 @@ primary 4개 인덱스에 `routing: tenant.id`로 20만 건을 넣었습니다. 
 | 3 | 148,993 | 53.7MB | 5,299ms |
 
 shard 3 하나가 문서의 75%, indexing 시간의 74%를 차지했습니다. 노드가 여러 대라면 shard 3이 있는 노드만 write queue가 쌓이고 CPU가 높게 나옵니다. shard 수를 늘려도 같은 routing 값은 같은 shard로 가므로 풀리지 않습니다.
-`index.routing_partition_size`로 routing 값 하나를 여러 shard에 나눌 수 있지만, index를 만들 때만 정할 수 있고 join 필드와 같이 쓸 수 없으며, 요청마다 검색할 shard가 늘어납니다([_routing field](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-routing-field)). 큰 tenant는 routing에서 빼거나 별도 index로 옮기는 편이 단순합니다(해석). 결과 원본은 [`results/C_skew.json`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/shards-and-bulk/results/C_skew.json)에 있습니다.
+`index.routing_partition_size`로 routing 값 하나를 여러 shard에 나눌 수 있지만, index를 만들 때만 정할 수 있고 join 필드와 같이 쓸 수 없으며, 요청마다 검색할 shard가 늘어납니다([_routing field](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-routing-field)). 큰 tenant는 routing에서 빼거나 별도 index로 옮기는 편이 단순합니다. 결과 원본은 [`results/C_skew.json`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/shards-and-bulk/results/C_skew.json)에 있습니다.
 
 ### 진단 순서
 
-아래 순서는 제가 쓰는 방법입니다(해석). 요청은 공식 Hot spotting 문서의 요청에서 열과 필드만 줄였고, 로컬 9.5.5에서 그대로 실행되는 것을 확인했습니다. 9.1 이후에는 bulk coordination 단계의 거부를 보려면 `write_coordination` pool도 같이 봅니다.
+아래 순서는 제가 쓰는 방법입니다. 요청은 공식 Hot spotting 문서의 요청에서 열과 필드만 줄였고, 로컬 9.5.5에서 그대로 실행되는 것을 확인했습니다. 9.1 이후에는 bulk coordination 단계의 거부를 보려면 `write_coordination` pool도 같이 봅니다.
 
 ```mermaid
 flowchart TD
@@ -215,8 +215,6 @@ GET _stats/indexing?level=shards&filter_path=indices.*.shards.*.routing.node,ind
 - 쓰기가 끝난 index는 shrink로 shard 수를 줄이거나, 짧은 기간의 index를 reindex로 합칩니다.
 
 ## 판단 기준
-
-이 절은 위의 사실과 실측을 바탕으로 한 제 판단입니다(해석).
 
 | 결정 | 기준 |
 | --- | --- |

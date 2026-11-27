@@ -18,12 +18,12 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 ## Fleet 구조: 정책, revision, check-in
 
 - Agent는 Fleet Server에 HTTP long-polling으로 check-in합니다. 요청은 설정 변경이나 action이 생기거나 5분이 지날 때까지 열려 있고, 그 뒤 다시 요청합니다([Agent health status](https://www.elastic.co/docs/reference/fleet/agent-health-status)).
-- 정책을 바꾸면 새 revision이 만들어지고, 그 정책의 Agent는 다음 check-in 응답으로 새 revision을 받습니다. 그래서 정책 변경은 그 정책의 모든 Agent에 거의 동시에 퍼집니다(해석).
+- 정책을 바꾸면 새 revision이 만들어지고, 그 정책의 Agent는 다음 check-in 응답으로 새 revision을 받습니다. 그래서 정책 변경은 그 정책의 모든 Agent에 거의 동시에 퍼집니다.
 - `Offline`에서 `Inactive`로 바뀌는 시간은 inactivity timeout으로 조정합니다(같은 문서).
 
 ## 정책 설계
 
-아래 기준은 제가 쓰는 방법입니다(해석).
+아래 기준은 제가 쓰는 방법입니다.
 
 | 기준 | 나누는 이유 |
 | --- | --- |
@@ -32,7 +32,7 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 | 네트워크 구역 | 출력(Elasticsearch, Logstash)과 proxy가 다름 |
 | 변경 위험도 | canary 정책을 따로 두고 변경을 먼저 적용 |
 
-공통 설정은 integration 단위로 같은 값을 쓰고, 정책마다 다른 것은 출력, 네트워크, 역할별 integration으로 한정합니다. 정책 수가 수십 개를 넘으면 같은 변경을 여러 정책에 반복해야 하므로, API나 Terraform으로 관리합니다(해석).
+공통 설정은 integration 단위로 같은 값을 쓰고, 정책마다 다른 것은 출력, 네트워크, 역할별 integration으로 한정합니다. 정책 수가 수십 개를 넘으면 같은 변경을 여러 정책에 반복해야 하므로, API나 Terraform으로 관리합니다.
 
 ## 변경 적용 순서
 
@@ -41,7 +41,7 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 3. 운영 정책에 적용합니다. 정책이 크면 Agent를 여러 정책으로 나눠 두고 정책 단위로 순서대로 적용합니다.
 4. 각 단계마다 [06](../06-flow-dashboard/)의 흐름 대시보드와 Agent 상태를 봅니다.
 
-정책 하나 안에서 일부 Agent에만 먼저 적용하는 기능은 없으므로, 단계적 적용은 정책을 나눠서 만듭니다(해석).
+정책 하나 안에서 일부 Agent에만 먼저 적용하는 기능은 없으므로, 단계적 적용은 정책을 나눠서 만듭니다.
 
 ## Agent 업그레이드
 
@@ -61,7 +61,7 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 
 여러 Agent를 고르고 Actions에서 업그레이드를 열면 위 화면이 나옵니다. lab(Kibana 9.5.5)의 Rollout period 선택지는 Immediately, 1, 2, 4, 8, 12, 24 hours였습니다. 화면 도움말은 이 기간 동안 offline인 Agent는 다시 online이 될 때 업그레이드된다고 설명합니다. 화면 상단 문구대로 업그레이드는 되돌릴 수 없는 작업으로 안내됩니다. 되돌릴 일이 생기면 rollback 기능(9.3 GA)을 씁니다.
 
-권장 순서입니다(해석).
+권장 순서입니다.
 
 1. Fleet Server와 Kibana, Elasticsearch가 대상 버전을 지원하는지 확인합니다. Fleet Server를 먼저 올립니다.
 2. canary 정책의 Agent를 업그레이드하고 하루 이상 지켜봅니다.
@@ -75,7 +75,7 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 - Agent는 인증서와 CA 파일의 hot reload를 지원하지 않습니다. 바꾼 뒤에는 Agent를 다시 시작해야 적용됩니다.
 - Beats와 달리 CA 디렉터리를 넘기거나 디렉터리 변화를 감시하지 않습니다. 특정 파일을 가리켜야 합니다.
 
-이 제약 때문에 CA 교체는 "새 CA와 이전 CA를 함께 신뢰하는 기간"을 두는 순서로 합니다(해석).
+이 제약 때문에 CA 교체는 "새 CA와 이전 CA를 함께 신뢰하는 기간"을 두는 순서로 합니다.
 
 1. Agent가 신뢰하는 CA 파일에 새 CA를 추가합니다(이전 CA와 함께). Agent를 다시 시작해 적용합니다. 수천 대면 이 단계를 정책별로 나눠 진행합니다.
 2. Fleet Server의 인증서를 새 CA로 서명한 것으로 바꾸고 다시 시작합니다.
@@ -93,9 +93,9 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 
 ## 네트워크가 끊겼을 때
 
-- Agent는 출력에 닿지 못하는 동안 memory queue에 이벤트를 쌓습니다. queue가 차면 파일 입력은 읽기를 멈추고 기다리고, 다시 연결되면 이어서 읽습니다(해석).
+- Agent는 출력에 닿지 못하는 동안 memory queue에 이벤트를 쌓습니다. queue가 차면 파일 입력은 읽기를 멈추고 기다리고, 다시 연결되면 이어서 읽습니다.
 - disk queue는 설정할 수 없으므로, 파일이 아닌 원천(TCP, UDP 수신)은 queue가 찬 뒤의 데이터를 잃습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison), 해석).
-- 끊긴 동안 로그 회전으로 파일이 지워지면 그 부분도 잃습니다. 네트워크 단절이 잦은 구역은 로그 보존을 길게 둡니다(해석).
+- 끊긴 동안 로그 회전으로 파일이 지워지면 그 부분도 잃습니다. 네트워크 단절이 잦은 구역은 로그 보존을 길게 둡니다.
 
 ## 운영 점검
 
@@ -108,8 +108,6 @@ Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 �
 
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

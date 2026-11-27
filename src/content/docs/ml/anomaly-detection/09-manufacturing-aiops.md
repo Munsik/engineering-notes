@@ -10,7 +10,6 @@ sidebar:
 - Elasticsearch, Kibana 9.x 기준입니다. Workflow 예시는 9.5 이상을 기준으로 썼고, 9.4와 다른 부분은 [기능별 상태](#기능별-상태)에 정리했습니다.
 - 공식 문서와 API reference는 2026년 11월에 다시 확인했습니다. Kibana 제공 job과 alert 문서 구조는 [elastic/kibana](https://github.com/elastic/kibana) main 브랜치를, workflow 작성 관례는 [elastic/workflows](https://github.com/elastic/workflows) 예제를 참고했습니다.
 - 이 글의 job과 workflow는 여러 제조 현장에서 반복해서 나오는 요구를 업종 수준으로 일반화한 설계입니다. 인덱스, field 이름, 임계값은 예시이고, 측정 결과가 아니라 설계 기준입니다.
-- 제 해석이 들어간 부분에는 "해석"이라고 표시했습니다.
 - Workflow 전체 YAML은 저장소 [`labs/anomaly-detection/manufacturing/`](https://github.com/Munsik/engineering-notes/tree/main/labs/anomaly-detection/manufacturing)에 있습니다.
 :::
 
@@ -95,7 +94,7 @@ flowchart LR
 | 13 | 응답이 없으면 | 무한 대기 / timeout 후 실패 | 판단 4h, 승인 1h, 전체 8h | 대기 중인 실행이 쌓이지 않게 합니다. 실패는 별도 workflow로 알립니다. [응답이 없을 때](#응답이-없을-때) | 교대 근무 주기에 맞춰 조정 |
 | 14 | 누구 권한으로 돌까 | 개인 계정 / 운영용 계정 | 운영용 계정으로 rule을 저장 | alert workflow는 rule을 마지막으로 저장한 사용자 권한으로 돕니다. [권한](#권한) | 담당자 교체, 권한 변경 시 rule을 다시 저장 |
 | 15 | 동시 실행 제한 | 없음 / per job / 전체 | 걸지 않음 | 사람 응답을 기다리는 workflow에 동시 실행 제한을 걸면, 대기 중인 실행이 어떻게 계산되는지에 따라 다음 alert가 밀리거나 버려질 수 있습니다. [동시 실행](#동시-실행) | 같은 job에서 alert가 짧은 간격으로 반복될 때 |
-| 16 | 사람의 결정을 ML에 반영할까 | 안 함 / calendar 자동 등록 / rule 자동 수정 | calendar만 자동, rule은 사람이 주간 리뷰로 | calendar는 기간이 정해진 예외라 되돌리기 쉽고, custom rule은 탐지 범위를 영구히 바꾸기 때문입니다(해석). | 없음 |
+| 16 | 사람의 결정을 ML에 반영할까 | 안 함 / calendar 자동 등록 / rule 자동 수정 | calendar만 자동, rule은 사람이 주간 리뷰로 | calendar는 기간이 정해진 예외라 되돌리기 쉽고, custom rule은 탐지 범위를 영구히 바꾸기 때문입니다. | 없음 |
 
 ## 전체 구성
 
@@ -165,7 +164,7 @@ emit(Math.round(v * 100.0));
 GET metrics-system.memory-*/_mapping/field/system.memory.actual.used.pct
 ```
 
-- 정수로 바꾸면 1%p 미만의 변화는 값에 드러나지 않습니다. 사용률 이상 탐지에는 충분한 해상도이고, 낮은 구간의 작은 흔들림은 [결과 필터](#결과-필터)로 거릅니다(해석).
+- 정수로 바꾸면 1%p 미만의 변화는 값에 드러나지 않습니다. 사용률 이상 탐지에는 충분한 해상도이고, 낮은 구간의 작은 흔들림은 [결과 필터](#결과-필터)로 거릅니다.
 - metric function은 double로 바꿀 수 없는 값만 무시하므로, `long` runtime field도 그대로 분석됩니다([metric functions](https://www.elastic.co/docs/reference/machine-learning/ml-metric-functions)).
 
 ### Influencer와 상관 분석
@@ -224,7 +223,7 @@ trace.id influencer의 동작도 알아 두세요.
 | A3 APM 에러 | `service.name`, `error.grouping_key`, `host.name`, `trace.id` |
 | A4 의존성 지연 | `service.name`, `span.destination.service.resource` |
 
-`host.name`과 `service.name`은 모든 job에서 같은 field 이름을 씁니다. 여러 job을 함께 볼 때 같은 서버, 같은 서비스의 이상이 한 줄로 모이게 하기 위해서입니다. MES 로그의 `service.name` 값이 APM의 값과 같아야 이어지므로 먼저 확인하세요. A2에 `host.name`을 넣지 않은 건, composite aggregation source에 host.name을 더하면 throughput이 "서비스 전체"가 아니라 "호스트별" 값으로 바뀌기 때문입니다(해석).
+`host.name`과 `service.name`은 모든 job에서 같은 field 이름을 씁니다. 여러 job을 함께 볼 때 같은 서버, 같은 서비스의 이상이 한 줄로 모이게 하기 위해서입니다. MES 로그의 `service.name` 값이 APM의 값과 같아야 이어지므로 먼저 확인하세요. A2에 `host.name`을 넣지 않은 건, composite aggregation source에 host.name을 더하면 throughput이 "서비스 전체"가 아니라 "호스트별" 값으로 바뀌기 때문입니다.
 
 ### 분할 방식과 bucket span
 
@@ -922,7 +921,7 @@ PUT _ml/anomaly_detectors/mes-apm-error-groups
 
 ### A4. DB, 외부 I/F 호출 지연 `mes-apm-dependency-latency`
 
-**Why**(시나리오 3): MES 지연은 애플리케이션보다 DB나 설비 I/F 같은 하위 의존성에서 시작되는 경우가 많습니다(해석).
+**Why**(시나리오 3): MES 지연은 애플리케이션보다 DB나 설비 I/F 같은 하위 의존성에서 시작되는 경우가 많습니다.
 
 **What**: APM은 서비스가 호출하는 대상별 호출 수와 총 응답 시간을 1분 단위로 집계합니다([APM metrics](https://www.elastic.co/docs/solutions/observability/apm/metrics)). 이걸로 평균 호출 지연(ms)을 계산해 분석합니다.
 
@@ -1065,7 +1064,7 @@ FROM traces-apm*
 | LIMIT 20
 ```
 
-L2에서 로그량 이상이 나면 로그를 가장 많이 만든 trace를 찾습니다. 상위 한두 개에 몰려 있으면 특정 요청의 문제이고, 고르게 퍼져 있으면 범위가 넓은 장애로 볼 수 있습니다(해석).
+L2에서 로그량 이상이 나면 로그를 가장 많이 만든 trace를 찾습니다. 상위 한두 개에 몰려 있으면 특정 요청의 문제이고, 고르게 퍼져 있으면 범위가 넓은 장애로 볼 수 있습니다.
 
 ```sql
 FROM logs-mes-*
@@ -1208,7 +1207,7 @@ anomaly detection rule이 만드는 alert 문서에는 다음 field가 들어갑
 
 workflow에서는 이 값을 `event.alerts[0].kibana.alert.job_id`처럼 점으로 이어 읽습니다. Elastic의 observability 예제도 같은 방식입니다([RCA 예제](https://www.elastic.co/docs/explore-analyze/workflows/use-cases/observability/root-cause-analysis), [elastic/workflows](https://github.com/elastic/workflows)). workflow 편집기에서 alert trigger를 열면 실제 payload를 보고 field 경로를 복사할 수 있으니, 처음 붙일 때 경로를 거기서 가져오세요.
 
-소스 코드를 보면 이 rule은 실행 한 번에 alert를 하나만 보고하고, 그 안에 상위 record와 influencer 목록을 담습니다. 그래서 "호스트마다 alert 하나"처럼 entity 단위로 따로 받으려는 설계와는 맞지 않습니다. 이 글의 workflow는 alert 하나를 출발점으로 삼고, 관련 이상은 결과 index에서 다시 찾는 구조로 짰습니다(해석).
+소스 코드를 보면 이 rule은 실행 한 번에 alert를 하나만 보고하고, 그 안에 상위 record와 influencer 목록을 담습니다. 그래서 "호스트마다 alert 하나"처럼 entity 단위로 따로 받으려는 설계와는 맞지 않습니다. 이 글의 workflow는 alert 하나를 출발점으로 삼고, 관련 이상은 결과 index에서 다시 찾는 구조로 짰습니다.
 
 ### 2단계: Workflow 기본 설정
 
@@ -1250,7 +1249,7 @@ steps:
 | API key | `elasticsearch.*`와 `kibana.*` step은 저장된 API key 하나를 같이 씁니다. connector step은 connector에 저장된 자격 증명으로 외부 시스템에 접속합니다. |
 | 권한이 바뀌었을 때 | 사용자를 비활성화하거나 role을 바꿔도 저장된 key는 자동으로 바뀌지 않습니다. rule이나 workflow를 다시 저장하거나, Enabled를 껐다 켜서 key를 갱신합니다. |
 
-그래서 rule과 workflow는 개인 계정이 아니라 **운영용 계정**으로 저장하는 걸 권합니다. 담당자가 바뀌어도 자동화가 조용히 깨지지 않습니다(해석).
+그래서 rule과 workflow는 개인 계정이 아니라 **운영용 계정**으로 저장하는 걸 권합니다. 담당자가 바뀌어도 자동화가 조용히 깨지지 않습니다.
 
 #### 실행 단위와 크기
 
@@ -1259,7 +1258,7 @@ steps:
 
 #### 동시 실행
 
-`settings.concurrency`로 같은 key의 동시 실행 수를 제한하고, 넘치면 `queue`(9.5부터), `drop`, `cancel-in-progress` 중 하나로 처리할 수 있습니다([Workflow settings](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/settings)). 이 workflow에는 걸지 않았습니다. 사람 응답을 기다리는 실행이 동시 실행 수에 어떻게 계산되는지 공식 문서에 명시되어 있지 않아서, 걸어 두면 대기 중인 판단 때문에 다음 alert가 밀리거나 버려질 수 있기 때문입니다. 중복 실행은 rule의 action 상태(new만)로 막습니다. 같은 job에서 alert가 짧은 간격으로 반복된다면, 사람의 판단이 없는 짧은 workflow를 따로 두고 거기에만 동시 실행 제한을 거는 구성을 검토하세요(해석).
+`settings.concurrency`로 같은 key의 동시 실행 수를 제한하고, 넘치면 `queue`(9.5부터), `drop`, `cancel-in-progress` 중 하나로 처리할 수 있습니다([Workflow settings](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/settings)). 이 workflow에는 걸지 않았습니다. 사람 응답을 기다리는 실행이 동시 실행 수에 어떻게 계산되는지 공식 문서에 명시되어 있지 않아서, 걸어 두면 대기 중인 판단 때문에 다음 alert가 밀리거나 버려질 수 있기 때문입니다. 중복 실행은 rule의 action 상태(new만)로 막습니다. 같은 job에서 alert가 짧은 간격으로 반복된다면, 사람의 판단이 없는 짧은 workflow를 따로 두고 거기에만 동시 실행 제한을 거는 구성을 검토하세요.
 
 #### Kibana Task Manager
 
@@ -1465,7 +1464,7 @@ Workflow는 Kibana Task Manager에서 돕니다. 직접 구축한 환경에서 a
 - `ai.prompt`에 JSON Schema를 주면 결과가 `steps.triage.output.content.<field>`로 나옵니다([AI steps](https://www.elastic.co/docs/explore-analyze/workflows/steps/ai-steps)). 뒤의 `switch`가 `category`로 분기할 수 있는 이유입니다.
 - `category`를 enum으로 묶고 `needs_review`를 두는 건, 모델이 애매할 때 갈 곳을 만들어 두기 위해서입니다. 분류만 필요하다면 `ai.classify`에 `fallbackCategory`를 주는 방법도 있고, 공식 문서는 운영 환경에서 `fallbackCategory`를 꼭 두라고 권합니다.
 - AI step에는 `timeout`과 재시도를 두고, 그래도 실패하면 `continue: true`로 넘깁니다. 바로 다음 `decide` step이 `steps.triage.error`를 보고 분류를 `needs_review`로 내리므로, AI 장애가 나도 Case는 만들어지고 사람에게 넘어갑니다([cheat sheet](https://www.elastic.co/docs/explore-analyze/workflows/reference/cheat-sheet)).
-- 프롬프트에 들어가는 데이터는 연결한 LLM으로 전송됩니다. 조직에서 승인한 모델과 connector를 쓰고, 로그에 개인정보나 영업 정보가 있다면 workflow에서 넘기는 field를 더 줄이세요(해석).
+- 프롬프트에 들어가는 데이터는 연결한 LLM으로 전송됩니다. 조직에서 승인한 모델과 connector를 쓰고, 로그에 개인정보나 영업 정보가 있다면 workflow에서 넘기는 field를 더 줄이세요.
 
 | AI 사용 방식 | 장점 | 단점 | 이 글에서 |
 | --- | --- | --- | --- |
@@ -1931,7 +1930,7 @@ custom rule, group, custom URL, model plot, 결과 보관 기간은 운영 중�
 2. **workflow 단독**: workflow 편집기의 Test 실행이나 Test workflow API로 각 step의 입력과 출력을 확인합니다. Slack connector는 테스트 채널을 가리키게 합니다.
 3. **rule과 연결**: 테스트 space에서 같은 job group을 대상으로 severity를 낮춘 rule을 만들어 실제 alert로 workflow를 돌려 봅니다. 실행 화면에서 `resolve` step의 출력이 비어 있지 않은지부터 봅니다.
 4. **사람의 판단**: 당직자가 실제로 링크를 받아 응답하는 데 걸리는 시간을 재고, timeout을 정합니다.
-5. **AI 분류 신뢰도**: 몇 주 동안 Case에 남은 "AI 분류와 비교" 기록을 모아 일치율을 봅니다. 일치율이 낮은 분류는 알림 기준에서 빼지 않습니다(해석).
+5. **AI 분류 신뢰도**: 몇 주 동안 Case에 남은 "AI 분류와 비교" 기록을 모아 일치율을 봅니다. 일치율이 낮은 분류는 알림 기준에서 빼지 않습니다.
 
 ### 적용 순서
 

@@ -98,7 +98,7 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 글을 쓸 때 지킬 것:
 - `description`은 이 글이 답하는 질문과 범위를 한 문장으로 씁니다. 검색 결과 설명과 llms.txt 목록에 그대로 나갑니다.
 - 제목은 짧게 두어도 됩니다. 검색 결과 제목에는 컬렉션 topic이 자동으로 붙습니다.
-- 글 첫 문단에서 문제와 결론을 먼저 말합니다. 사람에게도, 글을 잘라 읽는 AI 검색에도 같은 이유로 유리합니다(해석).
+- 글 첫 문단에서 문제와 결론을 먼저 말합니다. 사람에게도, 글을 잘라 읽는 AI 검색에도 같은 이유로 유리합니다.
 
 사용자가 할 일:
 - [x] Google Search Console에 URL 접두어 속성 `https://munsik.github.io/engineering-notes/` 등록, HTML 태그 값을 `src/site-seo.mjs`의 `google`에 넣고 배포, 확인 후 `sitemap-index.xml` 제출 (2026-11-25. 홈과 컬렉션 개요 2개 색인 요청)

@@ -18,7 +18,7 @@ Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다
 공식 문서는 anomaly detection에 맞는 데이터의 조건으로 세 가지를 듭니다. 시계열 데이터여야 하고, 시스템이나 업무의 상태를 보여 주는 핵심 지표여야 하며, Elasticsearch에 있어서 datafeed로 실시간으로 읽을 수 있으면 가장 좋습니다([Getting started](https://www.elastic.co/docs/explore-analyze/machine-learning/anomaly-detection/ml-getting-started)).
 
 여기에 하나를 더 따져 봐야 합니다. 같은 문제를 고정 임계값 rule이나 SLO로 더 단순하게 풀 수 있는지입니다.
-아래 표는 공식 문서의 기준이 아니라 제가 현장에서 쓰는 판단 기준입니다(해석).
+아래 표는 공식 문서의 기준이 아니라 제가 현장에서 쓰는 판단 기준입니다.
 
 | 상황 | 더 맞는 방법 | 이유 |
 | --- | --- | --- |
@@ -124,7 +124,7 @@ API 문서는 `over_field_name`이 있는 job에 forecast를 요청하면 에러
 
 ### 판단 기준
 
-아래는 위 제약을 바탕으로 정리한 제 판단 기준입니다(해석).
+아래는 위 제약을 바탕으로 정리한 제 판단 기준입니다.
 
 | 상황 | 권장 |
 | --- | --- |
@@ -172,7 +172,7 @@ Elastic이 제공하는 로그 job은 이 옵션으로 dataset 정보가 빠진 
 공식 문서는 influencer를 보통 3개 이하로 두라고 권합니다. 많아지면 결과가 복잡해지고 분석에 약간의 부담이 생깁니다.
 
 다만 Elastic Security가 제공하는 job은 조사에 필요한 host, user, source IP, process 정보를 같이 남기려고 influencer를 7~8개씩 둡니다.
-보안처럼 조사할 때 맥락이 중요한 용도라면 늘려도 괜찮다고 봅니다(해석). 대신 PoC에서 메모리와 결과 양을 꼭 확인하세요.
+보안처럼 조사할 때 맥락이 중요한 용도라면 늘려도 괜찮다고 봅니다. 대신 PoC에서 메모리와 결과 양을 꼭 확인하세요.
 
 influencer는 detector에서 쓰지 않은 field여도 됩니다. 다만 datafeed가 query로 읽는다면 detector field와 같은 문서에 있어야 하고, aggregation으로 읽는다면 aggregation 안에 포함돼 있어야 반영됩니다.
 필요하면 datafeed의 `runtime_mappings`로 influencer용 field를 만들 수도 있습니다.

@@ -27,7 +27,7 @@ Logstash 처리량은 하드웨어, 파이프라인, 데이터에 따라 크게 
 
 - integration을 추가할수록 메모리 사용량이 늘어납니다(같은 문서).
 - 디스크는 Linux 9.0 기준 1.5GB, Windows 705MB, macOS 775MB이고, 업그레이드하는 동안에는 새 binary를 받기 위해 두 배가 필요합니다(같은 문서).
-- 이 측정은 "최대한 빨리 읽는" 조건입니다. 일반 업무 서버처럼 로그가 천천히 쌓이면 사용량은 훨씬 적습니다(해석).
+- 이 측정은 "최대한 빨리 읽는" 조건입니다. 일반 업무 서버처럼 로그가 천천히 쌓이면 사용량은 훨씬 적습니다.
 
 ### output performance preset
 
@@ -46,7 +46,7 @@ Elasticsearch output은 `preset`으로 관련 설정을 한 번에 바꿉니다.
 - 공식 문서는 balanced 대비 throughput이 EPS를 약 4배, scale은 비슷한 수준, latency는 약 20% 낮다고 설명합니다.
 - `queue.mem.events`를 키우면 출력이 잠시 막혔을 때 버틸 이벤트가 늘어나지만, 그만큼 메모리를 씁니다. Agent는 disk queue를 설정할 수 없으므로 이 값이 Agent 쪽 버퍼의 전부입니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison)).
 
-고르는 기준입니다(해석).
+고르는 기준입니다.
 
 | 호스트 | preset |
 | --- | --- |
@@ -66,7 +66,7 @@ Elasticsearch output은 `preset`으로 관련 설정을 한 번에 바꿉니다.
 - 물리 메모리를 넘기지 말고, 대개 물리 메모리의 50%에서 75% 안에서 잡습니다.
 - `Xms`와 `Xmx`를 같은 값으로 둡니다.
 
-PQ를 쓰면 queue 데이터는 디스크와 OS page cache에 있으므로, JVM heap과 별도로 OS page cache에 쓸 메모리를 남겨 둡니다(해석).
+PQ를 쓰면 queue 데이터는 디스크와 OS page cache에 있으므로, JVM heap과 별도로 OS page cache에 쓸 메모리를 남겨 둡니다.
 
 ### pipeline 설정
 
@@ -88,11 +88,11 @@ queue.max_bytes ≈ 초당 이벤트 x 이벤트 크기 x 버틸 초 x 1.1
 
 - 값은 pipeline마다 적용됩니다. 모든 pipeline의 `queue.max_bytes` 합이 디스크보다 작아야 합니다(같은 문서).
 - 디스크는 이중화합니다(온프레미스 RAID)([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
-- "버틸 시간"은 Elasticsearch 장애 대응 목표 시간으로 정합니다. 주말 동안 버텨야 하면 수십 시간이 됩니다(해석).
+- "버틸 시간"은 Elasticsearch 장애 대응 목표 시간으로 정합니다. 주말 동안 버텨야 하면 수십 시간이 됩니다.
 
 ### 대수
 
-아래 계산은 제가 쓰는 방법입니다(해석).
+아래 계산은 제가 쓰는 방법입니다.
 
 ```text
 필요 대수 = ceil(피크 EPS / 한 대가 안정적으로 처리하는 EPS) + 1
@@ -115,17 +115,17 @@ queue.max_bytes ≈ 초당 이벤트 x 이벤트 크기 x 버틸 초 x 1.1
 | 50,000 | 8GB | 최대 8 | 384GB RAM, 96 vCPU |
 | 100,000 | 16GB | 16 | 512GB RAM, 128 vCPU |
 
-- 표는 Elastic Cloud에서 측정한 값입니다. self-managed에서 같은 환경을 만들기 어려우면 여유를 두고 잡습니다(해석).
+- 표는 Elastic Cloud에서 측정한 값입니다. self-managed에서 같은 환경을 만들기 어려우면 여유를 두고 잡습니다.
 - 가용성을 위해 여러 대를 부하 분산기 뒤에 둡니다([03](../03-no-gap-ingest/#fleet-server)).
 
 ## syslog relay, Kafka
 
-- rsyslog relay는 받아서 넘기기만 해서 CPU 부담이 작습니다. 디스크는 disk-assisted queue의 `queue.maxDiskSpace`로 정하고, 크기는 PQ와 같은 방식(버틸 시간 x 유입량)으로 계산합니다(해석).
+- rsyslog relay는 받아서 넘기기만 해서 CPU 부담이 작습니다. 디스크는 disk-assisted queue의 `queue.maxDiskSpace`로 정하고, 크기는 PQ와 같은 방식(버틸 시간 x 유입량)으로 계산합니다.
 - Kafka는 보존 기간 동안의 유입량에 replication factor를 곱한 디스크가 필요합니다. 상세는 Kafka 운영 자료를 따릅니다.
 
 ## 처리량을 직접 재는 절차
 
-아래 순서는 제가 쓰는 방법입니다(해석).
+아래 순서는 제가 쓰는 방법입니다.
 
 1. 운영과 같은 사양의 Logstash 1대를 준비합니다. 파이프라인, PQ 설정, JVM heap도 운영과 같게 둡니다.
 2. 운영 데이터의 표본(최소 몇 시간 분량)을 파일로 준비해 입력으로 씁니다. 데이터 특성이 결과를 크게 바꾸므로 synthetic 데이터를 쓰지 않습니다.
@@ -136,8 +136,6 @@ queue.max_bytes ≈ 초당 이벤트 x 이벤트 크기 x 버틸 초 x 1.1
 Agent도 같은 방식으로, 운영 서버에 integration을 켠 상태로 며칠간 CPU와 메모리를 관찰해 정합니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 구성 요소 | 출발점 | 맞추는 방법 |
 | --- | --- | --- |

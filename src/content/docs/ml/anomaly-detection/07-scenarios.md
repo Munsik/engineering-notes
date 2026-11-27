@@ -189,7 +189,7 @@ CPU iowait처럼 값이 원래 아주 작은 지표는, 통계적으로는 크�
 | detector | `time_of_day` by `user.name`, over `source.geo.region_iso_code` |
 | influencer | `source.ip`, `source.geo.region_iso_code`, `host.name`, `user.name`, `user.id`, `host.id`, `event.module` |
 | bucket span 등 | 15m, memory 128mb |
-| 주의 | `time_of_day`는 forecast가 안 되고 Kibana 차트에도 안 나옵니다(목록과 표로 확인). 시각 자체를 보는 분석이라 DST 전환에 직접 영향을 받을 수 있습니다(해석). 해외 데이터가 섞인다면 DST calendar를 검토하세요. |
+| 주의 | `time_of_day`는 forecast가 안 되고 Kibana 차트에도 안 나옵니다(목록과 표로 확인). 시각 자체를 보는 분석이라 DST 전환에 직접 영향을 받을 수 있습니다. 해외 데이터가 섞인다면 DST calendar를 검토하세요. |
 | noise와 주의 | 교대 근무자나 출장자는 filter list를 `by` field(`user.name`) scope에 연결합니다. |
 | 참고한 제공 job | `auth_rare_hour_for_a_user_ea`(security_auth) |
 
@@ -267,7 +267,7 @@ Kibana 샘플 웹 로그 module은 세 가지 관점을 job 3개로 나눠서 �
 | 변경 | 바꿀 job 하나만 다시 만들면 됩니다. | detector 하나만 바꿔도 job 전체를 다시 만들고 학습시켜야 합니다. |
 
 같은 화면에서 증상을 같이 보는 게 목적이라면 detector를 묶으세요. forecast, aggregation, bucket span, alert 정책 중 하나라도 따로 가져가야 한다면 job을 나누는 게 낫습니다.
-Elastic이 샘플 module을 job 3개로 나눈 것도, job마다 맞는 입력 방식(aggregation)과 forecast를 살리려는 선택으로 보입니다(해석).
+Elastic이 샘플 module을 job 3개로 나눈 것도, job마다 맞는 입력 방식(aggregation)과 forecast를 살리려는 선택으로 보입니다.
 
 ## 참고 문서
 

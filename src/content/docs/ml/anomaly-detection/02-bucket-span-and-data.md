@@ -83,10 +83,10 @@ datafeed가 이미 지나간 시간대에 뒤늦게 색인된 문서는 분석�
 ingest 지연이 일정하게 반복되면 `low_count` 같은 function에서 오탐이 생길 수 있습니다. 데이터가 덜 들어온 bucket을 "건수가 줄었다"고 보기 때문입니다.
 
 delayed data check는 기본적으로 2시간과 bucket span 8배 중 더 긴 범위를 다시 훑어봅니다. 빠진 문서가 있으면 annotation을 남기고 `Datafeed missed XXXX documents due to ingest latency`라는 메시지를 기록합니다.
-이 메시지가 보이면 `query_delay`부터 늘려 보세요. 그래도 계속 나온다면 ingest 지연의 원인을 찾아야 합니다. 현장에서는 트래픽 burst, 무거운 ingest pipeline, 서버 시계 차이가 흔한 원인이었습니다(해석). 실시간성이 꼭 필요하지 않다면 공식 문서는 그대로 두는 것도 흔한 선택이라고 적고 있습니다.
+이 메시지가 보이면 `query_delay`부터 늘려 보세요. 그래도 계속 나온다면 ingest 지연의 원인을 찾아야 합니다. 현장에서는 트래픽 burst, 무거운 ingest pipeline, 서버 시계 차이가 흔한 원인이었습니다. 실시간성이 꼭 필요하지 않다면 공식 문서는 그대로 두는 것도 흔한 선택이라고 적고 있습니다.
 
 :::tip
-`query_delay`는 실제 ingest 지연의 상위 백분위(예: P95)에 여유를 조금 더한 값으로 잡으면 무난하다고 봅니다(해석). 지연 분포는 문서의 시간 field와 `event.ingested`의 차이로 볼 수 있습니다.
+`query_delay`는 실제 ingest 지연의 상위 백분위(예: P95)에 여유를 조금 더한 값으로 잡으면 무난하다고 봅니다. 지연 분포는 문서의 시간 field와 `event.ingested`의 차이로 볼 수 있습니다.
 :::
 
 ## Sparse 데이터와 aggregation 입력

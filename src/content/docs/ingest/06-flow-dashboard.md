@@ -56,7 +56,7 @@ Logstash integration의 pipeline data stream은 `logstash.pipeline.total.flow` �
 
 기본 화면으로는 "원천 → Agent → Logstash → Elasticsearch" 단계를 한 줄로 비교하기 어렵습니다. 그래서 단계별 지표를 같은 시간 축에 놓는 대시보드를 따로 만듭니다.
 
-Lens의 차트 종류에는 흐름(sankey) 차트가 없습니다(Kibana 문서의 chart 목록 기준). 단계 비교는 같은 시간 축의 선 차트와 표로 구성합니다. 꼭 흐름 그림이 필요하면 Vega로 그릴 수 있지만, 유지 보수 비용이 커서 권하지 않습니다(해석).
+Lens의 차트 종류에는 흐름(sankey) 차트가 없습니다(Kibana 문서의 chart 목록 기준). 단계 비교는 같은 시간 축의 선 차트와 표로 구성합니다. 꼭 흐름 그림이 필요하면 Vega로 그릴 수 있지만, 유지 보수 비용이 커서 권하지 않습니다.
 
 패널은 모두 ES|QL로 정의합니다. ES|QL 패널은 data view를 참조하지 않아서, 대시보드를 환경 사이로 옮길 때 깨지지 않습니다([Manage dashboards as code](https://www.elastic.co/docs/explore-analyze/dashboards/manage-dashboards-as-code), Stack 9.5 GA).
 
@@ -156,7 +156,7 @@ FROM metrics-logstash.pipeline-*
 
 Agent 내장 규칙은 9.2부터 GA이고, Agent를 설치하거나 업그레이드할 때 자동으로 만들어집니다. 기본은 꺼져 있고, 구독 등급에 따라 제공됩니다. 라이선스가 먼저 있어야 규칙이 만들어집니다([Elastic Agent built-in alerts](https://www.elastic.co/docs/reference/fleet/alert-templates)).
 
-원천 무수신 알림은 원천마다 정상 간격이 다릅니다. 몇 초마다 쏟아지는 방화벽과 하루에 몇 건 오는 배치 로그를 같은 기준으로 보면 알림이 쏟아지거나 놓칩니다. dataset별로 기준 시간을 따로 둡니다(해석).
+원천 무수신 알림은 원천마다 정상 간격이 다릅니다. 몇 초마다 쏟아지는 방화벽과 하루에 몇 건 오는 배치 로그를 같은 기준으로 보면 알림이 쏟아지거나 놓칩니다. dataset별로 기준 시간을 따로 둡니다.
 
 ## 대시보드를 코드로 관리하기
 
@@ -174,8 +174,6 @@ curl -X PUT "$KIBANA_URL/api/dashboards/lab-ingest-flow" \
 API로 만들 때 ES|QL 표 패널의 `type`은 `data_table`, 선 차트는 `xy`입니다. Logstash가 없는 환경에서는 P1-b, P4 패널이 `Unknown column` 오류를 표시합니다. 해당 data stream이 없으면 ES|QL이 필드를 찾지 못하기 때문입니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

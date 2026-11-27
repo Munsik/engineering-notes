@@ -17,7 +17,7 @@ sidebar:
 
 ## 복구 목표부터 정한다
 
-설계는 두 질문에서 출발합니다(해석).
+설계는 두 질문에서 출발합니다.
 
 - 얼마나 잃어도 되는가: 장애가 나면 마지막 몇 분, 몇 시간치 데이터를 잃어도 되는지
 - 얼마나 빨리 돌아와야 하는가: 검색과 적재가 몇 분, 몇 시간 안에 돌아와야 하는지
@@ -29,7 +29,7 @@ sidebar:
 | 클러스터 전체, 사람의 실수(삭제) | snapshot | 마지막 snapshot 이후 데이터 |
 | 데이터센터 하나 | 다른 데이터센터의 클러스터(cross-cluster replication)와 snapshot | 복제 지연 또는 마지막 snapshot 이후 |
 
-replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지 못합니다. 사본에도 그대로 적용되기 때문입니다. 사람의 실수에 대비하는 장치는 snapshot뿐입니다(해석).
+replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지 못합니다. 사본에도 그대로 적용되기 때문입니다. 사람의 실수에 대비하는 장치는 snapshot뿐입니다.
 
 ## 최소 구성
 
@@ -50,7 +50,7 @@ replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지
 | 노드 하나 장애 | 그 노드의 shard가 RED. 노드가 돌아오거나 snapshot 복원까지 검색, 적재 불가 | 영향 없음 |
 | 디스크 고장 | 그 shard의 데이터 손실 | 영향 없음 |
 
-replica 0이 맞는 경우는 원천에서 다시 넣을 수 있고, 그동안 검색이 안 돼도 되는 데이터뿐입니다. 적재 속도 때문에 replica를 0으로 둔다면, 대량 적재 동안만 0으로 두고 끝나면 1로 되돌립니다(해석). 오래된 로그의 저장 비용이 문제라면 replica 0보다 frozen tier가 낫습니다. frozen의 searchable snapshot은 snapshot 저장소가 사본 역할을 합니다([데이터 설계 05](../../data/05-tiers-and-retention/)).
+replica 0이 맞는 경우는 원천에서 다시 넣을 수 있고, 그동안 검색이 안 돼도 되는 데이터뿐입니다. 적재 속도 때문에 replica를 0으로 둔다면, 대량 적재 동안만 0으로 두고 끝나면 1로 되돌립니다. 오래된 로그의 저장 비용이 문제라면 replica 0보다 frozen tier가 낫습니다. frozen의 searchable snapshot은 snapshot 저장소가 사본 역할을 합니다([데이터 설계 05](../../data/05-tiers-and-retention/)).
 
 ## zone과 rack에 나눠 두기
 
@@ -67,7 +67,7 @@ cluster.routing.allocation.awareness.force.zone.values: zone-a,zone-b
 - forced awareness를 켜면 zone 하나가 죽을 때 그 zone 몫의 replica는 할당하지 않고 남겨 둡니다. 남은 zone의 디스크와 부하가 갑자기 두 배가 되는 것을 막는 대신, 그동안 YELLOW입니다.
 - master 후보는 zone 셋에 하나씩 둡니다. zone이 둘뿐이면 한쪽에 master 후보를 더 많이 두거나, 세 번째 위치에 tiebreaker를 둡니다. 두 zone에 같은 수를 두면 어느 쪽이 죽어도 선출할 수 없습니다([Resilience in larger clusters](https://www.elastic.co/docs/deploy-manage/production-guidance/availability-and-resilience/resilience-in-larger-clusters)).
 - 멀리 떨어진 데이터센터에 클러스터 하나를 걸쳐 두지 않습니다. 공식 문서는 데이터센터마다 클러스터를 따로 두고 cross-cluster search나 cross-cluster replication으로 잇도록 권합니다(같은 문서).
-- zone 하나를 잃어도 남은 zone이 전체 부하를 받을 수 있어야 합니다. 평소 사용률은 그만큼 낮아야 합니다(해석).
+- zone 하나를 잃어도 남은 zone이 전체 부하를 받을 수 있어야 합니다. 평소 사용률은 그만큼 낮아야 합니다.
 
 ## snapshot
 
@@ -95,7 +95,7 @@ PUT _slm/policy/nightly
 }
 ```
 
-- snapshot은 증분입니다. 이전 snapshot에 이미 있는 segment는 다시 올리지 않으므로 주기를 짧게 해도 비용이 생각보다 작습니다(해석).
+- snapshot은 증분입니다. 이전 snapshot에 이미 있는 segment는 다시 올리지 않으므로 주기를 짧게 해도 비용이 생각보다 작습니다.
 - 잃어도 되는 시간이 짧으면 하루 한 번이 아니라 몇 시간마다 찍습니다. 공식 문서는 주기가 다른 policy를 여러 개 두는 방법(예: 30분마다 짧게 보관, 하루 한 번 길게 보관)도 설명합니다([Create snapshots](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/create-snapshots)).
 - SLM은 시스템 시계로 일정과 보관 기간을 계산합니다. 노드 시계를 맞춥니다(같은 문서).
 - 실패는 `GET _slm/stats`와 health report의 `slm` indicator로 봅니다. [01의 매주 점검](../01-daily-checks/#매주)에 넣어 둡니다.
@@ -113,9 +113,9 @@ POST _snapshot/backup-repo/<snapshot>/_restore
 }
 ```
 
-- snapshot 저장소는 클러스터와 다른 장애 영역에 둡니다. 같은 스토리지 장비에 있으면 그 장비와 함께 잃습니다(해석).
+- snapshot 저장소는 클러스터와 다른 장애 영역에 둡니다. 같은 스토리지 장비에 있으면 그 장비와 함께 잃습니다.
 - `_verify`는 모든 노드가 저장소에 쓸 수 있는지만 확인합니다. 실제로 복원되는지는 복원해 봐야 압니다.
-- 분기마다 index 하나를 다른 이름으로 복원해 시간을 잽니다. 이 시간이 "얼마나 빨리 돌아와야 하는가"의 실제 값입니다(해석).
+- 분기마다 index 하나를 다른 이름으로 복원해 시간을 잽니다. 이 시간이 "얼마나 빨리 돌아와야 하는가"의 실제 값입니다.
 
 ## rolling restart
 
@@ -147,7 +147,7 @@ GET _cat/recovery?v&active_only=true
 POST _ml/set_upgrade_mode?enabled=false
 ```
 
-1단계가 필요한 이유는 `index.unassigned.node_left.delayed_timeout`(기본 1분) 때문입니다. 1분 안에 노드가 돌아오지 않으면 그 노드의 replica를 다른 노드에 새로 만들기 시작하고, 돌아온 뒤에는 또 옮깁니다. 재시작이 1분을 넘기는 환경에서는 이 복사가 rolling restart를 몇 배로 늘립니다(해석).
+1단계가 필요한 이유는 `index.unassigned.node_left.delayed_timeout`(기본 1분) 때문입니다. 1분 안에 노드가 돌아오지 않으면 그 노드의 replica를 다른 노드에 새로 만들기 시작하고, 돌아온 뒤에는 또 옮깁니다. 재시작이 1분을 넘기는 환경에서는 이 복사가 rolling restart를 몇 배로 늘립니다.
 
 rolling restart가 오래 걸리는 흔한 이유입니다.
 
@@ -185,11 +185,9 @@ PUT _cluster/settings
 ```
 
 - master 후보 노드를 짧은 시간에 절반 이상 뺄 때만 voting configuration exclusion이 필요합니다. 예를 들어 master 후보가 2대 남은 상태에서 1대를 빼는 경우입니다. 이때는 `POST _cluster/voting_config_exclusions?node_names=<name>`을 먼저 부르고, 노드를 뺀 뒤 `DELETE _cluster/voting_config_exclusions`로 지웁니다([Add and remove nodes](https://www.elastic.co/docs/deploy-manage/maintenance/add-and-remove-elasticsearch-nodes)).
-- 노드를 내리기 전에 남은 노드의 디스크가 옮겨 올 shard를 받을 수 있는지 계산합니다. 받을 수 없으면 2단계에서 멈춥니다(해석).
+- 노드를 내리기 전에 남은 노드의 디스크가 옮겨 올 shard를 받을 수 있는지 계산합니다. 받을 수 없으면 2단계에서 멈춥니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |

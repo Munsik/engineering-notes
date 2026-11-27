@@ -32,7 +32,7 @@ sidebar:
 | [General index settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/index-modules) 문서의 `index.codec` | 최대 약 28% | `best_compression` 대 `default` codec |
 
 같은 logsdb라도 비교 대상이 `default` codec이면 절감률이 크게 나오고, 이미 `best_compression`을 쓰던 인덱스와 비교하면 작게 나옵니다.
-9.5.5에 내장된 `logs@settings` component template도 `index.codec: best_compression`을 넣어 둡니다(로컬 9.5.5에서 `GET _component_template/logs@settings`로 확인). 통합(integration) 템플릿이나 직접 만든 템플릿은 구성에 따라 다르므로, backing index의 실제 `index.codec`을 먼저 봅니다. 이미 `best_compression`을 쓰는 환경에서 logsdb 전환 효과를 가늠할 때는 standard + `best_compression`을 baseline으로 잡아야 합니다(해석).
+9.5.5에 내장된 `logs@settings` component template도 `index.codec: best_compression`을 넣어 둡니다(로컬 9.5.5에서 `GET _component_template/logs@settings`로 확인). 통합(integration) 템플릿이나 직접 만든 템플릿은 구성에 따라 다르므로, backing index의 실제 `index.codec`을 먼저 봅니다. 이미 `best_compression`을 쓰는 환경에서 logsdb 전환 효과를 가늠할 때는 standard + `best_compression`을 baseline으로 잡아야 합니다.
 
 ## 저장 공간을 차지하는 네 가지 구조
 
@@ -89,7 +89,7 @@ force merge 뒤 문서당 바이트입니다. 두 번 모두 1% 안쪽으로 같
 전체 결과는 [`results/summary.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/storage-footprint/results/summary.csv)에 있습니다.
 
 - **`base`의 logsdb 65%, columnar 77%는 `default` codec 대비입니다.** `best_compression`을 baseline으로 잡으면 logsdb는 45%, columnar는 65% 줄었습니다(214바이트에서 118바이트, 76바이트).
-- **host cardinality가 높으면 logsdb 절감 폭이 줄어듭니다.** host가 5만 개면 30만 건 안에서 같은 host의 문서가 몇 건밖에 이어지지 않아 정렬 효과가 약해집니다. logsdb는 65%에서 59%로 내려갔고, synthetic `_source`만 켠 `std-syn`은 54% 그대로였습니다. 정렬 이득만 빠졌다는 뜻입니다(해석).
+- **host cardinality가 높으면 logsdb 절감 폭이 줄어듭니다.** host가 5만 개면 30만 건 안에서 같은 host의 문서가 몇 건밖에 이어지지 않아 정렬 효과가 약해집니다. logsdb는 65%에서 59%로 내려갔고, synthetic `_source`만 켠 `std-syn`은 54% 그대로였습니다. 정렬 이득만 빠졌다는 뜻입니다.
 - **필드가 많을수록 `_source` 제거 효과가 커집니다.** 필드 200개짜리 문서는 `_source`가 대부분을 차지해서 `std-syn`만으로 69%가 줄었습니다.
 - **message가 길면 synthetic `_source`만으로는 부족합니다.** `std-syn`(37%)이 `std-bc`(42%)보다 덜 줄었습니다. `match_only_text`는 synthetic `_source`를 위해 원문을 따로 저장하는데, `std-syn`은 codec이 `default`라서 그 원문을 LZ4로 저장하기 때문입니다. 아래 `_disk_usage`에서 확인할 수 있습니다.
 - force merge 전후 크기 차이는 5% 안쪽이었습니다. 가장 큰 차이는 `hicard`의 logsdb(46.4MB에서 44.3MB)였습니다. 이 규모에서는 적재 직후 크기로 sizing해도 크게 틀리지 않았습니다.
@@ -108,7 +108,7 @@ force merge 뒤 문서당 바이트입니다. 두 번 모두 1% 안쪽으로 같
 
 - `best_compression`은 stored fields만 줄였습니다(63.4MB에서 27.0MB).
 - synthetic `_source`를 켜면 stored fields가 거의 사라지고, 남은 8.6MB 대부분은 `message._original`(6.4MB)입니다. `match_only_text`의 원문 보관용 필드입니다.
-- `_source`가 빠지고 나면 가장 큰 필드는 32자리 hex인 `trace.id`였습니다(17.4MB, inverted index와 doc values 합). 값이 거의 모두 다른 ID 필드는 정렬과 codec이 줄여 줄 수 있는 것이 적습니다. logsdb 전환 뒤에도 크기가 기대만큼 줄지 않으면, 이런 고 cardinality keyword 필드가 색인과 doc values를 모두 갖고 있는지부터 봅니다(해석).
+- `_source`가 빠지고 나면 가장 큰 필드는 32자리 hex인 `trace.id`였습니다(17.4MB, inverted index와 doc values 합). 값이 거의 모두 다른 ID 필드는 정렬과 codec이 줄여 줄 수 있는 것이 적습니다. logsdb 전환 뒤에도 크기가 기대만큼 줄지 않으면, 이런 고 cardinality keyword 필드가 색인과 doc values를 모두 갖고 있는지부터 봅니다.
 - `columnar`는 keyword 필드를 색인하지 않아서 inverted index가 `message`의 5.8MB만 남았고, points도 0이 됐습니다. `trace.id`는 5.0MB로 줄었습니다.
 
 `longmsg`에서는 `std-syn`의 `message._original`이 24.5MB로 `std-bc`의 `_source` 전체(22.0MB)보다 컸습니다. logsdb는 같은 원문을 11.1MB로 저장했습니다. 원본 표는 [`results/disk_usage_run2.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/storage-footprint/results/disk_usage_run2.csv)에 있습니다.
@@ -116,8 +116,8 @@ force merge 뒤 문서당 바이트입니다. 두 번 모두 1% 안쪽으로 같
 ### 적재 비용
 
 1회차는 첫 조합에서 JVM warm-up 영향이 커서 2회차 값으로 봅니다. `base` 기준 Elasticsearch 프로세스 CPU 시간(문서 1천 건당)은 `std` 31.1ms, `std-bc` 31.7ms, `std-syn` 27.8ms, `logsdb` 32.5ms, `columnar` 27.4ms였습니다(실측).
-2회차 기준으로 logsdb는 네 데이터셋 모두 `std`와 5% 안쪽 차이였습니다(`fields200`은 4% 적고 나머지는 4%에서 5% 많음). `columnar`는 `hicard`와 `fields200`에서 `std`보다 19%에서 20% 적게 썼고, `longmsg`에서는 같았습니다. 색인하지 않는 keyword 필드가 많을수록 줄어든 것으로 보입니다(해석).
-vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 측정 오차와 구분하기 어렵습니다. 공식 문서의 "indexing 10%에서 20% 영향"은 이 규모에서는 드러나지 않았다고만 적어 둡니다. 실제 적재 비용은 운영 하드웨어에서 Rally 같은 도구로 재야 합니다(해석).
+2회차 기준으로 logsdb는 네 데이터셋 모두 `std`와 5% 안쪽 차이였습니다(`fields200`은 4% 적고 나머지는 4%에서 5% 많음). `columnar`는 `hicard`와 `fields200`에서 `std`보다 19%에서 20% 적게 썼고, `longmsg`에서는 같았습니다. 색인하지 않는 keyword 필드가 많을수록 줄어든 것으로 보입니다.
+vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 측정 오차와 구분하기 어렵습니다. 공식 문서의 "indexing 10%에서 20% 영향"은 이 규모에서는 드러나지 않았다고만 적어 둡니다. 실제 적재 비용은 운영 하드웨어에서 Rally 같은 도구로 재야 합니다.
 
 ### 조회 지연
 
@@ -166,7 +166,7 @@ vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 �
 - standard 인덱스에 synthetic `_source`만 켜면 keep 기본값이 `none`이라 IP 배열이 정렬되고 중복이 사라졌습니다. DNS 응답처럼 순서와 중복이 의미 있는 필드는 이렇게 바뀝니다.
 - `logsdb_columnar`는 객체 배열의 짝을 되살릴 수 없고, 매핑되지 않은 내용은 버립니다. 필드 하나만 원본을 보관하는 옵션(`synthetic_source_keep`, `store: true`)도 거부합니다. 짝이 중요한 객체 배열은 `nested`로 매핑해야 합니다([What columnar `_source` preserves](https://www.elastic.co/docs/reference/elasticsearch/columnar#columnar-source-fidelity)).
 
-`_source`를 그대로 읽는 소비자가 있다면 전환 전에 이 차이를 확인해야 합니다. reindex 대상 시스템, `params._source['a.b']`처럼 점 표기로 원본을 읽는 script, 원문 그대로 다른 시스템에 넘기는 연동이 대표적입니다(해석).
+`_source`를 그대로 읽는 소비자가 있다면 전환 전에 이 차이를 확인해야 합니다. reindex 대상 시스템, `params._source['a.b']`처럼 점 표기로 원본을 읽는 script, 원문 그대로 다른 시스템에 넘기는 연동이 대표적입니다.
 
 ## 라이선스와 index template에 따라 달라지는 것
 
@@ -253,8 +253,6 @@ POST logs-nginx.access-default/_rollover
 - `_source`를 그대로 읽는 소비자가 있는지 위의 표로 점검합니다.
 
 ## 판단 기준
-
-이 절은 위의 사실과 실측을 바탕으로 한 제 판단입니다(해석).
 
 ```mermaid
 flowchart TD

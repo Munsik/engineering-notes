@@ -50,7 +50,7 @@ GET _ml/anomaly_detectors/<job_id>/_stats
 ## 메모리 추정
 
 job을 만들기 전에 estimate API로 메모리가 얼마나 필요할지 가늠해 봅니다.
-`overall_cardinality`에는 field의 전체 고유 값 개수를, `max_bucket_cardinality`에는 bucket 하나 안에서 나올 수 있는 최대 고유 값 개수를 넣습니다. 잘 모르겠으면 둘 다 전체 값으로 넣어 넉넉하게 보는 편이 안전합니다(해석).
+`overall_cardinality`에는 field의 전체 고유 값 개수를, `max_bucket_cardinality`에는 bucket 하나 안에서 나올 수 있는 최대 고유 값 개수를 넣습니다. 잘 모르겠으면 둘 다 전체 값으로 넣어 넉넉하게 보는 편이 안전합니다.
 
 ```json
 POST _ml/anomaly_detectors/_estimate_model_memory

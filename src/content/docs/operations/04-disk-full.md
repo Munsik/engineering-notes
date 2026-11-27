@@ -29,7 +29,7 @@ sidebar:
 
 같은 문서에 따르면 max headroom 기본값은 해당 watermark를 직접 설정하지 않았을 때만 적용됩니다. watermark를 퍼센트로 직접 바꾸면 headroom 기본값이 사라져서, 큰 디스크에서는 오히려 더 일찍 걸립니다.
 
-flood-stage는 그 노드에 shard가 하나라도 있는 index 전체를 막습니다. 노드 하나의 디스크가 차면 여러 index의 쓰기가 한꺼번에 멈추는 이유입니다(해석).
+flood-stage는 그 노드에 shard가 하나라도 있는 index 전체를 막습니다. 노드 하나의 디스크가 차면 여러 index의 쓰기가 한꺼번에 멈추는 이유입니다.
 
 ## read-only 풀기
 
@@ -71,9 +71,9 @@ PUT _cluster/settings
 }
 ```
 
-watermark를 올린 뒤에는 공간을 확보하고 `null`로 되돌립니다. 잊고 두면 다음에는 디스크가 완전히 찰 때까지 아무 경고도 없습니다(해석). 위 예시처럼 퍼센트를 직접 넣으면 max headroom 기본값도 꺼지므로, 디스크가 큰 노드에서는 오히려 차단이 더 빨리 걸릴 수 있습니다. 큰 디스크라면 `cluster.routing.allocation.disk.watermark.flood_stage.max_headroom` 같은 headroom 값을 조정하는 편이 맞습니다.
+watermark를 올린 뒤에는 공간을 확보하고 `null`로 되돌립니다. 잊고 두면 다음에는 디스크가 완전히 찰 때까지 아무 경고도 없습니다. 위 예시처럼 퍼센트를 직접 넣으면 max headroom 기본값도 꺼지므로, 디스크가 큰 노드에서는 오히려 차단이 더 빨리 걸릴 수 있습니다. 큰 디스크라면 `cluster.routing.allocation.disk.watermark.flood_stage.max_headroom` 같은 headroom 값을 조정하는 편이 맞습니다.
 
-`cluster.routing.allocation.disk.threshold_enabled: false`는 disk decider를 끄고 기존 read-only 차단까지 지웁니다(같은 문서). 디스크 보호 장치 전체를 끄는 것이라 긴급 조치로도 권하지 않습니다(해석).
+`cluster.routing.allocation.disk.threshold_enabled: false`는 disk decider를 끄고 기존 read-only 차단까지 지웁니다(같은 문서). 디스크 보호 장치 전체를 끄는 것이라 긴급 조치로도 권하지 않습니다.
 master 전용 노드나 기타 노드의 디스크가 차는 경우는 [Fix master node out of disk](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-master-node-out-of-disk), [Fix other node out of disk](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-other-node-out-of-disk)를 따릅니다.
 
 ## 디스크가 이유 없이 늘 때
@@ -100,11 +100,9 @@ master 전용 노드나 기타 노드의 디스크가 차는 경우는 [Fix mast
 | 추세 감시 | 01의 매월 점검. 85%에 닿기 전에 증설 |
 | ILM 오류 감시 | `GET */_ilm/explain?only_errors=true`. ILM이 멈추면 삭제도 rollover도 멈춤 |
 
-sizing 단계에서 디스크를 85%까지 쓸 수 있다고 보지 않습니다. 노드 하나를 잃었을 때 나머지 노드가 그 shard를 받아야 하므로, 평소 사용률은 그만큼 낮아야 합니다(해석).
+sizing 단계에서 디스크를 85%까지 쓸 수 있다고 보지 않습니다. 노드 하나를 잃었을 때 나머지 노드가 그 shard를 받아야 하므로, 평소 사용률은 그만큼 낮아야 합니다.
 
 ## 판단 기준
-
-이 절은 위의 사실을 바탕으로 한 제 판단입니다(해석).
 
 | 상황 | 권장 |
 | --- | --- |
