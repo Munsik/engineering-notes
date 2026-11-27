@@ -1,0 +1,123 @@
+---
+// 홈의 "다음에 쓸 글" 목록입니다. src/site-upcoming.mjs 목록을 순서대로 그립니다.
+// 이미 공개한 컬렉션에 더하는 글은 그 컬렉션 index.md의 title로 이름을 붙이고 컬렉션으로 링크합니다.
+// 주제를 더하거나 뺄 때 이 파일은 고치지 않습니다.
+import { getCollection } from 'astro:content';
+import { upcomingTopics } from '../site-upcoming.mjs';
+
+const docs = await getCollection('docs');
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const groups = upcomingTopics.map((g) => {
+	if (!g.collection) return { ...g, label: g.name, note: '새 컬렉션', href: undefined };
+	const index = docs.find((d) => d.id === g.collection || d.id === `${g.collection}/index`);
+	return {
+		...g,
+		label: index?.data.title ?? g.name ?? g.collection,
+		note: '기존 컬렉션에 추가',
+		href: `${base}/${g.collection}/`,
+	};
+});
+---
+
+<ol class="en-upcoming">
+	{
+		groups.map(({ axis, label, note, href, topics }) => (
+			<li class="en-upcoming-group">
+				<div class="en-upcoming-head">
+					<span class="en-upcoming-axis">{axis}</span>
+					{href ? (
+						<a class="en-upcoming-title" href={href}>
+							{label}
+						</a>
+					) : (
+						<span class="en-upcoming-title">{label}</span>
+					)}
+					<span class="en-upcoming-note">{note}</span>
+				</div>
+				<ul class="en-upcoming-topics">
+					{topics.map((t) => (
+						<li>{t}</li>
+					))}
+				</ul>
+			</li>
+		))
+	}
+</ol>
+
+<style>
+	.en-upcoming {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1rem;
+		padding: 0;
+		margin: 1rem 0 0;
+		list-style: none;
+	}
+
+	@media (min-width: 50rem) {
+		.en-upcoming {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	.en-upcoming > li {
+		margin: 0;
+	}
+
+	.en-upcoming-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		padding: 1.25rem;
+		border: 1px dashed var(--sl-color-gray-4);
+		border-radius: 0.5rem;
+	}
+
+	.en-upcoming-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.en-upcoming-axis {
+		padding: 0.125rem 0.5rem;
+		border-radius: 999px;
+		background-color: var(--sl-color-gray-6);
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-xs);
+		font-weight: 600;
+	}
+
+	.en-upcoming-title {
+		color: var(--sl-color-white);
+		font-weight: 600;
+	}
+
+	a.en-upcoming-title {
+		text-decoration: none;
+	}
+
+	a.en-upcoming-title:hover,
+	a.en-upcoming-title:focus-visible {
+		color: var(--sl-color-text-accent);
+	}
+
+	.en-upcoming-note {
+		margin-left: auto;
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-xs);
+	}
+
+	.en-upcoming-topics {
+		margin: 0;
+		padding-left: 1.1rem;
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+	}
+
+	.en-upcoming-topics li + li {
+		margin-top: 0.25rem;
+	}
+</style>

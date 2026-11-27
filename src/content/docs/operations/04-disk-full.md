@@ -112,3 +112,14 @@ sizing 단계에서 디스크를 85%까지 쓸 수 있다고 보지 않습니다
 | 시간이 급함 | replica 임시 축소, watermark 임시 상향. 공간 확보 뒤 되돌림 |
 | `disk.used`가 `disk.indices`보다 큼 | data 디렉터리 밖, translog, recovery 확인. 9.5.0에서 9.5.2면 known issue 먼저 |
 | 반복됨 | 크기 기준 rollover, 보관 자동화, 증설 시점 계산 |
+
+## 참고 문서
+
+- [Watermark errors](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-watermark-errors)
+- [Cluster-level shard allocation and routing settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/cluster-level-shard-allocation-routing-settings)
+- [Fix data node out of disk](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-data-node-out-of-disk)
+- [Decrease disk usage](https://www.elastic.co/docs/troubleshoot/elasticsearch/decrease-disk-usage-data-node)
+- [Fix master node out of disk](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-master-node-out-of-disk)
+- [Fix other node out of disk](https://www.elastic.co/docs/troubleshoot/elasticsearch/fix-other-node-out-of-disk)
+- [Elasticsearch known issues](https://www.elastic.co/docs/release-notes/elasticsearch/known-issues)
+- [elastic/elasticsearch#158212](https://github.com/elastic/elasticsearch/issues/158212)

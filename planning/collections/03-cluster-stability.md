@@ -11,8 +11,7 @@
 
 - 기존 4편(3-1에서 3-4)을 10편으로 확장. 사용자 요청: 현장에서 실제로 겪는 이슈, general guidance, best practice, 시나리오를 단계별로
 - 근거: 공식 troubleshooting 문서(docs-content `troubleshoot/elasticsearch/`), production guidance, Elasticsearch 소스와 release notes(known issues)
-- 사내 KB, Slack, internal docs는 현장에서 자주 나오는 주제를 고르는 데만 사용. 본문 근거는 공개 자료로 다시 확인한 것만
-- 사내 자료에서 확인한 자주 나오는 주제: GC가 회수하지 못하는 상태(ineffective G1 cycle), RPM 설치의 `vm.max_map_count` 되돌림, exit code 143(SIGTERM), 저트래픽 시간대 HTTP timeout과 TCP keepalive, 클라이언트가 받는 TCP RST, 9.5.0에서 9.5.2의 translog 증가 known issue, mapping explosion, 재시작 절차
+- 현장에서 자주 받는 문의를 기준으로 고른 주제: GC가 회수하지 못하는 상태(ineffective G1 cycle), RPM 설치의 `vm.max_map_count` 되돌림, exit code 143(SIGTERM), 저트래픽 시간대 HTTP timeout과 TCP keepalive, 클라이언트가 받는 TCP RST, 9.5.0에서 9.5.2의 translog 증가 known issue, mapping explosion, 재시작 절차
 - 01에서 04를 먼저 초안으로 작성. 05에서 10은 다음 단계
 - 2026-11-27: 05에서 10 작성, 10편 모두 발행. 03의 `/etc/sysctl.conf` 확인 필요는 Ubuntu 24.04에서 systemd-sysctl, procps 적용 순서를 재현해 해소. lab ECH 로그인이 풀려 있어 05에서 10의 API는 공식 문서와 소스 기준으로만 확인(lab 실행은 다음 재검증 때)
 

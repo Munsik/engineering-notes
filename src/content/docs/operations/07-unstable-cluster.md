@@ -171,3 +171,15 @@ GET logs-app-*/_field_caps?fields=*&filter_path=fields.*.*.type
 | master가 자주 바뀜 | master 후보가 다른 역할을 겸하는지. 3대 전용으로 분리 |
 | `put-mapping`이 쌓임 | 늘어나는 필드를 찾아 원천을 고치고, 새 template에 한도와 `flattened` |
 | timeout 값을 늘리자는 의견 | 늘리지 않음. 원인을 가린 채 응답 없는 노드를 오래 붙잡게 됨 |
+
+## 참고 문서
+
+- [Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster)
+- [Discovery and cluster formation settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/discovery-cluster-formation-settings)
+- [Decrease the TCP retransmission timeout](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/system-config-tcpretries)
+- [Networking settings: long-lived connections](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/networking-settings)
+- [Troubleshoot discovery](https://www.elastic.co/docs/troubleshoot/elasticsearch/discovery-troubleshooting)
+- [Node roles](https://www.elastic.co/docs/deploy-manage/distributed-architecture/clusters-nodes-shards/node-roles)
+- [Resilience in small clusters](https://www.elastic.co/docs/deploy-manage/production-guidance/availability-and-resilience/resilience-in-small-clusters)
+- [Size your shards](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/size-shards)
+- [Mapping explosion](https://www.elastic.co/docs/troubleshoot/elasticsearch/mapping-explosion)

@@ -7,7 +7,7 @@ sidebar:
 ---
 
 금융, 제조, 공공 고객의 클러스터는 대부분 폐쇄망에 있습니다. 진단 결과 파일을 밖으로 내려면 반출 심의를 거쳐야 하고, 아예 낼 수 없는 곳도 많습니다. 그러면 장애 원인을 찾는 데 필요한 정보가 고객 쪽 담당자 손에만 남습니다.
-이 글은 support diagnostic 도구가 무엇을 모으는지부터 정리하고, 반출할 수 없을 때 같은 정보를 직접 모아 읽는 방법을 정리합니다.
+이 글은 support diagnostic 도구가 무엇을 모으는지부터 보고, 반출할 수 없을 때 같은 정보를 직접 모아 읽는 방법을 정리합니다.
 
 :::note[기준]
 - Elasticsearch 9.x, self-managed 기준입니다. 공식 문서와 support-diagnostics 저장소는 2026년 11월에 다시 확인했습니다.
@@ -127,3 +127,8 @@ flowchart TD
 | 도구 반입도 불가 | `offline-collect.sh` 같은 GET 스크립트와 로그 복사 |
 | 장애가 진행 중 | 재시작 전에 수집을 먼저. 5분에서 10분 간격으로 두세 번 |
 | API가 답하지 않음 | 로그와 OS 정보만이라도 모음. elected master 로그 우선 |
+
+## 참고 문서
+
+- [GitHub elastic/support-diagnostics](https://github.com/elastic/support-diagnostics)
+- [Capture diagnostics](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnostic)

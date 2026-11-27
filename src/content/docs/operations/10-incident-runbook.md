@@ -151,3 +151,9 @@ curl -k -u recovery-admin https://<그 노드>:9200/_cluster/health
 | 원인을 모름 | 되돌리기 쉬운 완화 조치부터. 데이터를 버리는 명령은 마지막 |
 | 로그인이 안 됨 | file realm 사용자로 노드에 직접 |
 | 끝났음 | 바꾼 설정 복원 확인, 일주일 안에 사후 분석 |
+
+## 참고 문서
+
+- [Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster)
+- [File-based access recovery](https://www.elastic.co/docs/troubleshoot/elasticsearch/file-based-recovery)
+- [Capture diagnostics](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnostic)

@@ -109,21 +109,21 @@
 
 ### 확인할 사실
 
-- [ ] `logs-*-*` data stream에서 logsdb가 기본으로 켜지는 조건(버전, 배포 형태, 라이선스)
-- [ ] synthetic source를 쓸 수 있는 라이선스 조건과, 조건이 안 될 때의 동작
-- [ ] logsdb의 기본 index sorting 필드와 `index.mapping.synthetic_source_keep` 기본값
-- [ ] columnar 모드의 버전별, 배포 형태별 상태(preview, planned)와 라이선스에 따른 `_source` 모드
-- [ ] 공식 문서와 Labs 글에 나오는 절감률 수치의 baseline(index mode, codec)
-- [ ] best_compression 사용 시 압축 알고리즘(zstd 적용 버전)
+- [x] `logs-*-*` data stream에서 logsdb가 기본으로 켜지는 조건(버전, 배포 형태, 라이선스)
+- [x] synthetic source를 쓸 수 있는 라이선스 조건과, 조건이 안 될 때의 동작
+- [x] logsdb의 기본 index sorting 필드와 `index.mapping.synthetic_source_keep` 기본값
+- [x] columnar 모드의 버전별, 배포 형태별 상태(preview, planned)와 라이선스에 따른 `_source` 모드
+- [x] 공식 문서와 Labs 글에 나오는 절감률 수치의 baseline(index mode, codec)
+- [ ] best_compression 사용 시 압축 알고리즘(zstd 적용 버전) (글 범위에서 뺌. codec 비교는 `best_compression`과 `default`만 다룸)
 
 ### 작업 항목
 
-- [ ] 0-3의 공통 datagen이 위 데이터 축을 모두 지원하도록 구현
-- [ ] 5개 조합의 index template 작성, 라이선스가 필요한 조합은 trial로 실행하고 README에 명시
-- [ ] 측정 스크립트 작성 및 2회 이상 실행
-- [ ] 결과 표 작성, 실측과 예시 구분
-- [ ] `_source` diff 예시 1~2개 선정해 본문에 수록
-- [ ] 초안 작성 → [공통 체크리스트](../ARTICLE-CHECKLIST.md)
+- [x] 0-3의 공통 datagen이 위 데이터 축을 모두 지원하도록 구현 (`labs/_datagen/loggen.py`)
+- [x] 5개 조합의 index template 작성, 라이선스가 필요한 조합은 trial로 실행하고 README에 명시
+- [x] 측정 스크립트 작성 및 2회 이상 실행
+- [x] 결과 표 작성, 실측과 예시 구분
+- [x] `_source` diff 예시 1~2개 선정해 본문에 수록
+- [x] 초안 작성 → [공통 체크리스트](../ARTICLE-CHECKLIST.md)
 
 ---
 
@@ -193,18 +193,18 @@
 
 ### 확인할 사실
 
-- [ ] 현재 공식 문서의 shard 크기 권장 범위와 문서 수 기준
-- [ ] `cluster.max_shards_per_node` 기본값과 tier별 적용 방식
-- [ ] data stream rollover 기본 조건(관리형 lifecycle과 ILM 각각)
-- [ ] bulk 크기에 대한 공식 권장(문서 수가 아니라 크기 기준인지)
-- [ ] Serverless 자동 sharding의 공개 문서 범위
+- [x] 현재 공식 문서의 shard 크기 권장 범위와 문서 수 기준
+- [x] `cluster.max_shards_per_node` 기본값과 tier별 적용 방식
+- [x] data stream rollover 기본 조건(관리형 lifecycle과 ILM 각각)
+- [x] bulk 크기에 대한 공식 권장(문서 수가 아니라 크기 기준인지)
+- [x] Serverless 자동 sharding의 공개 문서 범위
 
 ### 작업 항목
 
-- [ ] 실험 A, B, C 스크립트 작성과 실행
-- [ ] multi-tenant 비교 표 작성
-- [ ] hot spotting 진단 순서를 체크리스트로 정리
-- [ ] 초안 작성 → [공통 체크리스트](../ARTICLE-CHECKLIST.md)
+- [x] 실험 A, B, C 스크립트 작성과 실행
+- [x] multi-tenant 비교 표 작성
+- [x] hot spotting 진단 순서를 체크리스트로 정리
+- [x] 초안 작성 → [공통 체크리스트](../ARTICLE-CHECKLIST.md)
 
 ---
 
@@ -277,16 +277,16 @@
 
 ### 확인할 사실
 
-- [ ] frozen tier 사용 가능 라이선스 조건
-- [ ] partially mounted index의 로컬 캐시 크기 설정과 기본값
-- [ ] ILM searchable snapshot action의 force merge 관련 옵션과 기본값
-- [ ] 한 repository에 여러 클러스터가 쓰면 안 된다는 공식 문구와 read-only 등록 방법
-- [ ] query에서 tier를 제외하는 공식 방법(`_tier` 필드 등)과 ES|QL에서의 동작
-- [ ] Deepfreeze의 지원 상태(공식 기능인지, 공개 도구인지)
+- [x] frozen tier 사용 가능 라이선스 조건
+- [x] partially mounted index의 로컬 캐시 크기 설정과 기본값
+- [x] ILM searchable snapshot action의 force merge 관련 옵션과 기본값
+- [x] 한 repository에 여러 클러스터가 쓰면 안 된다는 공식 문구와 read-only 등록 방법
+- [x] query에서 tier를 제외하는 공식 방법(`_tier` 필드 등)과 ES|QL에서의 동작
+- [x] Deepfreeze의 지원 상태(공식 기능인지, 공개 도구인지)
 
 ### 작업 항목
 
-- [ ] MinIO 포함 compose 구성
-- [ ] 측정 스크립트와 재시작 시나리오 작성, 실행
-- [ ] repository 운영 규칙을 공식 문구 기준으로 정리
-- [ ] 초안 작성 → [공통 체크리스트](../ARTICLE-CHECKLIST.md)
+- [ ] MinIO 포함 compose 구성 (하지 않음. 같은 디스크의 `fs` repository로 측정하고 object storage 지연은 남은 확인으로 둠)
+- [x] 측정 스크립트와 재시작 시나리오 작성, 실행
+- [x] repository 운영 규칙을 공식 문구 기준으로 정리
+- [x] 초안 작성 → [공통 체크리스트](../ARTICLE-CHECKLIST.md)

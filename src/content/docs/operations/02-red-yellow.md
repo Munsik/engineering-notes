@@ -91,3 +91,12 @@ primary를 가진 노드를 잃고 replica도 없으면 선택지는 아래 순�
 | 노드 재시작 중 YELLOW | 1분 기다리고, 노드 복귀 뒤에도 계속되면 allocation explain |
 | 작업 뒤 YELLOW가 안 풀림 | `cluster.routing.allocation.enable` 확인 |
 | replica 0 index가 RED | 노드 복구 → snapshot 복원 → 재수집 순서 |
+
+## 참고 문서
+
+- [Red or yellow cluster health status](https://www.elastic.co/docs/troubleshoot/elasticsearch/red-yellow-cluster-status)
+- [Diagnose unassigned shards](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnose-unassigned-shards)
+- [Cluster allocation API examples](https://www.elastic.co/docs/troubleshoot/elasticsearch/cluster-allocation-api-examples)
+- [Full cluster restart and rolling restart procedures](https://www.elastic.co/docs/deploy-manage/maintenance/start-stop-services/full-cluster-restart-rolling-restart-procedures)
+- [Restore from snapshot](https://www.elastic.co/docs/troubleshoot/elasticsearch/restore-from-snapshot)
+- [Cluster reroute API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-cluster-reroute)

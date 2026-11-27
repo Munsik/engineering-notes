@@ -126,3 +126,18 @@ THP(transparent huge pages), glibc malloc arena 같은 튜닝은 공식 importan
 | 429가 간헐적으로 | breaker 종류 확인, `request`면 aggregation, `parent`면 heap 전체 |
 | heap이 평소에도 85% 이상 | shard, 필드 수부터 줄임. heap 증설은 그다음 |
 | OS OOM killer | heap 비율, 다른 프로세스, 컨테이너 한도 |
+
+## 참고 문서
+
+- [JVM settings](https://www.elastic.co/docs/reference/elasticsearch/jvm-settings)
+- [Circuit breaker errors](https://www.elastic.co/docs/troubleshoot/elasticsearch/circuit-breaker-errors)
+- [Circuit breaker settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/circuit-breaker-settings)
+- [Rejected requests](https://www.elastic.co/docs/troubleshoot/elasticsearch/rejected-requests)
+- [High JVM memory pressure](https://www.elastic.co/docs/troubleshoot/elasticsearch/high-jvm-memory-pressure)
+- [Important system configuration](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/important-system-configuration)
+- [Important settings configuration](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/important-settings-configuration)
+- [systemd sysctl.d(5)](https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html)
+- [vm.max_map_count](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/vm-max-map-count)
+- [Red Hat solution 3726391](https://access.redhat.com/solutions/3726391)
+- [Debian 13 release notes 5.1.15](https://www.debian.org/releases/trixie/release-notes/issues.html)
+- [RHEL-6884](https://issues.redhat.com/browse/RHEL-6884)

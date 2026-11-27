@@ -43,3 +43,4 @@ ROADMAP과 컬렉션 문서의 각 글에는 아래 상태 중 하나를 적습�
 4. `templates/use-case.md`를 복사해 초안을 씁니다.
 5. [ARTICLE-CHECKLIST.md](ARTICLE-CHECKLIST.md)의 발행 전 항목을 모두 확인한 뒤 발행합니다.
 6. 체크박스와 상태를 갱신하고 커밋합니다. 계획 변경도 커밋 이력으로 남깁니다.
+7. ROADMAP의 "현재 상태" 표를 바꿨다면 홈의 "다음에 쓸 글" 목록(`src/site-upcoming.mjs`)도 같은 순서로 맞춥니다. 이 목록은 사이트에 그대로 보이므로 날짜나 내부 상태 이름은 넣지 않습니다.
