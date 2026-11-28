@@ -36,7 +36,7 @@ sidebar:
 | --- | --- |
 | health가 RED, YELLOW | [02](02-red-yellow/) |
 | 429 `circuit_breaking_exception` | [03](03-node-failure-triage/#circuit-breaker-429) |
-| 노드가 갑자기 재시작됨 | [03](03-node-failure-triage/#어떻게-죽었나부터-가른다) |
+| 노드가 갑자기 재시작됨 | [03](03-node-failure-triage/#종료-원인부터-구분한다) |
 | `index has read-only-allow-delete block` | [04](04-disk-full/#read-only-풀기) |
 | `disk.used`가 `disk.indices`보다 훨씬 큼 | [04](04-disk-full/#디스크가-이유-없이-늘-때) |
 | 429 `es_rejected_execution_exception`, 검색이나 적재가 느림 | [05](05-slow-cluster/) |

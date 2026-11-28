@@ -24,7 +24,7 @@ sidebar:
 
 근거: [JVM settings](https://www.elastic.co/docs/reference/elasticsearch/jvm-settings). 같은 문서는 자동 heap 설정을 권하고, 같은 호스트에 노드가 여럿이면 heap 합이 메모리의 50%를 넘지 않게 하라고 설명합니다.
 
-## 어떻게 죽었나부터 가른다
+## 종료 원인부터 구분한다
 
 | 흔적 | 의미 | 확인 |
 | --- | --- | --- |

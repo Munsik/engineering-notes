@@ -14,7 +14,7 @@ sidebar:
 - 명령 모음은 [`labs/operations/slow-cluster.console`](https://github.com/Munsik/engineering-notes/blob/main/labs/operations/slow-cluster.console)에 있습니다.
 :::
 
-## 범위부터 가른다
+## 범위부터 구분한다
 
 아래 순서는 제가 쓰는 방법입니다. 앞 단계에서 범위가 좁혀지면 그 범위의 절로 바로 갑니다.
 

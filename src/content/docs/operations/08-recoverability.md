@@ -50,7 +50,7 @@ replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지
 | 노드 하나 장애 | 그 노드의 shard가 RED. 노드가 돌아오거나 snapshot 복원까지 검색, 적재 불가 | 영향 없음 |
 | 디스크 고장 | 그 shard의 데이터 손실 | 영향 없음 |
 
-replica 0이 맞는 경우는 소스에서 다시 넣을 수 있고, 그동안 검색이 안 돼도 되는 데이터뿐입니다. 적재 속도 때문에 replica를 0으로 둔다면, 대량 적재 동안만 0으로 두고 끝나면 1로 되돌립니다. 오래된 로그의 저장 비용이 문제라면 replica 0보다 frozen tier가 낫습니다. frozen의 searchable snapshot은 snapshot 저장소가 복사본 역할을 합니다([데이터 설계 05](../../data/05-tiers-and-retention/)).
+replica 0이 적합한 경우는 소스에서 다시 넣을 수 있고, 그동안 검색이 안 돼도 되는 데이터뿐입니다. 적재 속도 때문에 replica를 0으로 둔다면, 대량 적재 동안만 0으로 두고 끝나면 1로 되돌립니다. 오래된 로그의 저장 비용이 문제라면 replica 0보다 frozen tier가 낫습니다. frozen의 searchable snapshot은 snapshot 저장소가 복사본 역할을 합니다([데이터 설계 05](../../data/05-tiers-and-retention/)).
 
 ## zone과 rack에 나눠 두기
 
