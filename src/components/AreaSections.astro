@@ -6,24 +6,30 @@ import { getCollection } from 'astro:content';
 import { Icon } from '@astrojs/starlight/components';
 import CollectionCards from './CollectionCards.astro';
 import { siteAreas } from '../site-areas.mjs';
+import { localizedId, t, toLocale } from '../lib/i18n.mjs';
 
+// 영어 홈에서는 영어 번역이 있는 영역만 그립니다.
+const locale = toLocale(Astro.locals.starlightRoute.locale);
 const docs = await getCollection('docs');
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const areas = siteAreas
-	.map(({ dir }) => ({ dir, index: docs.find((d) => d.id === dir || d.id === `${dir}/index`) }))
+	.map(({ dir }) => {
+		const id = localizedId(dir, locale);
+		return { dir, href: `${base}/${id}/`, index: docs.find((d) => d.id === id || d.id === `${id}/index`) };
+	})
 	.filter(({ index }) => index && !(import.meta.env.PROD && index.data.draft));
 ---
 
 {
-	areas.map(({ dir, index }) => (
+	areas.map(({ dir, href, index }) => (
 		<section class="en-area">
 			<div class="en-area-head">
 				<h3>
-					<a href={`${base}/${dir}/`}>{index!.data.title}</a>
+					<a href={href}>{index!.data.title}</a>
 				</h3>
-				<a class="en-area-go" href={`${base}/${dir}/`}>
-					영역 개요
+				<a class="en-area-go" href={href}>
+					{t(locale, 'areaOverview')}
 					<Icon name="right-arrow" size="1rem" />
 				</a>
 			</div>

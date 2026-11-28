@@ -4,7 +4,7 @@ import { indexId, siteSections } from '../../lib/agent-markdown.mjs';
 import { renderOgImage } from '../../lib/og-image.mjs';
 
 export async function getStaticPaths() {
-  const sections = await siteSections();
+  const sections = [...(await siteSections('ko')), ...(await siteSections('en'))];
   return sections.flatMap((section) =>
     [section.index, ...section.articles].map((entry) => {
       const id = indexId(entry.id);

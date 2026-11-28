@@ -2,7 +2,8 @@
 import { bundle, siteSections, textResponse } from '../../lib/agent-markdown.mjs';
 
 export async function getStaticPaths() {
-  const sections = await siteSections();
+  // 영어 번역이 있는 컬렉션은 /en/<컬렉션>/llms-full.txt에도 만듭니다.
+  const sections = [...(await siteSections('ko')), ...(await siteSections('en'))];
   return sections
     .filter((s) => s.kind === 'collection')
     .map((section) => ({ params: { collection: section.dir }, props: { section } }));
@@ -10,5 +11,9 @@ export async function getStaticPaths() {
 
 export function GET({ props }) {
   const { section } = props;
-  return textResponse(bundle([section], `# ${section.title}: 컬렉션 전체 원문 (${section.area}, ${section.topic})`));
+  const heading =
+    section.locale === 'en'
+      ? `# ${section.title}: full collection text (${section.area}, ${section.topic})`
+      : `# ${section.title}: 컬렉션 전체 원문 (${section.area}, ${section.topic})`;
+  return textResponse(bundle([section], heading));
 }

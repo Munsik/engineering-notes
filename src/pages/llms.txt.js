@@ -4,13 +4,15 @@ import { markdownUrl, pageUrl, siteSections, textResponse, indexId } from '../li
 import { author, siteUrl } from '../site-seo.mjs';
 
 export async function GET() {
-  const sections = await siteSections();
+  const sections = await siteSections('ko');
+  const enSections = await siteSections('en');
   const out = [
     '# Engineering Notes',
     '> Elastic Search, Observability, Security를 엔터프라이즈 프로덕션에 올릴 때 필요한 판단 기준과 운영 경험을 정리한 기술 노트입니다. ' +
       'Practitioner notes on designing and running Elasticsearch, Kibana and Elastic solutions in production.',
     [
       '- 글은 한국어로 쓰고, 기술 용어와 API 이름은 영어 원어 그대로 둡니다. Content is written in Korean; technical terms stay in English.',
+      '- 영어 번역이 있는 글은 같은 경로 앞에 /en/을 붙인 주소에 있습니다. 목록은 맨 아래 English translation 절에 있습니다. English translations live under /en/ and are listed in the English translation section below.',
       '- 글마다 맨 위에 기준 버전과 공식 문서를 다시 확인한 날짜가 있습니다. 공식 문서로 확인한 사실에는 출처 링크가 있고, 출처가 없는 판단과 권장은 글쓴이의 현장 경험입니다. 확인하지 못한 내용은 "확인 필요"로 표시합니다.',
       '- 실측 수치는 실제로 돌린 lab 결과이고, 재현용 코드와 원본 결과는 GitHub 저장소의 labs/ 폴더에 있습니다.',
       `- 글쓴이: ${author.name}(${author.alternateName}), ${author.jobTitle} at ${author.worksFor}. 개인의 경험과 의견을 바탕으로 썼습니다.`,
@@ -36,6 +38,32 @@ export async function GET() {
         .join('\n'),
     );
     out.push(lines.join('\n\n'));
+  }
+  if (enSections.length) {
+    out.push(
+      [
+        '## English translation',
+        'Translations of the Korean originals. Each page links back to its source; the Korean page is authoritative if they differ.',
+        `Full English text: ${new URL('en/llms-full.txt', siteUrl).href}`,
+      ].join('\n\n'),
+    );
+    for (const section of enSections) {
+      const heading = section.kind === 'area' ? `${section.title} area (English)` : section.kind === 'collection' ? `${section.title} (${section.area}, English)` : `${section.title} (English)`;
+      const lines = [`### ${heading}`];
+      if (section.kind === 'collection') {
+        lines.push(section.description);
+        lines.push(`Full collection text: ${new URL(`${section.dir}/llms-full.txt`, siteUrl).href}`);
+      }
+      lines.push(
+        [section.index, ...section.articles]
+          .map((e) => {
+            const id = indexId(e.id);
+            return `- [${e.data.title}](${pageUrl(id)}) ([Markdown](${markdownUrl(id)})): ${e.data.description ?? ''}`;
+          })
+          .join('\n'),
+      );
+      out.push(lines.join('\n\n'));
+    }
   }
   out.push(
     [

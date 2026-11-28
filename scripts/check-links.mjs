@@ -25,7 +25,9 @@ for (const { path, html } of pages) {
     if (/^(https?:|mailto:)/.test(href)) continue;
     const url = new URL(href, `https://site${path}`);
     if (!url.pathname.startsWith(base) || skipExt.test(url.pathname)) continue;
-    const target = decodeURI(url.pathname);
+    // Starlight는 언어별 홈을 '/en'처럼 끝의 '/' 없이 링크하므로 '/'를 붙여 봅니다.
+    let target = decodeURI(url.pathname);
+    if (!ids.has(target) && ids.has(`${target}/`)) target = `${target}/`;
     if (!ids.has(target)) {
       broken.push(`페이지 없음   ${path} -> ${href}`);
       continue;

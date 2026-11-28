@@ -9,7 +9,8 @@
 // - 공개된 영역 개요와 컬렉션(site-areas.mjs), About만 넣습니다. draft는 넣지 않습니다.
 import { posix } from 'node:path';
 import { getCollection } from 'astro:content';
-import { siteAreas, siteCollections } from '../site-areas.mjs';
+import { collectionText, siteAreas, siteCollections } from '../site-areas.mjs';
+import { localizedId } from './i18n.mjs';
 import { author, siteUrl } from '../site-seo.mjs';
 import { gitDates } from './git-dates.mjs';
 
@@ -25,12 +26,15 @@ const byOrder = (a, b) => (a.data.sidebar?.order ?? 0) - (b.data.sidebar?.order 
 /**
  * 공개된 페이지를 사이트 순서대로 묶어 돌려줍니다.
  * 영역마다 [영역 개요 섹션, 컬렉션 섹션...] 순서이고, 마지막에 About이 옵니다.
- * 섹션은 { kind: 'area' | 'collection' | 'extra', dir, area, topic, title, description, index, articles } 형태입니다.
- * area는 소속 영역 개요 페이지의 title입니다.
+ * 섹션은 { kind: 'area' | 'collection' | 'extra', locale, dir, area, topic, title, description, index, articles } 형태입니다.
+ * area는 소속 영역 개요 페이지의 title이고, dir는 언어가 붙은 경로입니다(영어: 'en/data').
+ * locale이 'en'이면 영어 번역이 있는 페이지만 넣습니다.
  */
-export async function siteSections() {
+export async function siteSections(locale = 'ko') {
   const docs = await getCollection('docs', ({ data }) => !data.draft);
-  const indexOf = (dir) => docs.find((d) => indexId(d.id) === dir);
+  const loc = (dir) => localizedId(dir, locale);
+  const indexOf = (dir) => docs.find((d) => indexId(d.id) === loc(dir));
+  const under = (dir) => (d) => d.id.startsWith(`${loc(dir)}/`);
   const sections = [];
   for (const area of siteAreas) {
     const areaIndex = indexOf(area.dir);
@@ -38,33 +42,37 @@ export async function siteSections() {
     const areaTitle = areaIndex.data.title;
     sections.push({
       kind: 'area',
-      dir: area.dir,
+      locale,
+      dir: loc(area.dir),
       area: areaTitle,
       topic: undefined,
       title: areaTitle,
       description: areaIndex.data.description,
       index: areaIndex,
-      articles: docs.filter((d) => d.id.startsWith(`${area.dir}/`) && d !== areaIndex && !siteCollections.some((c) => d.id.startsWith(`${c.dir}/`) || indexId(d.id) === c.dir)).sort(byOrder),
+      articles: docs
+        .filter((d) => under(area.dir)(d) && d !== areaIndex && !siteCollections.some((c) => under(c.dir)(d) || indexId(d.id) === loc(c.dir)))
+        .sort(byOrder),
     });
-    for (const { dir, topic } of area.collections) {
-      const index = indexOf(dir);
+    for (const collection of area.collections) {
+      const index = indexOf(collection.dir);
       if (!index) continue;
-      const articles = docs.filter((d) => d.id.startsWith(`${dir}/`) && d !== index).sort(byOrder);
-      sections.push({ kind: 'collection', dir, area: areaTitle, topic, title: index.data.title, description: index.data.description, index, articles });
+      const articles = docs.filter((d) => under(collection.dir)(d) && d !== index).sort(byOrder);
+      const { topic } = collectionText(collection, locale);
+      sections.push({ kind: 'collection', locale, dir: loc(collection.dir), area: areaTitle, topic, title: index.data.title, description: index.data.description, index, articles });
     }
   }
-  const aboutPages = docs.filter((d) => d.id === 'about' || d.id.startsWith('about/')).sort(byOrder);
-  const aboutIndex = aboutPages.find((d) => indexId(d.id) === 'about');
+  const aboutIndex = indexOf('about');
   if (aboutIndex) {
     sections.push({
       kind: 'extra',
-      dir: 'about',
+      locale,
+      dir: loc('about'),
       area: undefined,
       topic: undefined,
       title: 'About',
       description: aboutIndex.data.description,
       index: aboutIndex,
-      articles: aboutPages.filter((d) => d !== aboutIndex),
+      articles: docs.filter((d) => under('about')(d)).sort(byOrder),
     });
   }
   return sections;
@@ -100,12 +108,18 @@ function absolutize(body, entry) {
 export function entryToMarkdown(entry, section) {
   const id = indexId(entry.id);
   const { modified } = gitDates(entry.filePath);
+  const en = section?.locale === 'en';
+  const label = en
+    ? { area: 'Area', collection: 'Collection', modified: 'Last modified', author: 'Author' }
+    : { area: '영역', collection: '컬렉션', modified: '마지막 수정', author: '글쓴이' };
   const meta = [
     `- URL: ${pageUrl(id)}`,
-    section?.area ? `- 영역: ${section.area}` : undefined,
-    section?.kind === 'collection' ? `- 컬렉션: ${section.title} (${section.topic})` : undefined,
-    modified ? `- 마지막 수정: ${modified.toISOString().slice(0, 10)}` : undefined,
-    `- 글쓴이: ${author.name}(${author.alternateName}), ${author.jobTitle} at ${author.worksFor}`,
+    section?.area ? `- ${label.area}: ${section.area}` : undefined,
+    section?.kind === 'collection' ? `- ${label.collection}: ${section.title} (${section.topic})` : undefined,
+    modified ? `- ${label.modified}: ${modified.toISOString().slice(0, 10)}` : undefined,
+    en
+      ? `- ${label.author}: ${author.name}, ${author.jobTitle} at ${author.worksFor}`
+      : `- ${label.author}: ${author.name}(${author.alternateName}), ${author.jobTitle} at ${author.worksFor}`,
   ].filter(Boolean);
   return [
     `# ${entry.data.title}`,
