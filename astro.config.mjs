@@ -4,12 +4,12 @@ import starlight from '@astrojs/starlight';
 import mermaid from 'astro-mermaid';
 import sitemap from '@astrojs/sitemap';
 import { readFileSync, readdirSync } from 'node:fs';
-import { siteCollections } from './src/site-collections.mjs';
+import { siteAreas } from './src/site-areas.mjs';
 import { siteUrl, siteVerification } from './src/site-seo.mjs';
 import { gitDates } from './src/lib/git-dates.mjs';
 
-// 컬렉션 index.md의 frontmatter에서 title과 draft를 읽습니다.
-// sidebar 그룹 이름이 컬렉션 개요 페이지 제목과 항상 같도록 하기 위해서입니다.
+// 영역과 컬렉션 index.md의 frontmatter에서 title과 draft를 읽습니다.
+// sidebar 그룹 이름이 개요 페이지 제목과 항상 같도록 하기 위해서입니다.
 const isDev = process.argv.includes('dev');
 const collectionIndex = (dir) => {
   const text = readFileSync(new URL(`./src/content/docs/${dir}/index.md`, import.meta.url), 'utf8');
@@ -20,16 +20,23 @@ const collectionIndex = (dir) => {
 };
 
 // sidebar 규칙
-// - 최상위는 컬렉션입니다. 모든 컬렉션은 같은 깊이(컬렉션 > 개요, 01, 02 ...)로 보입니다.
-// - 그룹은 기본으로 접혀 있고, 지금 보고 있는 페이지가 속한 컬렉션만 펼쳐집니다.
-//   그래서 어느 페이지에서든 전체 컬렉션 목록이 한 화면에 보입니다.
-const collectionGroups = siteCollections
-  .map(({ dir }) => ({ dir, ...collectionIndex(dir) }))
+// - 구조는 영역 > 컬렉션 > 글입니다(src/site-areas.mjs). 여기서는 영역마다 그룹 하나를 만듭니다.
+//   그룹 안은 영역 개요 링크와 컬렉션 그룹들이고, 컬렉션 그룹은 기본으로 접혀 있습니다.
+// - 화면에는 지금 페이지가 속한 영역(또는 About)의 그룹만 보입니다. 나머지 영역은 sidebar 맨 위의
+//   영역 목록으로 이동합니다. 이 교체는 src/route-middleware.ts가, 영역 목록은 src/components/Sidebar.astro가 맡습니다.
+//   그래서 영역과 컬렉션이 늘어도 sidebar 길이는 한 영역의 컬렉션 수만큼만 늘어납니다.
+// - 그룹 이름은 영역과 컬렉션 index.md의 title을 그대로 씁니다.
+const collectionGroup = (dir) => {
+  const { title, draft } = collectionIndex(dir);
+  return draft && !isDev ? undefined : { label: title, collapsed: true, items: [{ autogenerate: { directory: dir } }] };
+};
+const areaGroups = siteAreas
+  .map(({ dir, collections }) => ({ dir, collections, ...collectionIndex(dir) }))
   .filter(({ draft }) => isDev || !draft)
-  .map(({ dir, title }) => ({
+  .map(({ dir, title, collections }) => ({
     label: title,
-    collapsed: true,
-    items: [{ autogenerate: { directory: dir } }],
+    collapsed: false,
+    items: [{ slug: dir, label: '영역 개요' }, ...collections.map((c) => collectionGroup(c.dir)).filter(Boolean)],
   }));
 
 // sitemap의 lastmod. 페이지 URL과 원본 파일을 짝지어 git 마지막 수정 시점을 넣습니다.
@@ -100,8 +107,13 @@ export default defineConfig({
         },
         { tag: 'script', attrs: { src: '/engineering-notes/toc-resizer.js', defer: true } },
       ],
+      components: {
+        // sidebar 맨 위에 영역 목록을, 글 제목 위에 "영역 › 컬렉션" 위치 표시를 붙입니다.
+        Sidebar: './src/components/Sidebar.astro',
+        PageTitle: './src/components/PageTitle.astro',
+      },
       sidebar: [
-        ...collectionGroups,
+        ...areaGroups,
         {
           label: 'About',
           collapsed: true,

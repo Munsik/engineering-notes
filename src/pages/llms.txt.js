@@ -19,8 +19,10 @@ export async function GET() {
     ].join('\n'),
   ];
   for (const section of sections) {
-    const lines = [`## ${section.title}`];
-    if (section.topic) {
+    const heading =
+      section.kind === 'area' ? `${section.title} 영역` : section.kind === 'collection' ? `${section.title} (${section.area})` : section.title;
+    const lines = [`## ${heading}`];
+    if (section.kind === 'collection') {
       lines.push(`${section.description}`);
       lines.push(`컬렉션 전체 원문: ${new URL(`${section.dir}/llms-full.txt`, siteUrl).href}`);
     }

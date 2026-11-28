@@ -1,0 +1,62 @@
+---
+// 글 제목 위에 "영역 › 컬렉션" 위치를 작게 보여 줍니다.
+// 검색으로 글 하나에 바로 들어온 사람도 어느 기술의 어떤 주제인지 알 수 있게 하기 위해서입니다.
+// - 컬렉션 글: 영역 › 컬렉션, 컬렉션 개요: 영역, 영역 개요와 영역 밖 페이지: 표시하지 않음
+// - 이름은 영역과 컬렉션 index.md의 title이고, 각각 개요 페이지로 링크합니다.
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+import { getCollection } from 'astro:content';
+import { findArea, findCollection } from '../site-areas.mjs';
+
+const docs = await getCollection('docs');
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const indexOf = (dir: string) => docs.find((d) => d.id === dir || d.id === `${dir}/index`);
+
+const id = Astro.locals.starlightRoute.entry.id.replace(/(^|\/)index$/, '');
+const area = findArea(id);
+const collection = findCollection(id);
+
+const trail = [];
+if (area && id !== area.dir) {
+	trail.push({ label: indexOf(area.dir)?.data.title, href: `${base}/${area.dir}/` });
+	if (collection && id !== collection.dir) {
+		trail.push({ label: indexOf(collection.dir)?.data.title, href: `${base}/${collection.dir}/` });
+	}
+}
+const crumbs = trail.filter((c) => c.label);
+---
+
+{
+	crumbs.length > 0 && (
+		<nav class="en-trail" aria-label="위치">
+			{crumbs.map((c, i) => (
+				<>
+					{i > 0 && <span aria-hidden="true">›</span>}
+					<a href={c.href}>{c.label}</a>
+				</>
+			))}
+		</nav>
+	)
+}
+<Default />
+
+<style>
+	.en-trail {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		align-items: center;
+		margin-top: 1rem;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+	}
+	.en-trail a {
+		color: var(--sl-color-gray-2);
+		text-decoration: none;
+	}
+	.en-trail a:hover {
+		color: var(--sl-color-text-accent);
+	}
+	.en-trail + :global(h1) {
+		margin-top: 0.25rem;
+	}
+</style>

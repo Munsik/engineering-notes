@@ -1,8 +1,8 @@
 // 새 글 알림용 RSS입니다. 네이버 서치어드바이저의 RSS 제출과 피드 구독기가 읽습니다.
-// 공개된 컬렉션(site-collections.mjs)의 글만 넣고, 날짜는 git에서 처음 추가된 시점입니다.
+// 공개된 컬렉션(site-areas.mjs)의 글만 넣고, 날짜는 git에서 처음 추가된 시점입니다.
 import rss from '@astrojs/rss';
 import { getCollection } from 'astro:content';
-import { siteCollections } from '../site-collections.mjs';
+import { siteCollections } from '../site-areas.mjs';
 import { siteUrl } from '../site-seo.mjs';
 import { gitDates } from '../lib/git-dates.mjs';
 
@@ -23,7 +23,7 @@ export async function GET() {
         description: doc.data.description,
         link: new URL(`${id}/`, siteUrl).href,
         pubDate: pubDate ?? new Date(),
-        categories: [collection.topic],
+        categories: [docs.find((d) => indexId(d.id) === collection.area)?.data.title, collection.topic].filter(Boolean),
       };
     })
     .filter(Boolean)
