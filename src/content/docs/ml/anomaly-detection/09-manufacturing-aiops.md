@@ -33,7 +33,7 @@ sidebar:
 
 Anomaly detection은 이런 "평소와 다름"을 잡는 도구입니다. 하지만 탐지만으로는 일이 끝나지 않습니다. alert를 받은 담당자는 여전히 Anomaly Explorer, Discover, APM을 오가며 무엇이 같이 이상한지, 원인 요청이 무엇인지, 조치가 필요한지를 직접 확인해야 합니다.
 
-이 글은 **탐지 → alert → Workflow → AI 1차 분석 → 사람의 판단 → 후속 조치**를 하나의 흐름으로 만들고, 그 과정에서 내려야 하는 결정을 기록합니다.
+여기서는 **탐지 → alert → Workflow → AI 1차 분석 → 사람의 판단 → 후속 조치**를 하나의 흐름으로 연결하고, 그 과정에서 내린 설계 결정을 기록합니다.
 
 ```mermaid
 flowchart LR
@@ -180,7 +180,7 @@ APM agent의 log correlation을 켜면 로그와 트레이스에 `trace.id`와 `
 | 한 서비스 안에서 | 대부분 transaction.id와 1:1입니다. | 대부분 trace.id와 1:1입니다. |
 | 조사 화면 | APM에서 전체 호출 흐름(waterfall)을 바로 봅니다. | 해당 서비스의 트랜잭션 하나를 봅니다. |
 
-이 글은 `trace.id`를 씁니다. 시나리오 2처럼 상위 서비스가 재시도를 반복하면 하위 서비스의 에러도 같은 trace.id로 쌓여서, 로그 job(L1)과 에러 job(A3)에 같은 값이 원인으로 나타납니다. transaction.id로는 이 연결이 서비스마다 끊깁니다. 한 서비스 안에서는 두 값의 정보가 거의 같으므로 둘 다 넣으면 메모리만 두 배가 듭니다.
+여기서는 `trace.id`를 씁니다. 시나리오 2처럼 상위 서비스가 재시도를 반복하면 하위 서비스의 에러도 같은 trace.id로 쌓여서, 로그 job(L1)과 에러 job(A3)에 같은 값이 원인으로 나타납니다. transaction.id로는 이 연결이 서비스마다 끊깁니다. 한 서비스 안에서는 두 값의 정보가 거의 같으므로 둘 다 넣으면 메모리만 두 배가 듭니다.
 
 다만 스케줄러나 메시지 기반 처리에서 trace 하나가 몇 시간 동안 많은 트랜잭션을 포함한다면 trace.id가 너무 넓은 범위를 가리킵니다. trace context를 전달하지 않는 미들웨어 구간에서는 trace가 끊기고 새로 시작되므로([Traces](https://www.elastic.co/docs/solutions/observability/apm/traces)) 두 값이 사실상 같아집니다. 실제 구조는 아래 쿼리로 확인하고 정하세요.
 
@@ -1717,7 +1717,7 @@ flowchart TD
 
 - **알리는 기준을 AI 분류로 나눕니다.** `planned_or_benign`과 `single_request`는 Case에 기록만 하고 당직자를 깨우지 않습니다. 나머지만 Slack으로 알리고 판단을 기다립니다. `switch.cases`는 map이 아니라 배열입니다([cheat sheet](https://www.elastic.co/docs/explore-analyze/workflows/reference/cheat-sheet)).
 - **판단은 `waitForInput`으로 받습니다.** 선택지가 넷이고 메모와 종료 시각까지 받아야 해서 JSON Schema 폼이 맞습니다([waitForInput](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-input)). 메시지 첫 줄에 결정할 내용을 쓰고, 근거를 메시지 안에 넣고, field는 적게 두라는 공식 가이드를 따랐습니다([Human-in-the-loop](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/human-in-the-loop)).
-- **응답 경로를 정해 둡니다.** Kibana의 workflow 실행 화면, resume API(`POST /api/workflows/executions/{executionId}/resume`), 9.5부터는 Slack 응답 링크(preview)로 받을 수 있습니다. 응답 토큰은 한 번만 쓸 수 있어서, 공유 채널에서 여러 명이 눌러도 첫 응답만 반영됩니다([Human-in-the-loop](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/human-in-the-loop)). 이 글은 판단 요청은 일반 `slack` step으로 알리고, 응답은 실행 화면에서 받습니다.
+- **응답 경로를 정해 둡니다.** Kibana의 workflow 실행 화면, resume API(`POST /api/workflows/executions/{executionId}/resume`), 9.5부터는 Slack 응답 링크(preview)로 받을 수 있습니다. 응답 토큰은 한 번만 쓸 수 있어서, 공유 채널에서 여러 명이 눌러도 첫 응답만 반영됩니다([Human-in-the-loop](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/human-in-the-loop)). 여기서는 판단 요청을 일반 `slack` step으로 알리고, 응답은 실행 화면에서 받습니다.
 - **영향이 큰 조치는 한 번 더 승인받습니다.** `line_stop_risk`이고 당직자가 에스컬레이션을 고르면, 설비 I/F 어댑터 재시작을 `waitForApproval`로 다시 묻습니다. 거절해도 step은 성공으로 끝나므로, 실행 step에는 반드시 `if` 조건을 겁니다([waitForApproval](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-approval)).
 - **승인 링크는 밖으로 보내지 않습니다.** 외부 채널은 로그인 없이 누를 수 있는 짧은 수명의 링크를 보내는데, 공식 문서는 영향이 크거나 되돌리기 어려운 조치에는 쓰지 말라고 안내합니다. 그래서 재시작 승인에는 `channels`를 두지 않았습니다. 외부 응답 링크를 아예 끄려면 `kibana.yml`에서 `workflowsManagement.hitlExternalResume.enabled`와 `workflowsExecutionEngine.hitlExternalResume.enabled`를 `false`로 둡니다.
 - **calendar 이벤트는 앞으로 올 bucket에만 적용됩니다.** 이미 분석된 결과는 소급해서 바뀌지 않으므로([05장](../05-noise-and-exceptions/#calendar와-scheduled-event)), 시작 시각은 지금(`{{ now | date_to_xmlschema }}`, ISO 8601)으로 넣습니다. calendar events API는 epoch millisecond나 ISO 8601 문자열을 받습니다([calendar events API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-ml-post-calendar-events)).

@@ -1,6 +1,6 @@
 ---
 title: Anomaly Detection in Production
-description: Elasticsearch ML anomaly detection을 운영에 올릴 때 마주치는 결정을 job 설계부터 결과 해석, noise 처리, 운영까지 순서대로 정리했습니다.
+description: Elasticsearch ML anomaly detection을 운영 환경에 적용할 때 필요한 결정을 job 설계부터 결과 해석, noise 처리, 운영까지 순서대로 정리합니다.
 sidebar:
   label: 개요
   order: 0
@@ -10,7 +10,7 @@ Anomaly detection job은 만드는 것보다 운영하는 게 훨씬 어렵습�
 job을 만들 때 고르는 값 몇 개가 탐지 품질과 탐지 지연, 메모리 사용량을 한꺼번에 결정하는데, 잘못 고른 값은 운영을 시작하고 나서야 드러나는 경우가 많습니다. 게다가 상당수는 job을 만든 뒤에는 바꿀 수도 없습니다.
 
 여기서는 이 문제에 anomaly detection이 맞는지부터 시작해서, job과 detector를 어떻게 나눌지, 결과 score를 어떻게 읽을지, noise와 예외를 어떻게 다룰지, alert를 켜기 전에 어떻게 검증하고 운영 중에 무엇을 지켜볼지를 차례로 다룹니다.
-Elastic이 Kibana에 기본으로 넣어 둔 job들의 실제 설정을 뜯어본 시나리오와, Dev Tools에서 바로 돌려 볼 수 있는 실습도 같이 넣었습니다.
+Elastic이 Kibana에 기본으로 넣어 둔 job의 실제 설정을 분석한 시나리오와, Dev Tools에서 바로 돌려 볼 수 있는 실습도 같이 넣었습니다.
 
 :::note[기준]
 - Elasticsearch, Kibana 9.x 기준입니다. 버전이나 배포 형태(Elastic Cloud Serverless 등)에 따라 다른 부분은 본문에 따로 적었습니다.
@@ -33,7 +33,7 @@ Elastic이 Kibana에 기본으로 넣어 둔 job들의 실제 설정을 뜯어�
 | 08 | [실습](08-hands-on-lab/) | Kibana 샘플 데이터로 job 3개와 advanced job 1개를 만들어 비교 |
 | 09 | [Use case: 공장 생산망 AIOps](09-manufacturing-aiops/) | MES 로그, APM, 호스트 metrics에 job 13개 설계, trace.id influencer, alert에서 Workflow를 호출해 AI 분석과 사람의 승인까지 |
 
-## 자주 받는 질문
+## 자주 묻는 질문
 
 | 질문 | 짧은 답 | 자세히 |
 | --- | --- | --- |

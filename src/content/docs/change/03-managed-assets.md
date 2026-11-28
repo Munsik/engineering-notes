@@ -1,5 +1,5 @@
 ---
-title: managed 자산은 고치지 말고 위에 얹는다
+title: managed 자산은 직접 고치지 않는다
 description: 업그레이드나 integration 업데이트 뒤에 직접 고친 index template, ingest pipeline, ILM policy, dashboard, prebuilt detection rule이 초기화되는 이유와 시점, managed 자산을 알아보는 방법, @custom component template과 pipeline 계층, template 우선순위, 이미 고쳐 놓은 환경을 정리하는 절차를 다룹니다.
 sidebar:
   label: 03. managed 자산
@@ -7,7 +7,7 @@ sidebar:
 ---
 
 업그레이드를 마치고 며칠 뒤, 보관 기간이 90일이던 로그가 지워지지 않고 계속 쌓이는 것을 발견합니다. integration의 template에 직접 넣어 둔 shard 설정과, built-in ILM policy에 추가했던 delete phase가 업그레이드 때 원래 값으로 돌아간 것입니다. pipeline에 넣어 둔 개인정보 마스킹 processor가 사라져 있기도 합니다.
-원인은 같습니다. Elastic이 설치하고 갱신하는 managed 자산을 직접 고쳤기 때문입니다. 이 글은 managed 자산을 알아보는 법과, 바꾸고 싶은 내용을 어디에 넣어야 업그레이드 뒤에도 살아남는지를 정리합니다.
+원인은 같습니다. Elastic이 설치하고 갱신하는 managed 자산을 직접 고쳤기 때문입니다. managed 자산을 구분하는 방법과, 업그레이드 뒤에도 바꾼 내용이 유지되도록 설정을 넣을 위치를 차례로 봅니다.
 
 :::note[기준]
 - Elasticsearch, Kibana, Fleet 9.5.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했고, built-in template의 구성은 Elasticsearch 소스 코드(`x-pack/plugin/core/template-resources`)로 확인했습니다.
@@ -64,7 +64,7 @@ Kibana 쪽은 화면에 표시됩니다. integration이 설치한 dashboard는 *
 
 ![integration dashboard의 Managed 배지. Edit 버튼이 없고, 배지를 누르면 Duplicate로 복제해서 고치라는 안내가 나옵니다.](../../../assets/change/managed-dashboard-badge.jpg)
 
-## 고칠 곳을 정하는 표
+## 수정 위치 정리
 
 | 바꾸려는 것 | 고치지 말 것 | 고칠 곳 |
 | --- | --- | --- |
@@ -164,7 +164,7 @@ PUT _ingest/pipeline/logs-nginx.access@custom
 }
 ```
 
-이 이름 규칙에는 함정이 있습니다. 개인용 pipeline을 이 규칙과 같은 모양으로 이름 지으면 다른 integration이 그 pipeline을 호출할 수 있습니다. 공식 문서도 이 이름 규칙을 피해서 개인 pipeline 이름을 정하라고 경고합니다. 공통으로 쓰는 처리 로직은 `team-pii-masking`처럼 규칙과 겹치지 않는 이름의 pipeline으로 만들고, `@custom` pipeline에서 `pipeline` processor로 호출하는 구조가 관리하기 쉽습니다.
+이 이름 규칙에는 주의할 점이 있습니다. 개인용 pipeline을 이 규칙과 같은 형식으로 이름 지으면 다른 integration이 그 pipeline을 호출할 수 있습니다. 공식 문서도 이 이름 규칙을 피해서 개인 pipeline 이름을 정하라고 경고합니다. 공통으로 쓰는 처리 로직은 `team-pii-masking`처럼 규칙과 겹치지 않는 이름의 pipeline으로 만들고, `@custom` pipeline에서 `pipeline` processor로 호출하는 구조가 관리하기 쉽습니다.
 
 Fleet 없이 직접 보내는 `logs-*-*` 데이터도 `logs@default-pipeline`이 `logs@custom` pipeline을 호출합니다(Elasticsearch 소스 기준). 이 경우에도 `logs@default-pipeline`을 고치지 않고 `logs@custom`에 넣습니다.
 
@@ -181,9 +181,9 @@ Fleet 없이 직접 보내는 `logs-*-*` 데이터도 `logs@default-pipeline`이
 - integration의 `@package`가 일반 data stream에서 TSDS나 LogsDB로 바뀌면, `@custom`에 넣은 설정이나 mapping이 그 index mode와 맞지 않을 수 있습니다.
 - ECS 필드의 type을 `keyword`에서 `text`로 바꾸면 그 필드로 집계하는 built-in dashboard가 깨집니다.
 
-그래서 `@custom`에는 shard 수, ILM policy 이름, refresh interval처럼 integration의 데이터 구조와 무관한 설정을 주로 넣고, mapping 변경은 새 필드 추가 정도로 제한하는 편이 안전합니다. integration을 업그레이드하기 전에는 release notes에서 index mode 변경 여부를 확인하고, 검증 환경에서 `@custom`을 얹은 상태로 새 버전을 먼저 설치해 봅니다.
+그래서 `@custom`에는 shard 수, ILM policy 이름, refresh interval처럼 integration의 데이터 구조와 무관한 설정을 주로 넣고, mapping 변경은 새 필드 추가 정도로 제한하는 편이 안전합니다. integration을 업그레이드하기 전에는 release notes에서 index mode 변경 여부를 확인하고, 검증 환경에서 `@custom`을 적용한 상태로 새 버전을 먼저 설치해 봅니다.
 
-## template 우선순위의 함정
+## template 우선순위 충돌
 
 index template끼리는 병합되지 않습니다. 새 index 이름과 맞는 template이 여럿이면 우선순위가 가장 높은 template 하나만 쓰이고, component template은 그 template의 `composed_of` 안에서만 병합됩니다([Template conflicts](https://www.elastic.co/docs/reference/fleet/data-streams-template-conflicts)).
 
@@ -204,7 +204,7 @@ Fleet이나 Agent를 쓴다면 직접 만드는 template은 100보다 낮게 두
 POST _index_template/_simulate_index/logs-nginx.access-production
 ```
 
-## 업그레이드가 직접 정의를 옮기는 경우
+## 업그레이드로 정의가 바뀌는 경우
 
 9.3에서는 built-in ILM policy 이름이 바뀌었습니다. 예전 `logs`, `metrics`, `synthetics` policy가 `logs@lifecycle`, `metrics@lifecycle`, `synthetics@lifecycle`로 대체됐습니다. 두 policy를 모두 손대지 않았다면 Fleet이 component template의 참조를 자동으로 옮깁니다. 하나라도 수정했다면 자동으로 옮기지 않으니, 수정 내용을 새 policy로 만들고 `{type}@custom`에서 참조하도록 직접 옮겨야 합니다([Customize built-in ILM policies](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/tutorial-customize-built-in-policies)).
 

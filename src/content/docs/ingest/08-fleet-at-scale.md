@@ -8,7 +8,7 @@ sidebar:
 
 Agent가 수천 대가 되면 정책을 한 번 바꿀 때마다 수천 대가 동시에 영향을 받습니다.
 잘못된 설정 하나가 전체 수집을 멈추게 할 수 있고, 인증서를 교체하다 Agent가 한꺼번에 offline이 되기도 합니다.
-이 글은 정책을 어떻게 나누고, 변경과 업그레이드를 어떤 순서로 퍼뜨리며, 인증서 교체에서 무엇을 조심해야 하는지 정리합니다.
+정책을 나누는 기준, 변경과 업그레이드를 단계적으로 적용하는 순서, 인증서 교체 때 주의할 점을 봅니다.
 
 :::note[기준]
 - Fleet, Fleet Server, Elastic Agent 9.x 기준입니다. self-managed Fleet Server를 중심으로 썼습니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -47,14 +47,14 @@ Fleet 하나에 정책은 1,000개까지 권장됩니다. 그보다 많으면 Fl
 
 정책 하나 안에서 일부 Agent에만 먼저 적용하는 기능은 없으므로, 단계적 적용은 정책을 나눠서 만듭니다.
 
-출력 변경은 따로 조심합니다. 정책에 할당된 출력의 설정(host, 부하 분산기 주소, TLS)을 수정하는 것은 다시 수집을 일으키지 않습니다. 새 출력을 등록해 정책에 할당하면 Agent가 integration을 다시 만들고 registry가 새로 생겨, 원천에 남아 있는 로그를 다시 보낼 가능성이 높습니다([Considerations when changing outputs](https://www.elastic.co/docs/reference/fleet/fleet-settings-changing-outputs)). 목적지 클러스터가 같다면 기존 출력을 수정하고, 목적지가 실제로 바뀔 때만 새 출력을 할당합니다. 절차는 [03](../03-no-gap-ingest/#출력을-바꿀-때-수정과-교체는-다르다)에 있습니다.
+출력 변경은 따로 조심합니다. 정책에 할당된 출력의 설정(host, 부하 분산기 주소, TLS)을 수정하는 것은 다시 수집을 일으키지 않습니다. 새 출력을 등록해 정책에 할당하면 Agent가 integration을 다시 만들고 registry가 새로 생겨, 소스에 남아 있는 로그를 다시 보낼 가능성이 높습니다([Considerations when changing outputs](https://www.elastic.co/docs/reference/fleet/fleet-settings-changing-outputs)). 목적지 클러스터가 같다면 기존 출력을 수정하고, 목적지가 실제로 바뀔 때만 새 출력을 할당합니다. 절차는 [03](../03-no-gap-ingest/#출력을-바꿀-때-수정과-교체는-다르다)에 있습니다.
 
 ## Agent 업그레이드
 
 | 방법 | 동작 | 근거 |
 | --- | --- | --- |
 | 즉시 | 선택한 Agent가 바로 업그레이드. 10대 넘는 batch에는 쓰지 말라고 안내 | [Upgrade Elastic Agents](https://www.elastic.co/docs/reference/fleet/upgrade-elastic-agent) |
-| 유지 보수 시간 창 | 지정한 시간에 걸쳐 고르게 나눠 진행 | 같은 문서 |
+| 유지 보수 시간대 | 지정한 시간에 걸쳐 고르게 나눠 진행 | 같은 문서 |
 | 자동 rollout | 10대 이상이면 자동 적용. 10분과 `대수 x 0.03`초 중 큰 값 | 같은 문서 |
 | 정책 단위 자동 업그레이드(9.1 GA) | 정책에 대상 버전과 비율(%)을 지정 | 같은 문서. 구독 등급 조건 |
 | rollback(9.3 GA) | Fleet 관리 Agent를 이전 버전으로 되돌림 | 같은 문서. 구독 등급 조건 |
@@ -71,7 +71,7 @@ Fleet 하나에 정책은 1,000개까지 권장됩니다. 그보다 많으면 Fl
 
 1. Fleet Server와 Kibana, Elasticsearch가 대상 버전을 지원하는지 확인합니다. Fleet Server를 먼저 올립니다.
 2. canary 정책의 Agent를 업그레이드하고 하루 이상 지켜봅니다.
-3. 정책 단위 자동 업그레이드로 비율을 단계적으로 올립니다(예: 10%, 50%, 100%). 이 기능이 없으면 유지 보수 시간 창을 지정해 정책별로 나눕니다.
+3. 정책 단위 자동 업그레이드로 비율을 단계적으로 올립니다(예: 10%, 50%, 100%). 이 기능이 없으면 유지 보수 시간대을 지정해 정책별로 나눕니다.
 4. 문제가 생기면 진행을 멈추고, 9.3 이후라면 rollback합니다.
 
 1번에서 known issue를 꼭 봅니다. 예를 들어 Fleet 9.4.6과 9.5.3에는, Agent 모니터링 출력으로 원격 Elasticsearch 출력을 지정한 정책에서 Agent가 시작 직후나 정책 변경 뒤 crash-loop에 빠지는 문제가 있었습니다. 우회 방법은 모니터링 출력을 기본 Elasticsearch 출력으로 바꾸는 것이고, 9.4.7과 9.5.4에서 고쳐졌습니다([Fleet Server known issues](https://www.elastic.co/docs/release-notes/fleet-server/known-issues)). 이런 문제는 특정 설정 조합에서만 나타나므로, canary 정책은 운영 정책과 출력, 모니터링 설정까지 같게 둡니다.
@@ -104,7 +104,7 @@ integration 업그레이드도 같은 순서로 다룹니다. 자동 업그레�
 ## 네트워크가 끊겼을 때
 
 - Agent는 출력에 닿지 못하는 동안 memory queue에 이벤트를 쌓습니다. queue가 차면 파일 입력은 읽기를 멈추고 기다리고, 다시 연결되면 이어서 읽습니다.
-- disk queue는 설정할 수 없으므로, 파일이 아닌 원천(TCP, UDP 수신)은 queue가 찬 뒤의 데이터를 잃습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison), 해석).
+- disk queue는 설정할 수 없으므로, 파일이 아닌 소스(TCP, UDP 수신)은 queue가 찬 뒤의 데이터를 잃습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison), 해석).
 - 끊긴 동안 로그 회전으로 파일이 지워지면 그 부분도 잃습니다. 네트워크 단절이 잦은 구역은 로그 보존을 길게 둡니다.
 
 ## 운영 점검

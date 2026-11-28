@@ -1,6 +1,6 @@
 # 오래된 데이터 실측
 
-[05. 오래된 데이터는 어디에 두고 어떻게 꺼내 볼 것인가](https://munsik.github.io/engineering-notes/data/05-tiers-and-retention/)의 수치를 만든 실험 자료입니다.
+[05. 오래된 데이터는 어디에 보관하고 어떻게 조회할 것인가](https://munsik.github.io/engineering-notes/data/05-tiers-and-retention/)의 수치를 만든 실험 자료입니다.
 
 | 단계 | 실행 | 결과 파일 |
 | --- | --- | --- |

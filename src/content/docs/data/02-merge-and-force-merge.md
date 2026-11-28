@@ -10,7 +10,7 @@ segment가 많아서 검색이 느리다는 얘기를 듣고 force merge를 매�
 그런데 쓰기 중인 인덱스에 force merge를 하면 디스크가 순간 세 배로 뛰고, snapshot이 매번 전체 크기로 올라가고, 나중에는 지운 문서가 정리되지 않는 segment가 남습니다.
 merge는 Elasticsearch가 알아서 하는 일이라 평소에는 신경 쓸 일이 적습니다. 그래도 언제 끼어들어야 하는지, 언제 두어야 하는지는 구조를 알아야 판단할 수 있습니다.
 
-segment가 무엇이고 왜 쌓이는지는 [01. Segment의 생애](../01-segments/)에서 다뤘습니다.
+segment가 무엇이고 왜 쌓이는지는 [01. Segment 생명주기](../01-segments/)에서 다뤘습니다.
 
 :::note[기준]
 - Elasticsearch 9.5.5(Lucene 10.5.1) 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -82,7 +82,7 @@ data stream은 만들 때부터 `@timestamp` 매핑이 있어야 하므로 이 �
 
 - **Tiered는 segment를 적게 유지하는 대신 많이 다시 씁니다.** 100만 건을 넣는 동안 문서를 182만 번에서 246만 번 다시 썼습니다. LogByteSize는 두 번 모두 78만 번 안팎이었습니다. 다시 쓴 양이 2.3배에서 3.1배, merge IO 제한에 걸린 시간도 2.3배에서 3배였습니다. Tiered는 merge가 언제 일어나느냐에 따라 회차 사이 편차가 컸고, LogByteSize는 거의 같았습니다.
 - **LogByteSize는 작은 segment를 32개 가까이 모았다가 한 번에 합칩니다.** 적재 중 segment 수가 40개까지 올라갔다가 13개로 떨어지는 패턴이 나왔습니다. 검색할 segment가 많아지는 대신 쓰기 비용이 적습니다.
-- **dynamic `@timestamp` 인덱스는 Tiered처럼 움직였습니다.** merge 11회에서 12회로 `ts` 인덱스와 같은 모양입니다. close/open으로 shard를 다시 연 뒤에는 60만 건을 더 넣는 동안 merge가 한 번만 일어나고 segment가 51개에서 52개까지 쌓였습니다. 두 회차 모두 LogByteSize로 바뀌었습니다.
+- **dynamic `@timestamp` 인덱스는 Tiered처럼 움직였습니다.** merge 11회에서 12회로 `ts` 인덱스와 같은 양상입니다. close/open으로 shard를 다시 연 뒤에는 60만 건을 더 넣는 동안 merge가 한 번만 일어나고 segment가 51개에서 52개까지 쌓였습니다. 두 회차 모두 LogByteSize로 바뀌었습니다.
 
 ## Merge가 indexing을 늦추는 조건
 

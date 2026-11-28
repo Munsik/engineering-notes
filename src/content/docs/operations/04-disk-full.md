@@ -7,7 +7,7 @@ sidebar:
 ---
 
 어느 날 갑자기 모든 적재가 `index has read-only-allow-delete block` 오류로 실패합니다. 디스크가 95%를 넘어 Elasticsearch가 노드의 index를 읽기 전용으로 바꾼 것입니다.
-디스크 문제는 가장 흔하고, 미리 막기도 가장 쉬운 장애입니다. 이 글은 단계별 동작과 푸는 순서, 디스크가 이유 없이 늘 때 볼 것을 정리합니다.
+디스크 문제는 가장 흔하고, 미리 막기도 가장 쉬운 장애입니다. watermark 단계별 동작, read-only를 푸는 순서, 디스크가 이유 없이 늘 때 확인할 것을 봅니다.
 
 :::note[기준]
 - Elasticsearch 9.x 기준입니다. 공식 문서와 known issues는 2026년 11월에 다시 확인했습니다.

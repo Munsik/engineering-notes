@@ -8,7 +8,7 @@ sidebar:
 
 수집 계층의 자원은 Elasticsearch sizing에 묻혀 대충 잡히는 경우가 많습니다.
 그 결과 Agent가 업무 서버의 CPU를 생각보다 많이 쓰거나, Logstash heap이 모자라 GC로 처리량이 떨어지거나, PQ 디스크가 차서 입력이 멈춥니다.
-Logstash 처리량은 하드웨어, 파이프라인, 데이터에 따라 크게 달라서 다른 환경의 숫자를 그대로 쓸 수 없습니다. 이 글은 공식 수치로 출발점을 잡고, 운영 데이터로 직접 재서 맞추는 절차를 정리합니다.
+Logstash 처리량은 하드웨어, 파이프라인, 데이터에 따라 크게 달라서 다른 환경의 숫자를 그대로 쓸 수 없습니다. 공식 수치로 출발점을 잡고, 운영 데이터로 직접 측정해 맞춰 가는 방법을 씁니다.
 
 :::note[기준]
 - Elastic Agent, Fleet Server, Logstash 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -80,7 +80,7 @@ PQ를 쓰면 queue 데이터는 디스크와 OS page cache에 있으므로, JVM 
 
 ### persistent queue 디스크
 
-공식 문서의 산정 예시입니다. 초당 1,000건, 이벤트당 1KB를 받는 Logstash가 뒤쪽이 12시간 멈춰도 원천에 압력을 주지 않으려면 `queue.max_bytes`를 약 50GB로 잡습니다(시간당 약 3.6GB x 12시간 x 여유 10%)([Persistent queues](https://www.elastic.co/docs/reference/logstash/persistent-queues)).
+공식 문서의 산정 예시입니다. 초당 1,000건, 이벤트당 1KB를 받는 Logstash가 뒤쪽이 12시간 멈춰도 소스에 압력을 주지 않으려면 `queue.max_bytes`를 약 50GB로 잡습니다(시간당 약 3.6GB x 12시간 x 여유 10%)([Persistent queues](https://www.elastic.co/docs/reference/logstash/persistent-queues)).
 
 ```text
 queue.max_bytes ≈ 초당 이벤트 x 이벤트 크기 x 버틸 초 x 1.1

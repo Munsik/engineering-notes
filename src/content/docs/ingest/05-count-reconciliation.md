@@ -1,14 +1,14 @@
 ---
-title: "원본을 빠짐없이 받았다는 것을 어떻게 증명하는가"
-description: 원천, 수집기 입력, 수집기 출력, Elasticsearch 저장 건수를 같은 시간 창으로 대조해 유실 구간을 찾는 방법, 순번으로 유실과 중복을 세는 ES|QL, fingerprint로 중복을 막는 방법, 저장되지 않은 문서를 세는 방법을 정리합니다.
+title: "수집 누락이 없다는 것을 어떻게 확인하는가"
+description: 소스, 수집기 입력, 수집기 출력, Elasticsearch 저장 건수를 같은 시간 범위로 대조해 유실 구간을 찾는 방법, 순번으로 유실과 중복을 세는 ES|QL, fingerprint로 중복을 막는 방법, 저장되지 않은 문서를 세는 방법을 정리합니다.
 sidebar:
   label: 05. 건수 정합성
   order: 5
 ---
 
-원천 시스템 담당자는 "보냈다"고 하고, 수집 담당자는 "안 왔다"고 하는 상황이 자주 생깁니다.
+소스 시스템 담당자는 "보냈다"고 하고, 수집 담당자는 "안 왔다"고 하는 상황이 자주 생깁니다.
 관제나 감사 계약에 "수집률 99.9% 이상" 같은 조건이 들어가는데, 저장된 건수만으로는 근거를 낼 수 없습니다. 어느 구간에서 빠졌는지 모르면 고칠 곳도 모릅니다.
-이 글은 구간마다 카운터를 두고 같은 시간 창으로 대조하는 방법, 유실과 중복을 세는 방법, 저장되지 않은 문서를 세는 방법을 정리합니다.
+구간마다 건수를 세어 같은 시간 범위로 대조하면 어디서 빠졌는지 알 수 있습니다. 유실과 중복, 저장되지 않은 문서를 세는 방법도 함께 봅니다.
 
 :::note[기준]
 - Elastic Agent, Fleet, Logstash, Elasticsearch 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -20,7 +20,7 @@ sidebar:
 
 ```mermaid
 flowchart LR
-    S["① 원천<br/>보낸 건수"] --> I["② 수집기 입력<br/>받은 건수"]
+    S["① 소스<br/>보낸 건수"] --> I["② 수집기 입력<br/>받은 건수"]
     I --> O["③ 수집기 출력<br/>ack 받은 건수, drop, filter"]
     O --> E["④ Elasticsearch<br/>성공, 실패, failure store"]
     E --> D["⑤ 저장 건수<br/>검색되는 문서"]
@@ -28,7 +28,7 @@ flowchart LR
 
 | 구간 | 카운터 | 어디서 보나 |
 | --- | --- | --- |
-| ① 원천 | 장비의 송신 통계, 파일 줄 수, 애플리케이션 순번, 큐의 메시지 수 | 원천 시스템 |
+| ① 소스 | 장비의 송신 통계, 파일 줄 수, 애플리케이션 순번, 큐의 메시지 수 | 소스 시스템 |
 | ② 수집기 입력 | Agent 입력 지표, Logstash pipeline events `in` | Agent 모니터링 data stream, Logstash node stats API |
 | ③ 수집기 출력 | Agent output events acked, dropped, failed, duplicates, toomany, failure_store. Logstash events `out`, `filtered`, DLQ | 위와 같음 |
 | ④ Elasticsearch | bulk 실패, failure store로 redirect된 문서 | failure store, 수집기 로그 |
@@ -46,11 +46,11 @@ flowchart LR
 - Agent는 내부 지표를 `metrics-elastic_agent.*` data stream으로 보냅니다. pipeline 이벤트는 `beat.stats.libbeat.pipeline.events.*`(`published`, `filtered`, `dropped`, `failed`, `total`), 출력 이벤트는 `beat.stats.libbeat.output.events.*`(`acked` 등)입니다(elastic/integrations `elastic_agent` 패키지 필드 정의 기준). 누적 카운터라 구간의 차이를 계산해 씁니다.
 - Logstash는 `GET _node/stats/pipelines`가 pipeline과 plugin별 events `in`, `filtered`, `out`을 돌려줍니다([Logstash node stats API](https://www.elastic.co/docs/api/doc/logstash/operation/operation-nodestats)).
 
-## 시간 기준과 대조 창
+## 시간 기준과 대조 범위
 
 | 필드 | 의미 | 대조에 쓰는 곳 |
 | --- | --- | --- |
-| `@timestamp` | 이벤트가 생긴 시각(파싱 결과) | 원천 기준 건수와 비교 |
+| `@timestamp` | 이벤트가 생긴 시각(파싱 결과) | 소스 기준 건수와 비교 |
 | `event.ingested` | Elasticsearch가 받은 시각 | 수집 지연, 늦게 도착한 데이터 판단 |
 
 Fleet이 관리하는 data stream은 `.fleet_event_ingested_pipeline-1` final pipeline이 `event.ingested`를 넣습니다. 저장 효율을 위해 초 아래는 버립니다(Kibana 소스 `fleet_es_assets.ts` 기준). Fleet을 거치지 않는 경로는 ingest pipeline에서 직접 넣어야 합니다.
@@ -64,11 +64,11 @@ PUT _ingest/pipeline/add-event-ingested
 }
 ```
 
-대조 창은 수집 지연보다 넉넉하게 잡습니다. 예를 들어 "어제 00시부터 24시까지의 `@timestamp`"를 오늘 아침에 세면, 늦게 도착한 데이터까지 포함됩니다. 직전 몇 분을 세면 아직 도착하지 않은 데이터 때문에 항상 모자라게 나옵니다. 지연 분포는 [06](../06-flow-dashboard/)의 패널로 보고 창을 정합니다.
+대조 범위는 수집 지연보다 넉넉하게 잡습니다. 예를 들어 "어제 00시부터 24시까지의 `@timestamp`"를 오늘 아침에 세면, 늦게 도착한 데이터까지 포함됩니다. 직전 몇 분을 세면 아직 도착하지 않은 데이터 때문에 항상 모자라게 나옵니다. 지연 분포는 [06](../06-flow-dashboard/)의 패널로 보고 창을 정합니다.
 
 ## 순번으로 유실 구간 찾기
 
-원천이 순번이나 고유 ID를 넣어 준다면 가장 정확하게 셀 수 있습니다. 시험 송신기([`labs/ingest/_sender/`](https://github.com/Munsik/engineering-notes/tree/main/labs/ingest/_sender))는 `labels.seq`에 순번, `labels.run`에 시험 이름을 넣습니다.
+소스가 순번이나 고유 ID를 넣어 준다면 가장 정확하게 셀 수 있습니다. 시험 송신기([`labs/ingest/_sender/`](https://github.com/Munsik/engineering-notes/tree/main/labs/ingest/_sender))는 `labels.seq`에 순번, `labels.run`에 시험 이름을 넣습니다.
 
 유실과 중복을 한 번에 셉니다.
 
@@ -111,7 +111,7 @@ FROM logs-lab.syslog-*
 
 ## 순번이 없을 때: 건수 대조
 
-운영 데이터에는 대개 순번이 없습니다. 이때는 원천이 셀 수 있는 단위로 묶어 비교합니다.
+운영 데이터에는 대개 순번이 없습니다. 이때는 소스가 셀 수 있는 단위로 묶어 비교합니다.
 
 ```sql
 FROM logs-*
@@ -120,9 +120,9 @@ FROM logs-*
 | SORT data_stream.dataset, host.name, hour
 ```
 
-- 원천 쪽 건수는 장비 통계, 파일 줄 수(`wc -l`), 원천 DB의 건수 등으로 같은 단위로 뽑습니다.
+- 소스 쪽 건수는 장비 통계, 파일 줄 수(`wc -l`), 소스 DB의 건수 등으로 같은 단위로 뽑습니다.
 - 허용 오차를 미리 정합니다. 장비 통계는 대개 정확한 송신 건수가 아니라서 0.1% 같은 오차를 둡니다.
-- 시간대별로 보면 특정 시각에만 모자라는지, 특정 호스트만 모자라는지가 드러납니다. 특정 시각이면 수집기 재시작이나 피크, 특정 호스트면 그 원천의 설정을 의심합니다.
+- 시간대별로 보면 특정 시각에만 모자라는지, 특정 호스트만 모자라는지가 드러납니다. 특정 시각이면 수집기 재시작이나 피크, 특정 호스트면 그 소스의 설정을 의심합니다.
 
 ## 중복 찾기와 막기
 
@@ -160,10 +160,10 @@ output {
 }
 ```
 
-비용과 함정입니다.
+비용과 주의할 점입니다.
 
 - `_id`를 직접 정하면 Elasticsearch가 같은 ID가 이미 있는지 확인해야 해서 indexing이 느려집니다. 공식 문서도 가능하면 자동 생성 ID를 쓰라고 권합니다([Tune for indexing speed](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/indexing-speed)).
-- fingerprint 대상 필드가 같으면 정당한 다른 이벤트도 하나로 합쳐집니다. 같은 초에 같은 메시지가 여러 번 찍히는 로그는 원천의 순번, 파일 offset 같은 구분 값을 대상에 넣습니다.
+- fingerprint 대상 필드가 같으면 정당한 다른 이벤트도 하나로 합쳐집니다. 같은 초에 같은 메시지가 여러 번 찍히는 로그는 소스의 순번, 파일 offset 같은 구분 값을 대상에 넣습니다.
 - metrics(TSDS) data stream은 사용자가 정한 `_id`를 받지 않습니다. 대신 dimension과 `@timestamp`가 같은 문서를 409로 거부합니다([데이터 설계 07](../../data/07-time-series/#중복과-문서-id)).
 - 중복 검사는 같은 backing index 안에서만 됩니다. data stream은 새 문서를 write index에만 넣기 때문입니다([Data streams](https://www.elastic.co/docs/manage-data/data-store/data-streams)). lab에서 같은 `_id`로 `_create`를 두 번 보내면 두 번째는 409였지만, 그 사이에 rollover를 하면 두 번째도 성공해 backing index 두 곳에 같은 `_id` 문서가 하나씩 남았습니다. 재전송이 rollover 직후에 겹치면 중복이 남을 수 있습니다.
 
@@ -240,7 +240,7 @@ output {
 }
 ```
 
-지킬 것입니다.
+지켜야 할 점입니다.
 
 - **`sincedb_path`를 따로 둡니다.** 다른 DLQ 소비 pipeline과 읽은 위치가 섞이지 않습니다.
 - **다 넣고 확인할 때까지 `clean_consumed => false`로 둡니다.** 다시 넣다 실패해도 DLQ가 남아 있어야 다시 시도할 수 있습니다. 다시 넣은 이벤트가 또 실패하면 DLQ에 다시 들어가지 않고 로그만 남습니다.
@@ -248,26 +248,26 @@ output {
 - **다시 넣는 동안 rollover하지 않습니다.** 같은 `_id`를 막는 것은 같은 backing index 안에서만 됩니다. 위에서 본 것처럼 rollover를 넘으면 중복이 남습니다.
 - **metrics(TSDS) data stream에는 이 방법을 쓸 수 없습니다.** TSDS는 문서 ID를 dimension과 `@timestamp`로 직접 만들고 사용자가 정한 `_id`를 거부합니다. 시각이 쓰기 가능한 backing index의 범위를 벗어난 문서도 거부합니다([데이터 설계 07](../../data/07-time-series/)).
 
-failure store에 쌓인 문서를 되살리는 방법은 [02](../02-where-to-parse/#실패한-문서-되살리기)에 있습니다.
+failure store에 쌓인 문서를 재처리하는 방법은 [02](../02-where-to-parse/#실패한-문서-재처리)에 있습니다.
 
 ## 자동 대조와 알림
 
 아래 구성은 제가 쓰는 방법입니다.
 
 1. 매일 아침 전날 하루의 data stream, 호스트별 건수를 ES|QL로 뽑아 별도 index(`recon-daily`)에 기록합니다. Workflows나 외부 스케줄러를 씁니다.
-2. 원천 쪽 건수를 같은 index에 넣습니다. 원천이 API를 제공하면 같은 작업에서, 아니면 원천 담당자가 파일로 올립니다.
+2. 소스 쪽 건수를 같은 index에 넣습니다. 소스가 API를 제공하면 같은 작업에서, 아니면 소스 담당자가 파일로 올립니다.
 3. 차이가 허용 오차를 넘거나 failure store 건수가 0이 아니면 알림을 보냅니다. ES|QL 기반 alerting rule을 씁니다.
-4. 원천별 무수신은 실시간으로 봅니다. 기준 시간 이상 들어오지 않은 dataset, 호스트를 찾는 rule은 [06](../06-flow-dashboard/#끊김-알림)에 있습니다.
+4. 소스별 무수신은 실시간으로 봅니다. 기준 시간 이상 들어오지 않은 dataset, 호스트를 찾는 rule은 [06](../06-flow-dashboard/#끊김-알림)에 있습니다.
 
 ## 판단 기준
 
 | 상황 | 권장 |
 | --- | --- |
-| 수집률을 증명해야 함 | 원천, 수집기, 저장 세 지점의 카운터를 매일 같은 창으로 대조해 기록 |
-| 원천이 순번을 줄 수 있음 | 순번을 필드로 받아 유실, 중복을 정확히 셈 |
+| 수집률을 증빙해야 함 | 소스, 수집기, 저장 세 지점의 카운터를 매일 같은 시간 범위로 대조해 기록 |
+| 소스가 순번을 줄 수 있음 | 순번을 필드로 받아 유실, 중복을 정확히 셈 |
 | 중복이 업무에 문제 | fingerprint `_id`. 구분 값이 있는 필드를 대상으로 |
 | 실패 문서를 잃으면 안 됨 | failure store, Logstash DLQ. 건수를 매일 확인 |
-| 수집 지연이 큼 | 대조 창을 지연의 p99보다 길게 |
+| 수집 지연이 큼 | 대조 범위을 지연의 p99보다 길게 |
 
 ## 참고 문서
 

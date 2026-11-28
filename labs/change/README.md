@@ -1,10 +1,10 @@
-# 변화 관리 labs
+# 변경 관리 labs
 
-[변화 관리 컬렉션](https://munsik.github.io/engineering-notes/change/)의 명령 모음과 스크립트입니다. `.console` 파일은 Kibana Dev Tools에 붙여 넣어 씁니다. 공식 문서와 API reference 기준으로 작성했습니다. 화면 캡처 때 9.5.5 lab에서 `managed-assets.console`의 ILM policy, `logs@custom`, rollover와 `data-definitions.console`의 두 simulate API, `cluster-config.console`의 인증서 조회를 실행해 확인했고 그 결과로 요청을 고쳤습니다. 나머지는 실행 확인을 하지 않았습니다. 이름이 `my-`, `logs-app-`, `prod-repo`인 부분은 환경에 맞게 바꿉니다.
+[변경 관리 컬렉션](https://munsik.github.io/engineering-notes/change/)의 명령 모음과 스크립트입니다. `.console` 파일은 Kibana Dev Tools에 붙여 넣어 씁니다. 공식 문서와 API reference 기준으로 작성했습니다. 화면 캡처 때 9.5.5 lab에서 `managed-assets.console`의 ILM policy, `logs@custom`, rollover와 `data-definitions.console`의 두 simulate API, `cluster-config.console`의 인증서 조회를 실행해 확인했고 그 결과로 요청을 고쳤습니다. 나머지는 실행 확인을 하지 않았습니다. 이름이 `my-`, `logs-app-`, `prod-repo`인 부분은 환경에 맞게 바꿉니다.
 
 | 파일 | 글 |
 | --- | --- |
-| [`change-map.console`](change-map.console) | 01. 바뀌는 것의 지도. drift 확인 |
+| [`change-map.console`](change-map.console) | 01. 변경 대상과 관리 기준. drift 확인 |
 | [`change-process.console`](change-process.console) | 02. 변경 절차. 사전, 사후 점검 |
 | [`managed-assets.console`](managed-assets.console) | 03. managed 자산. 찾기와 `@custom`에 얹기 |
 | [`data-definitions.console`](data-definitions.console) | 04. 데이터 정의 변경. simulate, rollover, ILM explain, 영향 분석 |

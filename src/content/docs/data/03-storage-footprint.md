@@ -10,8 +10,8 @@ sidebar:
 이때 "logsdb를 켜면 60%가 준다", "65%가 준다", "77%가 준다" 같은 숫자를 자주 듣습니다. 세 숫자 모두 공식 자료에 나오지만 비교 기준이 서로 다릅니다.
 기준을 모르고 숫자를 sizing에 넣으면, 이미 `best_compression`을 쓰는 환경에서 절감 폭을 크게 잡거나 반대로 너무 보수적으로 잡게 됩니다.
 
-이 글은 같은 로그를 다섯 가지 설정으로 넣고 크기, 적재 비용, 조회 지연, 돌아오는 `_source`를 같이 비교합니다.
-저장 공간이 segment 파일 어디에 쓰이는지는 [01. Segment의 생애](../01-segments/#실측-저장-공간은-어디에-쓰이나)에서, 비교 전에 force merge를 하는 이유는 [02. Merge와 force merge](../02-merge-and-force-merge/#줄어든-용량)에서 다뤘습니다.
+그래서 같은 로그를 다섯 가지 설정으로 넣고 크기, 적재 비용, 조회 지연, 돌아오는 `_source`를 함께 비교했습니다.
+저장 공간이 segment 파일 어디에 쓰이는지는 [01. Segment 생명주기](../01-segments/#실측-저장-공간은-어디에-쓰이나)에서, 비교 전에 force merge를 하는 이유는 [02. Merge와 force merge](../02-merge-and-force-merge/#줄어든-용량)에서 다뤘습니다.
 
 :::note[기준]
 - Elasticsearch 9.5.5(Lucene 10.5.1) 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -130,7 +130,7 @@ vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 �
 | 같은 집계 (`hicard`) | 5.5 | 4.9 | 5.4 | 10.5 | 24.0 |
 | `_source` 100건 가져오기 (`base`) | 9.7 | 18.7 | 12.1 | 14.6 | 10.3 |
 
-- `best_compression`은 `_source`를 읽을 때 느립니다. 100건 fetch가 9.7ms에서 18.7ms로 늘었습니다. 공식 문서도 get by id 지연이 10%에서 33% 늘 수 있다고 적고 있습니다.
+- `best_compression`은 `_source`를 읽을 때 느립니다. 100건 fetch가 9.7ms에서 18.7ms로 늘었습니다. 공식 문서도 get by id 지연이 10%에서 33% 늘 수 있다고 설명합니다.
 - logsdb는 `hicard`의 집계에서 `std`보다 두 배 가까이 느렸습니다(5.5ms 대 10.5ms). `base`에서는 차이가 없었습니다. 원인은 이 실험으로 가리지 못했습니다(확인 필요).
 - `columnar`는 keyword에 inverted index가 없어서 term 조건을 doc values로 걸러야 합니다. 이 데이터에서는 term 건수 조회가 두 배 넘게, `hicard`의 집계가 네 배 넘게 느렸습니다. 9.5의 columnar는 아직 preview입니다. Labs 글에 따르면 9.5.0의 columnar 모드는 cardinality에 따라 dictionary와 블록 압축을 고르는 기능이 아직 준비되지 않아, keyword와 text 모두 doc values를 블록 압축 방식으로만 저장합니다([One field, one copy](https://www.elastic.co/search-labs/blog/columnar-storage-elasticsearch-index-modes)). 조회 성능은 GA까지 바뀔 수 있는 부분입니다.
 - synthetic `_source` 재구성 비용은 이 규모에서는 크지 않았습니다(9.7ms 대 12.1ms).
@@ -164,7 +164,7 @@ vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 �
 
 - logsdb는 `index.mapping.synthetic_source_keep` 기본값이 `arrays`라서 배열 순서와 중복, 객체 배열 묶음을 지켰습니다. 대신 그만큼 저장 공간을 더 씁니다([Configure a logs data stream](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream-configure#synthetic-source)).
 - standard 인덱스에 synthetic `_source`만 켜면 keep 기본값이 `none`이라 IP 배열이 정렬되고 중복이 사라졌습니다. DNS 응답처럼 순서와 중복이 의미 있는 필드는 이렇게 바뀝니다.
-- `logsdb_columnar`는 객체 배열의 짝을 되살릴 수 없고, 매핑되지 않은 내용은 버립니다. 필드 하나만 원본을 보관하는 옵션(`synthetic_source_keep`, `store: true`)도 거부합니다. 짝이 중요한 객체 배열은 `nested`로 매핑해야 합니다([What columnar `_source` preserves](https://www.elastic.co/docs/reference/elasticsearch/columnar#columnar-source-fidelity)).
+- `logsdb_columnar`는 객체 배열의 짝을 복원할 수 없고, 매핑되지 않은 내용은 버립니다. 필드 하나만 원본을 보관하는 옵션(`synthetic_source_keep`, `store: true`)도 거부합니다. 짝이 중요한 객체 배열은 `nested`로 매핑해야 합니다([What columnar `_source` preserves](https://www.elastic.co/docs/reference/elasticsearch/columnar#columnar-source-fidelity)).
 
 `_source`를 그대로 읽는 소비자가 있다면 전환 전에 이 차이를 확인해야 합니다. reindex 대상 시스템, `params._source['a.b']`처럼 점 표기로 원본을 읽는 script, 원문 그대로 다른 시스템에 넘기는 연동이 대표적입니다.
 
@@ -172,7 +172,7 @@ vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 �
 
 실측 중에 문서만 보고는 놓치기 쉬운 동작 두 가지를 확인했습니다.
 
-### synthetic `_source`는 라이선스가 없으면 조용히 STORED가 된다
+### 라이선스가 없으면 synthetic `_source`가 경고 없이 stored로 바뀐다
 
 basic 라이선스에서 확인한 결과입니다(로컬 9.5.5).
 
@@ -182,7 +182,7 @@ basic 라이선스에서 확인한 결과입니다(로컬 9.5.5).
 | `index.mode: logsdb` | STORED | 없음 |
 | `index.mode: logsdb_columnar` | COLUMNAR_STORED | 없음 |
 
-공식 문서도 필요한 subscription이 없으면 logsdb가 원래 `_source`를 쓴다고 적고 있습니다.
+공식 문서도 필요한 subscription이 없으면 logsdb가 원래 `_source`를 쓴다고 설명합니다.
 요청한 설정이 바뀌어도 응답에는 아무 표시가 없었습니다. 소스 코드에서는 라이선스가 synthetic `_source`를 허용하지 않을 때 settings provider가 source mode를 덮어씁니다(Elasticsearch 9.5.5 `LogsdbIndexModeSettingsProvider.java`). 필요한 라이선스는 Enterprise입니다(`LogsdbLicenseService.java`).
 그래서 sizing에 logsdb 절감률을 넣기 전에 라이선스를 먼저 확인하고, 운영 중에는 backing index의 `index.mapping.source.mode`를 직접 봅니다.
 
@@ -246,7 +246,7 @@ PUT _component_template/logs-nginx.access@custom
 POST logs-nginx.access-default/_rollover
 ```
 
-전환 전에 확인할 것입니다.
+전환 전에 확인할 항목입니다.
 
 - `host.name`이 keyword가 아닌 다른 타입으로 이미 매핑돼 있으면 매핑 오류가 날 수 있습니다. 이때는 정렬 필드를 바꾸거나 `@timestamp`만으로 정렬합니다.
 - logsdb는 `ignore_malformed: true`, `ignore_above: 8191`, `ignore_dynamic_beyond_limit: true`를 기본으로 켭니다. 잘못된 값이 거부되지 않고 저장되는 쪽으로 동작이 바뀝니다.

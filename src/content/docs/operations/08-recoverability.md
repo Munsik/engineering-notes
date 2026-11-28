@@ -2,12 +2,12 @@
 title: "노드 하나를 잃어도 데이터를 잃지 않으려면"
 description: 복구 목표(얼마나 잃어도 되는지, 얼마나 빨리 돌아와야 하는지)에 맞춰 replica, master 노드 수, zone과 rack 배치, snapshot 주기와 보관을 정하는 기준과, 공식 rolling restart 절차, 노드를 안전하게 빼는 절차, recovery 속도 설정을 정리합니다.
 sidebar:
-  label: 08. 복구 가능성
+  label: 08. 장애 대비와 복구
   order: 8
 ---
 
-장애 대응에서 가장 어려운 순간은 사본이 없다는 것을 알게 될 때입니다. 비용을 아끼려고 replica를 0으로 둔 index가 있던 노드의 디스크가 망가지면, 남은 선택지는 snapshot 복원이나 데이터 포기뿐입니다([02의 사본이 없을 때](../02-red-yellow/#사본이-없을-때)).
-복구 가능성은 장애가 난 뒤에 만들 수 없습니다. 평소 설계와 작업 절차로 정해집니다. 이 글은 그 기준을 정리합니다.
+장애 대응에서 가장 어려운 순간은 복사본이 없다는 것을 알게 될 때입니다. 비용을 아끼려고 replica를 0으로 둔 index가 있던 노드의 디스크가 망가지면, 남은 선택지는 snapshot 복원이나 데이터 포기뿐입니다([02의 남은 복사본이 없을 때](../02-red-yellow/#남은-복사본이-없을-때)).
+복구 가능성은 장애가 난 뒤에 만들 수 없습니다. 평소 설계와 작업 절차로 정해집니다.
 
 :::note[기준]
 - Elasticsearch 9.x, self-managed 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -24,12 +24,12 @@ sidebar:
 
 | 장애 | 막는 장치 | 잃는 것 |
 | --- | --- | --- |
-| 노드 하나 | replica 1 이상 | 없음. 남은 사본이 primary가 됨 |
-| 랙, zone 하나 | zone마다 사본(allocation awareness), master 후보 분산 | 없음. 남은 zone의 용량만큼 느려짐 |
+| 노드 하나 | replica 1 이상 | 없음. 남은 복사본이 primary가 됨 |
+| 랙, zone 하나 | zone마다 복사본(allocation awareness), master 후보 분산 | 없음. 남은 zone의 용량만큼 느려짐 |
 | 클러스터 전체, 사람의 실수(삭제) | snapshot | 마지막 snapshot 이후 데이터 |
 | 데이터센터 하나 | 다른 데이터센터의 클러스터(cross-cluster replication)와 snapshot | 복제 지연 또는 마지막 snapshot 이후 |
 
-replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지 못합니다. 사본에도 그대로 적용되기 때문입니다. 사람의 실수에 대비하는 장치는 snapshot뿐입니다.
+replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지 못합니다. 복사본에도 그대로 적용되기 때문입니다. 사람의 실수에 대비하는 장치는 snapshot뿐입니다.
 
 ## 최소 구성
 
@@ -37,7 +37,7 @@ replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지
 
 - master 후보 노드 3대 이상. 하나가 죽어도 남은 둘이 과반이라 선출할 수 있습니다.
 - 역할마다 노드 2대 이상
-- shard마다 사본 2개 이상(primary와 replica 하나 이상). searchable snapshot index는 예외입니다.
+- shard마다 복사본 2개 이상(primary와 replica 하나 이상). searchable snapshot index는 예외입니다.
 
 노드 2대 구성은 운영에 권하지 않습니다. 선출이 과반으로 이뤄지므로 어느 한쪽이 죽어도 버티게 만들 수 없습니다. 운영에 쓸 수 있는 가장 작은 구성은 data 노드 2대와 tiebreaker 역할의 master 후보 노드 1대입니다. tiebreaker는 `voting_only`를 둔 전용 master 후보로 두고 client 요청을 보내지 않습니다([Resilience in small clusters](https://www.elastic.co/docs/deploy-manage/production-guidance/availability-and-resilience/resilience-in-small-clusters)).
 
@@ -50,17 +50,17 @@ replica는 노드 장애를 막지만 삭제나 잘못된 업데이트는 막지
 | 노드 하나 장애 | 그 노드의 shard가 RED. 노드가 돌아오거나 snapshot 복원까지 검색, 적재 불가 | 영향 없음 |
 | 디스크 고장 | 그 shard의 데이터 손실 | 영향 없음 |
 
-replica 0이 맞는 경우는 원천에서 다시 넣을 수 있고, 그동안 검색이 안 돼도 되는 데이터뿐입니다. 적재 속도 때문에 replica를 0으로 둔다면, 대량 적재 동안만 0으로 두고 끝나면 1로 되돌립니다. 오래된 로그의 저장 비용이 문제라면 replica 0보다 frozen tier가 낫습니다. frozen의 searchable snapshot은 snapshot 저장소가 사본 역할을 합니다([데이터 설계 05](../../data/05-tiers-and-retention/)).
+replica 0이 맞는 경우는 소스에서 다시 넣을 수 있고, 그동안 검색이 안 돼도 되는 데이터뿐입니다. 적재 속도 때문에 replica를 0으로 둔다면, 대량 적재 동안만 0으로 두고 끝나면 1로 되돌립니다. 오래된 로그의 저장 비용이 문제라면 replica 0보다 frozen tier가 낫습니다. frozen의 searchable snapshot은 snapshot 저장소가 복사본 역할을 합니다([데이터 설계 05](../../data/05-tiers-and-retention/)).
 
 ## zone과 rack에 나눠 두기
 
-노드가 전원, 스위치, 랙을 공유하면 함께 죽습니다. 같이 죽을 노드를 zone으로 묶고, shard 사본이 zone마다 하나씩 가도록 설정합니다([Shard allocation awareness](https://www.elastic.co/docs/deploy-manage/distributed-architecture/shard-allocation-relocation-recovery/shard-allocation-awareness)).
+노드가 전원, 스위치, 랙을 공유하면 함께 죽습니다. 같이 죽을 노드를 zone으로 묶고, shard 복사본이 zone마다 하나씩 가도록 설정합니다([Shard allocation awareness](https://www.elastic.co/docs/deploy-manage/distributed-architecture/shard-allocation-relocation-recovery/shard-allocation-awareness)).
 
 ```yaml
 # elasticsearch.yml (노드마다 자기 zone)
 node.attr.zone: zone-a
 cluster.routing.allocation.awareness.attributes: zone
-# zone 하나가 죽었을 때 남은 zone에 사본을 몰아넣지 않으려면
+# zone 하나가 죽었을 때 남은 zone에 복사본을 몰아넣지 않으려면
 cluster.routing.allocation.awareness.force.zone.values: zone-a,zone-b
 ```
 
@@ -73,7 +73,7 @@ cluster.routing.allocation.awareness.force.zone.values: zone-a,zone-b
 
 ### 복사본이 아니라 snapshot
 
-공식 문서는 snapshot만이 믿을 수 있고 지원되는 백업 방법이라고 적고 있습니다. 노드의 data 디렉터리를 복사한 것으로는 복원할 수 없습니다. 한 시점의 일관된 상태가 아니고, 노드를 멈춘 상태에서 복사해도 클러스터 전체에 걸친 일관성 조건을 맞추지 못하기 때문입니다([Snapshot and restore](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore)).
+공식 문서는 snapshot만이 믿을 수 있고 지원되는 백업 방법이라고 설명합니다. 노드의 data 디렉터리를 복사한 것으로는 복원할 수 없습니다. 한 시점의 일관된 상태가 아니고, 노드를 멈춘 상태에서 복사해도 클러스터 전체에 걸친 일관성 조건을 맞추지 못하기 때문입니다([Snapshot and restore](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore)).
 
 ### SLM으로 주기와 보관을 정한다
 
@@ -157,7 +157,7 @@ rolling restart가 오래 걸리는 흔한 이유입니다.
 | 할당을 멈추지 않았거나 되돌리지 않음 | `GET _cluster/settings`. 되돌리지 않으면 YELLOW가 풀리지 않음([02](../02-red-yellow/#원인별-조치)) |
 | 적재를 계속해 재시작 동안 쌓인 변경이 많음 | 적재를 줄이고 flush |
 | recovery 속도 제한 | 아래 설정 |
-| green을 기다리지 않고 다음 노드로 넘어감 | 사본이 모두 돌아오기 전에 다음 노드를 내리면 RED가 될 수 있음 |
+| green을 기다리지 않고 다음 노드로 넘어감 | 복사본이 모두 돌아오기 전에 다음 노드를 내리면 RED가 될 수 있음 |
 
 ### recovery 속도
 
@@ -167,7 +167,7 @@ rolling restart가 오래 걸리는 흔한 이유입니다.
 | `cluster.routing.allocation.node_concurrent_recoveries` | 2 | 공식 문서가 기본값에서 바꾸지 말라고 권함 |
 | `cluster.routing.allocation.node_initial_primaries_recoveries` | 4 | 재시작 뒤 로컬 디스크에서 primary를 여는 수. 역시 바꾸지 말라고 권함 |
 
-근거: [Index recovery settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/index-recovery-settings), [Cluster-level shard allocation settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/cluster-level-shard-allocation-routing-settings). 디스크와 네트워크에 여유가 있을 때 `max_bytes_per_sec`를 작업 시간 동안만 올리고 끝나면 되돌립니다. 너무 높이면 recovery가 검색과 적재의 자원을 가져가고, 심하면 클러스터가 불안정해진다고 공식 문서가 적고 있습니다.
+근거: [Index recovery settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/index-recovery-settings), [Cluster-level shard allocation settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/cluster-level-shard-allocation-routing-settings). 디스크와 네트워크에 여유가 있을 때 `max_bytes_per_sec`를 작업 시간 동안만 올리고 끝나면 되돌립니다. 너무 높이면 recovery가 검색과 적재의 자원을 가져가고, 심하면 클러스터가 불안정해진다고 공식 문서가 설명합니다.
 
 ## 노드를 영구히 뺄 때
 

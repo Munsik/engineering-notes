@@ -1,16 +1,16 @@
 ---
-title: "오래된 데이터는 어디에 두고 어떻게 꺼내 볼 것인가"
+title: "오래된 데이터는 어디에 보관하고 어떻게 조회할 것인가"
 description: hot, warm, cold, frozen tier의 역할, fully mounted와 partially mounted searchable snapshot의 차이, frozen 데이터를 query와 탐지 rule에서 다루는 법, snapshot repository 운영 규칙을 공식 문서와 Elasticsearch 9.5.5 실측으로 정리합니다.
 sidebar:
   label: 05. 오래된 데이터
   order: 5
 ---
 
-"최근 2주는 자주 보고, 1년치는 가끔 보고, 3년치는 감사 때만 본다." 로그 보관 요구는 대개 이런 모양입니다.
+"최근 2주는 자주 보고, 1년치는 가끔 보고, 3년치는 감사 때만 본다." 로그 보관 요구는 대개 이렇습니다.
 모든 데이터를 hot node의 NVMe에 replica까지 두면 비용이 감당되지 않습니다. 그렇다고 오래된 데이터를 snapshot으로만 두면 감사 요청이 올 때마다 복원부터 해야 합니다.
 data tier와 searchable snapshot은 이 사이를 메우는 기능입니다. 다만 frozen 데이터를 잘못 건드리면 대시보드와 탐지 rule이 느려지거나 일부 실패합니다.
 
-이 글은 tier를 어떻게 나누고, 오래된 데이터를 어떻게 꺼내 보며, 그때 무엇을 조심해야 하는지 정리합니다.
+tier를 나누는 기준, 오래된 데이터를 조회하는 방법, 그때 주의할 점을 차례로 봅니다.
 
 :::note[기준]
 - Elasticsearch 9.5.5 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -157,7 +157,7 @@ POST _snapshot/lab-repo/snap-1/_restore?wait_for_completion=true
 `indices`에는 mount된 index 이름이 아니라 `index.store.snapshot.index_name` 값을 넣습니다. ILM이 clone 위에서 force merge했다면 `fm-clone-*` 같은 중간 이름이 들어 있습니다.
 로컬 실측에서 110MB 복원은 3.2초 걸렸고, 복원하는 동안과 그 뒤에는 mount된 index와 regular index가 같은 데이터를 따로 갖습니다. 복원할 tier에 전체 크기만큼 디스크가 있어야 합니다. 원래 snapshot은 regular index를 확인하고 mount된 index를 지운 뒤에 정리합니다.
 
-## Frozen 데이터를 건드리는 query와 rule
+## Frozen 데이터를 조회하는 query와 rule
 
 ### `_tier`로 frozen 제외하기
 
@@ -204,7 +204,7 @@ frozen node 재시작 중에 넓은 pattern 검색과 tier 제외 검색이 어�
 
 ## Snapshot repository 운영 규칙
 
-searchable snapshot index의 유일한 완전한 사본은 repository의 snapshot입니다. 로컬 cache는 불완전해서 복구에 쓸 수 없습니다([Searchable snapshots](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/searchable-snapshots)).
+searchable snapshot index의 유일한 완전한 복사본은 repository의 snapshot입니다. 로컬 cache는 불완전해서 복구에 쓸 수 없습니다([Searchable snapshots](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/searchable-snapshots)).
 
 | 규칙 | 근거 |
 | --- | --- |
@@ -225,7 +225,7 @@ searchable snapshot index의 유일한 완전한 사본은 repository의 snapsho
 
 mount된 index는 점검 중에도 cache에 있는 부분은 검색됩니다. cache에 없는 부분을 읽는 검색과 shard 복구는 실패합니다.
 
-## Frozen보다 더 싸게 보관하기
+## Frozen보다 비용을 더 줄이는 보관 방법
 
 검색은 거의 하지 않지만 몇 년은 보관해야 하는 데이터가 있습니다. 공식 기능 범위에서는 두 가지 방법이 있습니다.
 
@@ -261,7 +261,7 @@ flowchart TD
 
 ## 다음 글
 
-- [06. Mapping과 필드 수](../06-mappings-and-fields/): 필드 수가 heap과 master에 주는 비용, 한도에 닿았을 때의 동작, template 계층을 다룹니다.
+- [06. Mapping과 필드 수](../06-mappings-and-fields/): 필드 수가 heap과 master에 주는 비용, 한도를 넘었을 때의 동작, template 계층을 다룹니다.
 - 이 글의 실측 코드: [`labs/data/tiers-and-retention/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/tiers-and-retention)
 
 ## 참고 문서

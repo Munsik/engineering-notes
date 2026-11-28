@@ -1,13 +1,13 @@
 ---
 title: 안정성 운영
-description: 평소 점검부터 RED와 YELLOW, 노드 장애, 디스크 부족, 느려짐, 비싼 query, 불안정한 클러스터, 복구 설계, 폐쇄망 점검, 장애 첫 30분까지 운영 중 실제로 겪는 문제를 단계별로 정리합니다.
+description: 평소 점검부터 RED와 YELLOW, 노드 장애, 디스크 부족, 성능 저하, 무거운 query, 불안정한 클러스터, 복구 설계, 폐쇄망 점검, 장애 첫 30분까지 운영 중 실제로 겪는 문제를 단계별로 정리합니다.
 sidebar:
   label: 개요
   order: 0
 ---
 
 운영 중인 클러스터에서 실제로 시간을 쓰는 곳은 대개 정해져 있습니다. 노드가 갑자기 재시작되고, 디스크가 차서 쓰기가 멈추고, 어느 날부터 검색이 느려지고, 노드가 클러스터에서 빠졌다 들어오기를 반복합니다.
-이 컬렉션은 그런 상황을 만났을 때 따라 할 수 있도록 "평소 점검 → 징후 → 유형별 대응 → 복구 설계 → 장애 대응" 순서로 정리합니다.
+그런 상황에서 바로 따라 할 수 있게 "평소 점검 → 징후 → 유형별 대응 → 복구 설계 → 장애 대응" 순서로 정리했습니다.
 
 :::note[기준]
 - Elasticsearch 9.x, Linux, self-managed 기준입니다. Elastic Cloud Hosted와 다른 점은 글마다 적었습니다.
@@ -20,11 +20,11 @@ sidebar:
 | 단계 | 글 | 다루는 내용 |
 | --- | --- | --- |
 | 평소 | [01. 평소 점검](01-daily-checks/) | health report, 지켜볼 지표와 임계값, 매일과 매주 점검표 |
-| 징후 | [02. RED와 YELLOW](02-red-yellow/) | 상태 읽기, unassigned shard 원인 찾기, 사본이 없을 때 |
+| 징후 | [02. RED와 YELLOW](02-red-yellow/) | 상태 읽기, unassigned shard 원인 찾기, 복사본이 없을 때 |
 | 장애 | [03. 노드 장애](03-node-failure-triage/) | heap, circuit breaker, OOM, OS가 죽인 경우, OS 설정 |
 | 장애 | [04. 디스크 부족](04-disk-full/) | watermark, read-only 해제, 디스크가 이유 없이 늘 때 |
-| 장애 | [05. 느려짐](05-slow-cluster/) | CPU, thread pool, task 적체, 특정 노드 쏠림 |
-| 예방 | [06. 비싼 query](06-expensive-queries/) | 위험한 query 유형, 보호 설정, 실행 중인 query 취소 |
+| 장애 | [05. 성능 저하](05-slow-cluster/) | CPU, thread pool, task 적체, 특정 노드 쏠림 |
+| 예방 | [06. 무거운 query](06-expensive-queries/) | 위험한 query 유형, 보호 설정, 실행 중인 query 취소 |
 | 장애 | [07. 불안정한 클러스터](07-unstable-cluster/) | node-left 반복, master 교체, cluster state가 클 때 |
 | 복구 설계 | [08. 복구 가능성](08-recoverability/) | replica, zone, snapshot, rolling restart |
 | 점검 | [09. 폐쇄망 점검](09-offline-diagnostics/) | 진단 파일 없이 같은 정보를 모으는 방법 |

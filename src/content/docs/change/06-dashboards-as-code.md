@@ -7,7 +7,7 @@ sidebar:
 ---
 
 같은 이름의 dashboard가 개발, 검증, 운영 Kibana에 하나씩 있는데 내용이 조금씩 다릅니다. 누가 언제 운영 dashboard의 query를 바꿨는지 아무도 모르고, 이전 상태로 돌리려 해도 이전 상태가 없습니다.
-Kibana 9.5에서 Dashboards API가 GA가 되면서 dashboard를 읽기 쉬운 JSON으로 다루고 그대로 다시 적용할 수 있게 됐습니다. 이 글은 그 API로 dashboard를 Git에 두고 CI/CD로 배포하는 방법을 정리합니다.
+Kibana 9.5에서 Dashboards API가 GA가 되면서 dashboard를 읽기 쉬운 JSON으로 다루고 그대로 다시 적용할 수 있게 됐습니다. 이 API로 dashboard 정의를 Git에 두고 CI/CD로 배포할 수 있습니다.
 
 :::note[기준]
 - Kibana 9.5.x 기준입니다. Dashboards API와 Visualizations API는 9.4에서 tech preview, 9.5에서 GA입니다([Create dashboards programmatically](https://www.elastic.co/docs/explore-analyze/dashboards/create-dashboards-programmatically)).
@@ -45,7 +45,7 @@ flowchart LR
 
 공식 문서가 정리한 네 단계(export, store, review, deploy)에 배포 후 검증과 drift 검사를 더했습니다([Manage dashboards as code](https://www.elastic.co/docs/explore-analyze/dashboards/manage-dashboards-as-code#dashboards-as-code-workflow)). dashboard를 코드로 관리하기 시작하면 Git이 유일한 원본이고, UI에서 직접 바꾼 내용은 다음 배포 때 덮어써집니다.
 
-## 설계 결정 1. 참조를 이식 가능하게
+## 설계 결정 1. 환경이 달라도 깨지지 않는 참조
 
 dashboard를 환경 사이에 옮길 때 가장 큰 문제는 참조입니다. dashboard는 data view와 library visualization을 ID로 참조하는데, 자동 생성된 ID는 환경마다 다릅니다. 공식 문서가 제시하는 해법은 자동화 정도가 높은 순서로 세 가지입니다.
 
@@ -70,7 +70,7 @@ integration이 설치한 managed dashboard는 코드로 관리하지 않습니�
 | 변경 미리보기 | 스크립트로 GET 결과와 비교 | `terraform plan` |
 | ID 관리 | 직접 정함 | provider가 추적 |
 
-공식 문서는 Terraform 리소스가 처음부터 코드로 작성하는 dashboard에 맞고, 이미 있는 dashboard를 가져오기에는 맞지 않는다고 설명합니다([Automate with Terraform](https://www.elastic.co/docs/explore-analyze/dashboards/manage-dashboards-as-code#dashboards-as-code-terraform)). 분석가가 UI에서 만들고 운영팀이 배포하는 흐름이라면 API 직접 호출이 맞습니다. 이 글은 API 직접 호출을 기준으로 씁니다.
+공식 문서는 Terraform 리소스가 처음부터 코드로 작성하는 dashboard에 맞고, 이미 있는 dashboard를 가져오기에는 맞지 않는다고 설명합니다([Automate with Terraform](https://www.elastic.co/docs/explore-analyze/dashboards/manage-dashboards-as-code#dashboards-as-code-terraform)). 분석가가 UI에서 만들고 운영팀이 배포하는 흐름이라면 API 직접 호출이 맞습니다. 아래 내용은 API 직접 호출을 기준으로 합니다.
 
 현장에서는 Terraform으로 dashboard를 많이 관리할 때 plan과 refresh가 몇 분씩 걸린다는 이야기가 나옵니다. dashboard마다 전체 정의를 읽어 와 비교하기 때문입니다. dashboard 수가 많다면 미리 검증 환경에서 시간을 재 봅니다.
 
@@ -228,7 +228,7 @@ API key는 배포 대상 space의 Dashboard 권한만 가진 전용 계정에서
 
 ### 롤백
 
-롤백은 `git revert` 후 같은 파이프라인으로 배포하는 것입니다. 운영에서 급히 되돌려야 하면 이전 커밋의 JSON을 `PUT`하면 됩니다. dashboard를 지울 때는 Git에서 파일을 지우는 것만으로는 운영에서 사라지지 않습니다. 삭제는 `DELETE /api/dashboards/{id}`를 따로 실행하거나, 배포 스크립트가 Git에 없는 관리 대상 dashboard를 지우게 만듭니다. 후자라면 관리 대상을 tag나 ID 접두어로 분명히 구분해서, 사람이 만든 dashboard를 지우지 않게 합니다.
+롤백은 `git revert` 후 같은 파이프라인으로 배포하면 됩니다. 운영에서 급히 되돌려야 하면 이전 커밋의 JSON을 `PUT`하면 됩니다. dashboard를 지울 때는 Git에서 파일을 지우는 것만으로는 운영에서 사라지지 않습니다. 삭제는 `DELETE /api/dashboards/{id}`를 따로 실행하거나, 배포 스크립트가 Git에 없는 관리 대상 dashboard를 지우게 만듭니다. 후자라면 관리 대상을 tag나 ID 접두어로 분명히 구분해서, 사람이 만든 dashboard를 지우지 않게 합니다.
 
 ## drift 검사
 
@@ -248,7 +248,7 @@ done
 
 `meta.updated_by`는 사용자 프로필 ID입니다. 누가 고쳤는지 따라가려면 Kibana audit log의 `saved_object_update` 이벤트와 같이 봅니다.
 
-drift를 발견했을 때의 정책은 미리 정합니다([01의 UI 변경 정책](../01-change-map/#기준-원본을-정한다)).
+drift를 발견했을 때의 정책은 미리 정합니다([01의 UI 변경 정책](../01-change-map/#source-of-truth를-정한다)).
 
 | 정책 | drift를 발견하면 | 막는 장치 |
 | --- | --- | --- |
@@ -257,7 +257,7 @@ drift를 발견했을 때의 정책은 미리 정합니다([01의 UI 변경 정�
 
 현장에서 들은 가장 흔한 사고는 정책 없이 시작해서, 관계없는 dashboard의 배포가 누군가의 UI 변경을 지우는 경우입니다. 배포 직전 drift 검사는 어느 정책이든 넣어 두는 편이 안전합니다.
 
-## 운영하며 걸리는 것들
+## 운영 중 주의할 점
 
 - 시간 범위: dashboard 정의에 `time_range`를 넣으면 dashboard와 함께 저장됩니다. 시간 범위를 저장하지 않는 dashboard를 API로 정의하는 방법은 문서에서 찾지 못했습니다. 확인 필요.
 - 지원되지 않는 패널: Maps 패널이 있는 dashboard는 API로 쓸 수 없습니다. 그 dashboard는 saved objects NDJSON으로 관리하거나, 지도 패널을 다른 패널로 바꿉니다.

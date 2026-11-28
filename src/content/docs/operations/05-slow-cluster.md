@@ -1,13 +1,13 @@
 ---
-title: "클러스터가 느려질 때 어디서 막혔는지 어떻게 찾는가"
-description: 검색이나 적재가 느려졌을 때 클러스터 전체인지, 일부 노드인지, 특정 요청인지, 클라이언트 쪽인지부터 가르고, hot threads, thread pool, task 적체, 노드 쏠림, 느린 요청 기록, 클라이언트 연결 문제를 차례로 좁히는 방법을 정리합니다.
+title: "클러스터가 느려질 때 병목을 어떻게 찾는가"
+description: 검색이나 적재가 느려졌을 때 클러스터 전체인지, 일부 노드인지, 특정 요청인지, 클라이언트 쪽인지부터 구분하고, hot threads, thread pool, task 적체, 노드 쏠림, 느린 요청 기록, 클라이언트 연결 문제를 차례로 좁히는 방법을 정리합니다.
 sidebar:
-  label: 05. 느려짐
+  label: 05. 성능 저하
   order: 5
 ---
 
 "어제부터 대시보드가 느리다"는 문의에는 원인이 여러 겹으로 섞여 있습니다. CPU가 모자랄 수도 있고, 노드 하나에 쓰기가 몰렸을 수도 있고, 사용자 한 명의 query가 thread를 다 잡고 있을 수도 있습니다. 클러스터는 멀쩡한데 클라이언트가 끊긴 연결을 붙잡고 있는 경우도 있습니다.
-범위를 가르지 않고 설정부터 바꾸면 원인을 덮어 버립니다. 이 글은 범위를 먼저 가르고, 범위마다 볼 곳을 정리합니다.
+범위를 구분하지 않고 설정부터 바꾸면 원인을 덮어 버립니다. 그래서 먼저 범위를 나누고, 범위마다 확인할 곳을 봅니다.
 
 :::note[기준]
 - Elasticsearch 9.x 기준입니다. 공식 문서와 Elasticsearch 소스는 2026년 11월에 다시 확인했습니다. 기능마다 GA 버전이 다른 경우는 본문에 적었습니다.
@@ -21,7 +21,7 @@ sidebar:
 ```mermaid
 flowchart TD
     A["느려졌다는 신고"] --> B{"모든 노드의 CPU, queue가 높은가"}
-    B -- "예" --> C["처리량 대비 자원 부족<br/>또는 클러스터 전체에 걸린 비싼 작업"]
+    B -- "예" --> C["처리량 대비 자원 부족<br/>또는 클러스터 전체에 걸린 무거운 작업"]
     B -- "일부 노드만" --> D["노드 쏠림(hot spotting)<br/>하드웨어 차이, shard 배치"]
     B -- "아니오" --> E{"특정 요청만 느린가"}
     E -- "예" --> F["느린 요청 찾기<br/>tasks, query log, slow log, profile"]
@@ -40,7 +40,7 @@ GET _cat/pending_tasks?v
 
 - `available_processors` 열은 Stack 9.3부터 GA입니다([High CPU usage](https://www.elastic.co/docs/troubleshoot/elasticsearch/high-cpu-usage)). 같은 tier인데 이 값이 다른 노드가 있으면 하드웨어부터 맞춥니다.
 - `cat nodes`의 `cpu`는 순간값이고, thread pool의 `rejected`와 `completed`는 노드가 시작된 뒤의 누적값입니다. 한 번만 보지 말고 몇 분 간격으로 두 번 이상 봅니다([Task queue backlog](https://www.elastic.co/docs/troubleshoot/elasticsearch/task-queue-backlog)).
-- 공식 문서는 CPU가 오래 95%를 넘으면 조사하라고 권합니다. load average를 processor 수로 나눈 값은 그 자체로는 부족하고 응답 시간과 같이 봐야 한다고 적고 있습니다(같은 High CPU usage 문서).
+- 공식 문서는 CPU가 오래 95%를 넘으면 조사하라고 권합니다. load average를 processor 수로 나눈 값은 그 자체로는 부족하고 응답 시간과 같이 봐야 한다고 설명합니다(같은 High CPU usage 문서).
 
 ## CPU가 높을 때: hot threads
 
@@ -81,7 +81,7 @@ CPU가 GC 때문에 높은 경우도 많습니다. hot threads에서 `other` CPU
 
 근거: [Thread pool settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/thread-pool-settings). 9.0과 9.5 소스(`DefaultBuiltInExecutorBuilders.java`)에서도 같은 값을 확인했습니다.
 
-queue가 커졌다고 거부가 사라지지는 않습니다. 기다리는 요청이 많아질 뿐이라 응답은 더 느려지고 heap도 더 씁니다. 공식 문서도 thread pool 크기 조정은 부하 시험을 한 뒤에만 하라고 적고 있습니다(해석, [Task queue backlog](https://www.elastic.co/docs/troubleshoot/elasticsearch/task-queue-backlog)).
+queue가 커졌다고 거부가 사라지지는 않습니다. 기다리는 요청이 많아질 뿐이라 응답은 더 느려지고 heap도 더 씁니다. 공식 문서도 thread pool 크기 조정은 부하 시험을 한 뒤에만 하라고 설명합니다(해석, [Task queue backlog](https://www.elastic.co/docs/troubleshoot/elasticsearch/task-queue-backlog)).
 
 `queue`가 계속 높으면 오래 걸리는 작업이나 CPU를 많이 쓰는 작업이 있다는 뜻이고, 잠깐씩 튀면 요청이 한꺼번에 몰리는 것입니다. 앞의 경우는 아래의 task 확인으로, 뒤의 경우는 요청을 나눠 보내는 쪽으로 풉니다(같은 문서).
 
@@ -111,7 +111,7 @@ GET _tasks?detailed=true&human=true&actions=indices:*write*
 
 ## 일부 노드만 느릴 때: 쏠림
 
-같은 tier의 노드 가운데 몇 대만 CPU, heap, 디스크가 계속 높으면 쏠림(hot spotting)입니다. 공식 문서는 30초 넘게 계속되거나 반복되면 문제로 보라고 적고 있습니다([Hot spotting](https://www.elastic.co/docs/troubleshoot/elasticsearch/hotspotting)).
+같은 tier의 노드 가운데 몇 대만 CPU, heap, 디스크가 계속 높으면 쏠림(hot spotting)입니다. 공식 문서는 30초 넘게 계속되거나 반복되면 문제로 보라고 설명합니다([Hot spotting](https://www.elastic.co/docs/troubleshoot/elasticsearch/hotspotting)).
 
 | 원인 | 확인 |
 | --- | --- |
@@ -193,7 +193,7 @@ PUT _cluster/settings
 
 | 상황 | 먼저 할 것 |
 | --- | --- |
-| 모든 노드 CPU가 높음 | hot threads로 무엇인지 확인. 비싼 작업이 아니면 처리량에 비해 노드가 모자람 |
+| 모든 노드 CPU가 높음 | hot threads로 무엇인지 확인. 무거운 작업이 아니면 처리량에 비해 노드가 모자람 |
 | 몇 노드만 높음 | 하드웨어, shard 배치, 쓰기 index의 shard 수 |
 | `search` queue가 계속 높음 | 오래 걸리는 검색 task를 찾아 취소하고 [06](../06-expensive-queries/)의 보호 설정 |
 | `write` 거부 | bulk 크기와 동시성, 쏠림. queue 크기를 키우는 것은 마지막 |

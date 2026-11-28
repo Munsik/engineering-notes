@@ -25,7 +25,7 @@
 | 02 | `ingest/02-where-to-parse.md` | 파싱은 어디서 할 것인가 | ingest pipeline, Logstash, integration `@custom` pipeline, failure store |
 | 03 | `ingest/03-no-gap-ingest.md` | 수집기가 멈춰도 로그가 끊기지 않게 하려면 | Logstash와 Agent는 clustering이 없다는 전제에서 무중단 구성 패턴과 실측 |
 | 04 | `ingest/04-syslog-udp.md` | UDP syslog를 유실 없이 받으려면 | UDP의 한계, 버퍼, relay, 부하 분산, drop 계측 |
-| 05 | `ingest/05-count-reconciliation.md` | 원본을 빠짐없이 받았다는 것을 어떻게 증명하는가 | 송신 건수와 저장 건수 대조, 중복 제거, 실패 문서 추적 |
+| 05 | `ingest/05-count-reconciliation.md` | 수집 누락이 없다는 것을 어떻게 확인하는가 | 송신 건수와 저장 건수 대조, 중복 제거, 실패 문서 추적 |
 | 06 | `ingest/06-flow-dashboard.md` | 수집 흐름을 대시보드로 어떻게 보는가 | Agent, Logstash, Elasticsearch 지표로 만드는 흐름 대시보드와 Streams |
 | 07 | `ingest/07-collector-sizing.md` | 수집 계층에 자원은 얼마나 필요한가 | Agent, Logstash, Fleet Server의 CPU, 메모리, 디스크 산정 |
 | 08 | `ingest/08-fleet-at-scale.md` | 수백에서 수만 대 Agent를 어떻게 운영할 것인가 | 정책 설계, 단계적 변경과 업그레이드, 인증서 교체 |
@@ -302,7 +302,7 @@
 
 ---
 
-## 2-5. 원본을 빠짐없이 받았다는 것을 어떻게 증명하는가
+## 2-5. 수집 누락이 없다는 것을 어떻게 확인하는가
 
 상태: `발행` (2026-11-26, lab 9.5.5 확인) (신규)
 예정 파일: `ingest/05-count-reconciliation.md`, `labs/ingest/reconciliation/`

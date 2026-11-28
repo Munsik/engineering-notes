@@ -1,13 +1,13 @@
 ---
 title: "노드가 클러스터에서 자꾸 빠질 때"
-description: node-left 로그가 반복되거나 master가 자주 바뀔 때 elected master 로그로 빠진 이유(disconnected, lagging, followers check retry count exceeded)를 읽고, 네트워크와 노드 과부하를 가르는 방법, cluster state가 커지는 원인(mapping explosion, shard와 index 수), master 노드 구성을 정리합니다.
+description: node-left 로그가 반복되거나 master가 자주 바뀔 때 elected master 로그로 빠진 이유(disconnected, lagging, followers check retry count exceeded)를 읽고, 네트워크와 노드 과부하를 구분하는 방법, cluster state가 커지는 원인(mapping explosion, shard와 index 수), master 노드 구성을 정리합니다.
 sidebar:
   label: 07. 불안정한 클러스터
   order: 7
 ---
 
 노드가 빠졌다 들어오기를 반복하면 다른 문제는 풀 수 없습니다. shard가 빠질 때마다 replica를 다시 만들고, 노드가 돌아오면 또 옮기고, 그사이 검색과 적재가 실패합니다. 상태가 YELLOW와 RED를 오가니 원인을 찾으려고 보는 지표도 계속 흔들립니다.
-공식 문서도 master가 안정되고 노드 구성이 고정되기 전에는 다른 문제를 풀 수 없다고 적고 있습니다([Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster)). 이 글은 그 순서를 따라갑니다.
+공식 문서도 master가 안정되고 노드 구성이 고정되기 전에는 다른 문제를 풀 수 없다고 설명합니다([Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster)). 아래 내용도 그 순서를 따릅니다.
 
 :::note[기준]
 - Elasticsearch 9.x, Linux, self-managed 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -59,7 +59,7 @@ GET _health_report/master_is_stable
 
 `lagging`과 `followers check retry count exceeded`는 네트워크 지연 때문일 수도, 노드 과부하 때문일 수도 있습니다. reason만으로는 둘을 가를 수 없습니다.
 
-## 네트워크인지 노드인지 가르기
+## 네트워크 문제와 노드 문제 구분
 
 ```mermaid
 flowchart TD
@@ -78,7 +78,7 @@ sysctl -w net.ipv4.tcp_retries2=5
 # 영구 적용은 /etc/sysctl.d/ 아래 파일로. 적용 순서는 03의 OS 설정 점검 참고
 ```
 
-이 값을 낮춘 뒤 증상이 `disconnected`나 `Connection timed out`으로 바뀌면 네트워크를 계속 봅니다. 그대로 `lagging`이나 check 실패가 나오면 네트워크 가능성은 낮고 노드 성능을 봅니다. 공식 문서도 이 값은 고장 난 네트워크나 과부하를 고치지 않고, 문제가 드러나는 시간만 바꾼다고 적고 있습니다. 적용 순서는 [03의 OS 설정 점검](../03-node-failure-triage/#os-설정-점검)을 따릅니다.
+이 값을 낮춘 뒤 증상이 `disconnected`나 `Connection timed out`으로 바뀌면 네트워크를 계속 봅니다. 그대로 `lagging`이나 check 실패가 나오면 네트워크 가능성은 낮고 노드 성능을 봅니다. 공식 문서도 이 값은 고장 난 네트워크나 과부하를 고치지 않고, 문제가 드러나는 시간만 바꾼다고 설명합니다. 적용 순서는 [03의 OS 설정 점검](../03-node-failure-triage/#os-설정-점검)을 따릅니다.
 
 ## 연결이 밖에서 끊길 때
 
@@ -156,7 +156,7 @@ GET logs-app-*/_field_caps?fields=*&filter_path=fields.*.*.type
 - 기본 필드 한도는 index당 `index.mapping.total_fields.limit: 1000`입니다. 넘으면 새 필드가 들어간 문서는 400 `mapper_parsing_exception`으로 거부됩니다.
 - `index.mapping.total_fields.ignore_dynamic_beyond_limit: true`로 두면 문서는 받고 한도를 넘는 동적 필드만 무시합니다.
 - key를 예측할 수 없는 객체는 `flattened` 타입으로 받거나, 그 부분의 동적 매핑을 끕니다. 이미 만들어진 필드는 줄일 수 없으므로 새 index template에 넣고 rollover나 reindex로 옮깁니다.
-- 한도를 크게 올리는 것은 해결이 아닙니다. 원천에서 데이터 모양을 바로잡는 것이 먼저라고 공식 문서가 적고 있습니다.
+- 한도를 크게 올리는 것은 해결이 아닙니다. 소스에서 데이터 구조를 바로잡는 것이 먼저라고 공식 문서가 설명합니다.
 
 ## 판단 기준
 
@@ -167,7 +167,7 @@ GET logs-app-*/_field_caps?fields=*&filter_path=fields.*.*.type
 | `lagging`, check 실패 | `tcp_retries2`를 5로 낮추고 증상 변화를 봄 |
 | 네트워크가 아님 | GC, VM 정지, 디스크. `LagDetector` DEBUG와 주기적 `jstack` |
 | master가 자주 바뀜 | master 후보가 다른 역할을 겸하는지. 3대 전용으로 분리 |
-| `put-mapping`이 쌓임 | 늘어나는 필드를 찾아 원천을 고치고, 새 template에 한도와 `flattened` |
+| `put-mapping`이 쌓임 | 늘어나는 필드를 찾아 소스를 고치고, 새 template에 한도와 `flattened` |
 | timeout 값을 늘리자는 의견 | 늘리지 않음. 원인을 가린 채 응답 없는 노드를 오래 붙잡게 됨 |
 
 ## 참고 문서
