@@ -14,7 +14,7 @@ sidebar:
 - Elasticsearch, Fleet, Logstash 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
 - failure store는 Stack 9.1부터 GA입니다. 9.2부터는 새로 만드는 `logs-*-*` data stream에 기본으로 켜져 있습니다([Failure store](https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store)).
 - Streams는 Stack 9.1 preview, 9.2부터 GA입니다.
-- 처리량 비교는 하지 않았습니다. 같은 패턴이라도 하드웨어와 데이터에 따라 결과가 크게 달라 공개 수치로서 의미가 약하기 때문입니다. 직접 재는 방법은 [07](../07-collector-sizing/)에 정리했습니다.
+- 처리량 비교는 하지 않았습니다. 같은 패턴이라도 하드웨어와 데이터에 따라 결과가 크게 달라 공개 수치로서 의미가 약하기 때문입니다. 직접 측정하는 방법은 [07](../07-collector-sizing/)에 정리했습니다.
 :::
 
 ## 세 가지 위치
@@ -93,11 +93,11 @@ integration의 pipeline 자체를 고치면 integration을 업그레이드할 �
 
 ### 실패한 문서 재처리
 
-failure store는 일반 index라서, 원인을 고친 뒤 실패 문서에서 원본을 꺼내 원래 data stream으로 다시 넣을 수 있습니다. 공식 문서의 절차를 따라 로컬 Elasticsearch 9.5.5에서 해 봤습니다([Using failure stores to address ingestion issues](https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store-recipes)).
+failure store는 일반 index라서, 원인을 고친 뒤 실패 문서의 원본을 가져와 원래 data stream으로 다시 넣을 수 있습니다. 공식 문서의 절차를 따라 로컬 Elasticsearch 9.5.5에서 해 봤습니다([Using failure stores to address ingestion issues](https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store-recipes)).
 
 1. **failure store를 rollover합니다.** `POST <data stream>::failures/_rollover`. 재처리하는 동안 새로 생기는 실패가 다른 index에 쌓여 섞이지 않습니다.
 2. **실패 종류를 나눕니다.** `error.pipeline`이 있으면 ingest pipeline에서 실패한 문서이고, pipeline을 거치기 전 원본이 남아 있습니다. 없으면 색인(mapping) 단계에서 실패한 문서이고, pipeline을 거친 뒤의 모습이 남아 있습니다. 공식 문서는 앞의 것은 pipeline을 다시 돌리고 뒤의 것은 pipeline을 건너뛰라고 권합니다.
-3. **재처리 pipeline을 만듭니다.** `document.source`를 문서 최상위로 꺼내고 `error`, `document`를 지운 뒤, 잘못된 값을 고치고 원래 data stream으로 `reroute`합니다.
+3. **재처리 pipeline을 만듭니다.** `document.source`를 문서 최상위로 옮기고 `error`, `document`를 지운 뒤, 잘못된 값을 고치고 원래 data stream으로 `reroute`합니다.
 4. **`_ingest/_simulate`로 먼저 확인합니다.** 결과 형태와, 이어서 실행되는 default pipeline까지(`executed_pipelines`) 다시 실패하지 않는지 봅니다.
 5. **`_reindex`로 되돌립니다.** source는 `<data stream>::failures`와 시간 범위 query, dest는 원래 data stream과 `op_type: create`, `pipeline`입니다.
 

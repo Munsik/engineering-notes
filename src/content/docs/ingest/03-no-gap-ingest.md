@@ -21,7 +21,7 @@ sidebar:
 
 | 소스의 성격 | 예 | 수집기가 멈추면 |
 | --- | --- | --- |
-| 소스가 데이터를 들고 있음 | 파일, 클라우드 큐(S3+SQS 등), API 폴링, Kafka | 수집기가 다시 시작하면 마지막 위치부터 다시 읽음. 소스의 보존 기간 안이면 유실 없음 |
+| 소스가 데이터를 보관함 | 파일, 클라우드 큐(S3+SQS 등), API 폴링, Kafka | 수집기가 다시 시작하면 마지막 위치부터 다시 읽음. 소스의 보존 기간 안이면 유실 없음 |
 | 송신 측이 ack를 받고 다시 보냄 | Agent → Logstash, Agent → Elasticsearch | 송신 측이 ack를 못 받은 이벤트를 다시 보냄. 유실은 없고 중복이 생길 수 있음 |
 | 소스가 밀어 넣고 끝 | TCP, UDP syslog, HTTP push | 수집기가 멈춘 동안 들어온 데이터는 받을 곳이 없음 |
 
@@ -52,7 +52,7 @@ flowchart LR
 
 ## 구성 패턴
 
-| 패턴 | 맞는 소스 | 한 대가 멈추면 | 비용 |
+| 패턴 | 적합한 소스 | 한 대가 멈추면 | 비용 |
 | --- | --- | --- | --- |
 | 1. 송신 측 부하 분산 | Agent → Logstash | Agent가 다른 Logstash로 다시 보냄. 중복 가능 | Logstash 2대 이상 |
 | 2. L4 부하 분산 | TCP, HTTP push | LB가 health check로 빼고 새 연결을 다른 노드로. 끊긴 연결의 미전송분은 소스의 재연결 동작에 달림 | LB 이중화(VIP) |
@@ -183,7 +183,7 @@ backend logstash_syslog
 
 ### 패턴 3: Kafka로 수신과 처리를 나누기
 
-수신 계층과 Elasticsearch 사이에 Kafka를 두면, 뒤쪽 계층을 멈추거나 바꾸는 동안 Kafka가 데이터를 들고 있습니다. 수신 계층은 Kafka에 넣기만 하고, 소비 계층이 Kafka에서 읽어 Elasticsearch로 보냅니다.
+수신 계층과 Elasticsearch 사이에 Kafka를 두면, 뒤쪽 계층을 멈추거나 바꾸는 동안 Kafka가 데이터를 보관합니다. 수신 계층은 Kafka에 넣기만 하고, 소비 계층이 Kafka에서 읽어 Elasticsearch로 보냅니다.
 
 앞단과 뒷단은 모두 Fleet이 관리하는 Elastic Agent로 구성합니다. 앞단 Agent는 Kafka output으로 쓰고([Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings)), 뒷단 Agent는 Kafka Log Consumer integration으로 읽습니다([Kafka Log Consumer](https://www.elastic.co/docs/reference/integrations/kafka_log)). 두 계층의 설정 배포, 업그레이드, 상태 확인을 Fleet 정책 하나의 흐름으로 처리할 수 있습니다. Logstash로 구성하면 pipeline 파일과 배포 방법을 계층마다 따로 관리해야 합니다.
 
@@ -336,7 +336,7 @@ PQ를 쓸 때 주의할 점입니다.
 - **PQ는 그 노드에만 있습니다.** 노드가 멈추면 그 안의 이벤트는 노드가 돌아올 때까지 처리되지 않습니다. 다른 노드가 이어받지 못합니다. 그래서 PQ는 이중화가 아니라 "그 노드가 잠시 멈췄다 다시 올 때 잃지 않게" 하는 장치입니다.
 - **at-least-once를 원하면 `queue.checkpoint.writes: 1`을 씁니다.** 공식 문서가 권하는 값이고, 디스크 쓰기가 늘어납니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
 - **디스크를 이중화합니다.** 온프레미스는 RAID, 클라우드는 복제되는 볼륨을 권합니다(같은 문서).
-- **PQ는 처리량을 낮추고 CPU를 더 씁니다.** 얼마나인지는 환경마다 달라서 직접 재야 합니다. 공식 Elastic 블로그는 병렬 pipeline으로 PQ 성능을 보완하는 방법을 소개합니다.
+- **PQ는 처리량을 낮추고 CPU를 더 씁니다.** 얼마나인지는 환경마다 달라서 직접 측정해야 합니다. 공식 Elastic 블로그는 병렬 pipeline으로 PQ 성능을 보완하는 방법을 소개합니다.
 - **출력마다 pipeline을 나누면** 한 출력이 막혀도 다른 출력이 계속 갑니다. 공식 문서의 PQ 예시에 이 구성이 나옵니다([Persistent queues](https://www.elastic.co/docs/reference/logstash/persistent-queues)).
 
 PQ 크기 산정은 [07](../07-collector-sizing/#persistent-queue-디스크)에서 다룹니다.

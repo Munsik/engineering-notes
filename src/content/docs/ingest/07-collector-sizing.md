@@ -126,13 +126,13 @@ Elastic Cloud Hosted 기준 공식 scalability 표입니다([Fleet Server scalab
 - rsyslog relay는 받아서 넘기기만 해서 CPU 부담이 작습니다. 디스크는 disk-assisted queue의 `queue.maxDiskSpace`로 정하고, 크기는 PQ와 같은 방식(버틸 시간 x 유입량)으로 계산합니다.
 - Kafka는 보존 기간 동안의 유입량에 replication factor를 곱한 디스크가 필요합니다. 상세는 Kafka 운영 자료를 따릅니다.
 
-## 처리량을 직접 재는 절차
+## 처리량을 직접 측정하는 절차
 
 아래 순서는 제가 쓰는 방법입니다.
 
 1. 운영과 같은 사양의 Logstash 1대를 준비합니다. 파이프라인, PQ 설정, JVM heap도 운영과 같게 둡니다.
 2. 운영 데이터의 표본(최소 몇 시간 분량)을 파일로 준비해 입력으로 씁니다. 데이터 특성이 결과를 크게 바꾸므로 synthetic 데이터를 쓰지 않습니다.
-3. 출력은 운영 Elasticsearch(또는 같은 사양)로 둡니다. 출력이 병목이면 Logstash가 아니라 Elasticsearch를 재게 되므로, 비교용으로 출력을 버리는 구성도 한 번 돌립니다.
+3. 출력은 운영 Elasticsearch(또는 같은 사양)로 둡니다. 출력이 병목이면 Logstash가 아니라 Elasticsearch 성능을 측정하게 되므로, 비교용으로 출력을 버리는 구성도 한 번 돌립니다.
 4. `pipeline.workers`, `pipeline.batch.size`를 하나씩 바꾸며 flow metrics(`input_throughput`, `worker_utilization`, `queue_backpressure`)와 CPU, heap을 기록합니다.
 5. `worker_utilization`이 100 근처에 붙고 CPU가 포화되는 지점의 EPS를 한계로 보고, 그 70% 정도를 "안정적으로 처리하는 EPS"로 씁니다.
 
@@ -143,7 +143,7 @@ Agent도 같은 방식으로, 운영 서버에 integration을 켠 상태로 며�
 | 구성 요소 | 출발점 | 맞추는 방법 |
 | --- | --- | --- |
 | Agent | 공식 측정값, preset은 balanced 또는 scale | 운영 서버에서 며칠 관찰 |
-| Logstash | heap 4GB에서 8GB, workers는 core 수, 최소 2대 | 운영 데이터로 직접 재서 대수 결정 |
+| Logstash | heap 4GB에서 8GB, workers는 core 수, 최소 2대 | 운영 데이터로 직접 측정해 대수 결정 |
 | Logstash PQ | 버틸 시간 x 유입량 x 1.1 | Elasticsearch 장애 대응 목표 시간으로 |
 | Fleet Server | 공식 scalability 표, 2대 이상 | Agent 수 증가에 맞춰 |
 
