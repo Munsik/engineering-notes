@@ -3,6 +3,7 @@
 GET _health_report
 GET _cat/nodes?v&h=name,version,node.role,heap.percent,disk.used_percent
 GET _migration/deprecations
+GET kbn:/api/upgrade_assistant/status
 GET _migration/system_features
 GET _cat/plugins?v
 GET _cluster/settings?flat_settings=true

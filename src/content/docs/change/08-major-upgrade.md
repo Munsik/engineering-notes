@@ -72,13 +72,25 @@ SLM retention은 SLM이 만든 snapshot만 지웁니다. 수동으로 만든 sna
 
 ### Upgrade Assistant와 deprecation
 
-- 8.19 Kibana의 Upgrade Assistant로 critical 문제를 모두 해결합니다. 호환되지 않는 index가 있으면 9.x 노드가 시작하지 않습니다.
+- 8.19 Kibana의 Upgrade Assistant로 critical 문제를 모두 해결합니다. 호환되지 않는 index가 있으면 9.x 노드가 시작하지 않습니다. Upgrade Assistant는 Elasticsearch deprecation info API, Elasticsearch deprecation log, Kibana deprecations API 세 곳에서 문제를 모아 보여 주고, 외부 서비스에 의존하지 않아 폐쇄망에서도 씁니다([Upgrade Assistant](https://www.elastic.co/docs/deploy-manage/upgrade/prepare-to-upgrade/upgrade-assistant)).
 - 7.x 이전에 만든 index는 업그레이드 전에 reindex, 삭제, archive(read-only 처리) 중 하나로 정리합니다. 9.x에서는 archive 기능으로 snapshot에 있는 7.x 이하 index를 읽을 수도 있습니다([Reading indices from older versions](https://www.elastic.co/docs/deploy-manage/upgrade/deployment-or-cluster/reading-indices-from-older-elasticsearch-versions)).
 - reindex하면 index 이름이 바뀌므로 그 index를 쓰는 alert, transform, 코드도 같이 고쳐야 합니다.
 - deprecation log에서 애플리케이션이 9.x에서 지원되지 않거나 다르게 동작하는 기능을 쓰는지 봅니다. 목표 버전까지의 모든 9.x release의 breaking changes를 확인합니다.
 - Kibana, ML, Security 같은 기능의 system index도 새 메이저에 맞게 옮겨야 합니다. Upgrade Assistant의 system index 단계가 `GET _migration/system_features`로 상태를 보고 `POST _migration/system_features`로 옮깁니다. 이 API는 이럴 때 직접 씁니다. Upgrade Assistant 화면이 멈춘 것처럼 보일 때 어떤 기능이 `MIGRATION_NEEDED`, `IN_PROGRESS`, `ERROR`인지 확인할 때입니다.
 - 7.x에서 만든 backing index가 있는 data stream은 Upgrade Assistant가 reindex data stream API(`POST _migration/reindex`)로 정리합니다. 이 API는 설정과 mapping을 그대로 복사해 새 버전 index로 바꾸는 용도라 mapping 변경에는 쓰지 않습니다([04](../04-data-definitions/#type을-바꿔야-할-때)).
 - 이전 업그레이드에서 남은 archived setting이 있으면 지웁니다([Archived settings](https://www.elastic.co/docs/deploy-manage/upgrade/deployment-or-cluster/archived-settings)).
+
+변경 요청서나 점검 스크립트에 남길 때는 화면 대신 같은 정보를 API로 받습니다.
+
+```console
+# Elasticsearch 쪽 deprecation. 항목마다 level이 critical이면 업그레이드 전에 해결
+GET _migration/deprecations
+
+# Kibana 쪽까지 합친 준비 상태. readyForUpgrade가 false면 details에 남은 문제 수가 나옴
+GET kbn:/api/upgrade_assistant/status
+```
+
+`GET _migration/deprecations`의 응답은 `cluster_settings`, `node_settings`, `index_settings`, `data_streams`, `templates`, `ilm_policies`, `ml_settings`로 나뉩니다. 공식 문서는 이 API를 Upgrade Assistant가 쓰는 것으로 두고, 문제를 고칠 때는 Upgrade Assistant 화면을 쓰라고 권합니다([Get deprecation information](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-migration-deprecations)). API는 업그레이드 전후 상태를 기록으로 남기는 용도로 씁니다(해석). 두 요청 모두 9.5.5 lab에서 실행해 응답 구조를 확인했습니다. 8.19에서의 실제 항목은 확인하지 못했습니다.
 
 ### client
 

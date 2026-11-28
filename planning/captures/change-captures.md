@@ -46,7 +46,7 @@
 
 ## 캡처 결과(2026-11-28, ECH 9.5.5)
 
-- 17장을 반영했습니다. 17번(8.19 Upgrade Assistant)은 8.19 lab이 없어 넣지 않았습니다.
+- 17장을 반영했습니다. 17번(8.19 Upgrade Assistant)은 8.19 lab이 없어 캡처하지 않고, 08 본문에 같은 정보를 보는 API(`_migration/deprecations`, `upgrade_assistant/status`)를 넣는 것으로 대신했습니다.
 - 3번: 9.5 Index Templates 목록에는 priority 열이 없어 Managed 배지만 보이게 찍었습니다. priority는 4번 상세 화면에 나옵니다.
 - 6번: prebuilt rule 하나에 tag를 추가해 찍고, 원래 tag로 되돌렸습니다.
 - 7번: integration policy가 없는 lab이라 policy 자동 업그레이드 체크박스는 화면에 나오지 않았습니다.
