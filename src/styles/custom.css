@@ -155,3 +155,31 @@
 		display: inline;
 	}
 }
+
+/*
+ * "기준" block
+ * - By convention every page opens with :::note[기준] (version, date checked, lab setup) as its first aside.
+ * - It is reference information, so it is shown quietly: a grey rule and smaller text instead of a blue box.
+ * - Other asides keep the default Starlight style.
+ */
+.sl-markdown-content > aside.starlight-aside--note:first-of-type {
+	padding: 0.5rem 0 0.5rem 1rem;
+	border-inline-start: 3px solid var(--sl-color-gray-5);
+	background: transparent;
+	color: var(--sl-color-gray-2);
+	font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content > aside.starlight-aside--note:first-of-type .starlight-aside__title {
+	margin-bottom: 0.25rem;
+	color: var(--sl-color-gray-2);
+	font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content > aside.starlight-aside--note:first-of-type .starlight-aside__title svg {
+	display: none;
+}
+
+.sl-markdown-content > aside.starlight-aside--note:first-of-type li + li {
+	margin-top: 0.15rem;
+}
