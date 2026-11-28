@@ -7,8 +7,8 @@ sidebar:
 ---
 
 "로그는 들어오는데 필드가 비어 있다"는 문의는 대개 파싱 문제입니다.
-더 곤란한 경우는 파싱이 실패한 문서가 조용히 사라지는 것입니다. 건수가 맞지 않는데 오류 화면에는 아무것도 없습니다.
-이 글은 파싱을 어디서 할지 나누는 기준과, 실패한 문서가 어디로 가서 어떻게 보이는지를 정리합니다.
+더 곤란한 경우는 파싱에 실패한 문서가 흔적 없이 사라지는 경우입니다. 건수가 맞지 않는데 오류 화면에는 아무것도 없습니다.
+파싱 위치를 나누는 기준과, 파싱에 실패한 문서가 어디로 가고 어떻게 확인하는지를 봅니다.
 
 :::note[기준]
 - Elasticsearch, Fleet, Logstash 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -91,29 +91,29 @@ integration의 pipeline 자체를 고치면 integration을 업그레이드할 �
 | 기존 data stream | index template의 `data_stream_options`는 새로 만드는 data stream에만 적용. 8.x에서 올린 클러스터의 기존 `logs-*-*`는 꺼진 채로 남음 | `PUT _data_stream/<이름>/_options`로 직접 켬 |
 | 저장마저 실패 | failure store에도 쓰지 못하면(예: shard를 쓸 수 없음) 응답의 `failure_store`가 `failed`이고 원래 오류가 그대로 돌아옴 | 클라이언트 쪽 재시도와 오류 로그로 봄 |
 
-### 실패한 문서 되살리기
+### 실패한 문서 재처리
 
 failure store는 일반 index라서, 원인을 고친 뒤 실패 문서에서 원본을 꺼내 원래 data stream으로 다시 넣을 수 있습니다. 공식 문서의 절차를 따라 로컬 Elasticsearch 9.5.5에서 해 봤습니다([Using failure stores to address ingestion issues](https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store-recipes)).
 
-1. **failure store를 rollover합니다.** `POST <data stream>::failures/_rollover`. 되살리는 동안 새로 생기는 실패가 다른 index에 쌓여 섞이지 않습니다.
+1. **failure store를 rollover합니다.** `POST <data stream>::failures/_rollover`. 재처리하는 동안 새로 생기는 실패가 다른 index에 쌓여 섞이지 않습니다.
 2. **실패 종류를 나눕니다.** `error.pipeline`이 있으면 ingest pipeline에서 실패한 문서이고, pipeline을 거치기 전 원본이 남아 있습니다. 없으면 색인(mapping) 단계에서 실패한 문서이고, pipeline을 거친 뒤의 모습이 남아 있습니다. 공식 문서는 앞의 것은 pipeline을 다시 돌리고 뒤의 것은 pipeline을 건너뛰라고 권합니다.
-3. **되살리기 pipeline을 만듭니다.** `document.source`를 문서 최상위로 꺼내고 `error`, `document`를 지운 뒤, 잘못된 값을 고치고 원래 data stream으로 `reroute`합니다.
-4. **`_ingest/_simulate`로 먼저 확인합니다.** 결과 모양과, 이어서 실행되는 default pipeline까지(`executed_pipelines`) 다시 실패하지 않는지 봅니다.
+3. **재처리 pipeline을 만듭니다.** `document.source`를 문서 최상위로 꺼내고 `error`, `document`를 지운 뒤, 잘못된 값을 고치고 원래 data stream으로 `reroute`합니다.
+4. **`_ingest/_simulate`로 먼저 확인합니다.** 결과 형태와, 이어서 실행되는 default pipeline까지(`executed_pipelines`) 다시 실패하지 않는지 봅니다.
 5. **`_reindex`로 되돌립니다.** source는 `<data stream>::failures`와 시간 범위 query, dest는 원래 data stream과 `op_type: create`, `pipeline`입니다.
 
 | 단계 | 결과 |
 | --- | --- |
 | 보낸 문서 | 300건(정상 240, 객체 자리에 문자열이 온 mapping 실패 30, dissect 패턴이 맞지 않는 pipeline 실패 30) |
 | 적재 직후 | data stream 240건. failure store 60건(`document_parsing_exception` 30, `find_match` 30). 30건은 `error.pipeline` 없음 |
-| 원인 수정 | default pipeline의 dissect에 `ignore_failure`, 되살리기 pipeline에서 문자열 `response`를 `labels.response_raw`로 이름 변경 |
+| 원인 수정 | default pipeline의 dissect에 `ignore_failure`, 재처리 pipeline에서 문자열 `response`를 `labels.response_raw`로 이름 변경 |
 | reindex | 60건 모두 `created`, 실패 0 |
-| 되살린 뒤 | data stream 300건 |
+| 재처리 뒤 | data stream 300건 |
 
-실측에서 본 것입니다.
+실측 결과입니다.
 
 - `logs-*-*` data stream은 logsdb가 적용되어 `ignore_malformed`가 기본 `true`입니다. 숫자 필드에 `"12kb"` 같은 문자열이 와도 거부되지 않고 `_ignored`로 갔습니다. failure store로 가는 mapping 실패는 객체 자리에 문자열이 오는 것처럼 구조가 어긋날 때였습니다.
-- 이번에는 두 종류를 한 번에 되살렸습니다. 그래서 mapping 실패 문서도 default pipeline을 한 번 더 지났습니다. dissect가 다시 돌아도 결과가 같아서 문제가 없었지만, `append`처럼 두 번 돌면 값이 바뀌는 processor가 있으면 공식 문서대로 나눠서 처리합니다.
-- 되살린 뒤에도 failure store의 60건은 그대로 남습니다. [05](../05-count-reconciliation/#저장되지-않은-문서-세기)처럼 failure store 건수로 유실을 셀 때 이미 되살린 문서를 빼지 않으면 두 번 셉니다. 1번의 rollover로 되살린 범위를 index 단위로 구분해 두면 셀 때도 나누기 쉽습니다.
+- 이번에는 두 종류를 한 번에 재처리했습니다. 그래서 mapping 실패 문서도 default pipeline을 한 번 더 지났습니다. dissect가 다시 돌아도 결과가 같아서 문제가 없었지만, `append`처럼 두 번 돌면 값이 바뀌는 processor가 있으면 공식 문서대로 나눠서 처리합니다.
+- 재처리한 뒤에도 failure store의 60건은 그대로 남습니다. [05](../05-count-reconciliation/#저장되지-않은-문서-세기)처럼 failure store 건수로 유실을 셀 때 이미 되살린 문서를 빼지 않으면 두 번 셉니다. 1번의 rollover로 되살린 범위를 index 단위로 구분해 두면 셀 때도 나누기 쉽습니다.
 
 절차는 [`labs/ingest/failure-remediation/`](https://github.com/Munsik/engineering-notes/tree/main/labs/ingest/failure-remediation)에 있습니다.
 
@@ -139,7 +139,7 @@ FROM logs-*::failures
 | syslog 시각이 1년 어긋남 | RFC 3164 timestamp에 연도가 없음. 연말연시에 수신 시각의 연도를 붙이면 틀어짐 | 수신 시각과 비교해 미래면 연도를 하나 빼는 처리, 가능하면 장비를 RFC 5424로 |
 | 시각이 9시간 어긋남 | 장비가 timezone 없이 현지 시각을 보냄 | integration의 timezone 설정이나 `date` processor의 `timezone` |
 | 다중 행 stack trace가 여러 문서로 쪼개짐 | 수집 단계에서 다중 행을 묶지 않음 | Agent filestream의 multiline 설정. 파싱 단계에서는 되돌릴 수 없음 |
-| 숫자 필드가 비어 있음 | 일부 값이 숫자가 아니라 `ignore_malformed`로 버려짐 | `_ignored`로 찾고 원천 형식 확인 |
+| 숫자 필드가 비어 있음 | 일부 값이 숫자가 아니라 `ignore_malformed`로 버려짐 | `_ignored`로 찾고 소스 형식 확인 |
 | 긴 값이 검색되지 않음 | `ignore_above`(logsdb 기본 8191자)를 넘은 keyword | 필드 길이를 보고 매핑 조정 |
 
 Filebeat syslog input은 8.14에서 deprecated됐고, syslog processor로 바꾸라고 안내합니다([Filebeat syslog input](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-input-syslog)).
@@ -156,7 +156,7 @@ Filebeat syslog input은 8.14에서 deprecated됐고, syslog processor로 바꾸
 
 | 상황 | 권장 |
 | --- | --- |
-| integration이 있는 원천 | integration 그대로, 보완은 `@custom` |
+| integration이 있는 소스 | integration 그대로, 보완은 `@custom` |
 | integration이 없고 변환이 단순 | ingest pipeline(dissect 우선, 필요할 때만 grok) |
 | 외부 조회 enrich, 여러 출력 | Logstash |
 | 실패 문서를 잃으면 안 됨 | failure store 켜기(9.2 이후 `logs-*-*`는 기본). Logstash는 DLQ |

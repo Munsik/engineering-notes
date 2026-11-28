@@ -7,7 +7,7 @@ sidebar:
 ---
 
 장애가 나면 가장 먼저 하고 싶은 일은 노드 재시작입니다. 실제로 재시작으로 증상이 사라지는 경우도 많습니다. 문제는 그 순간 원인을 알려 줄 정보도 함께 사라진다는 것입니다. hot threads, 실행 중인 task, 메모리 상태는 재시작 뒤에는 다시 볼 수 없고, 같은 장애는 다음 주에 또 납니다.
-이 글은 01에서 09까지의 진단 절차를 장애 시간 순서로 묶은 runbook입니다. 아래 순서와 시간 배분은 제가 쓰는 방법입니다.
+아래는 01에서 09까지의 진단 절차를 장애 시간 순서로 묶은 runbook입니다. 아래 순서와 시간 배분은 제가 쓰는 방법입니다.
 
 :::note[기준]
 - Elasticsearch 9.x, self-managed 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -31,7 +31,7 @@ flowchart LR
 | 질문 | 확인 |
 | --- | --- |
 | 검색이 되나 | 대표 대시보드, 애플리케이션의 검색 요청 |
-| 적재가 되나 | 원천별 마지막 수신 시각([수집 06](../../ingest/06-flow-dashboard/)), 수집기 queue |
+| 적재가 되나 | 소스별 마지막 수신 시각([수집 06](../../ingest/06-flow-dashboard/)), 수집기 queue |
 | Kibana에 들어가지나 | 로그인, `.kibana`, `.security` 상태 |
 | 범위는 | 클러스터 전체, 특정 index, 특정 사용자 |
 | 언제부터 | 알림 시각, 모니터링 그래프가 꺾인 시각 |
@@ -72,12 +72,12 @@ GET _cluster/settings?flat_settings=true
 | health RED, YELLOW | [02. RED와 YELLOW](../02-red-yellow/) |
 | 노드가 재시작됨, 429 `circuit_breaking_exception` | [03. 노드 장애](../03-node-failure-triage/) |
 | 쓰기가 `read-only-allow-delete`로 실패 | [04. 디스크 부족](../04-disk-full/#read-only-풀기) |
-| 검색, 적재가 느림, 429 `es_rejected_execution_exception` | [05. 느려짐](../05-slow-cluster/) |
-| 특정 사용자, 대시보드 때문에 느림 | [06. 비싼 query](../06-expensive-queries/) |
+| 검색, 적재가 느림, 429 `es_rejected_execution_exception` | [05. 성능 저하](../05-slow-cluster/) |
+| 특정 사용자, 대시보드 때문에 느림 | [06. 무거운 query](../06-expensive-queries/) |
 | node-left 반복, master 교체, 503 `master_not_discovered_exception` | [07. 불안정한 클러스터](../07-unstable-cluster/) |
 | 클러스터는 정상인데 수집이 끊김 | [수집 컬렉션](../../ingest/), 특히 [03 무중단 수집](../../ingest/03-no-gap-ingest/)과 [05 건수 정합성](../../ingest/05-count-reconciliation/) |
 
-증상이 여러 개면 노드 구성부터 봅니다. 노드가 빠졌다 들어오기를 반복하는 동안에는 RED, 느려짐, 디스크 문제가 모두 따라 생기므로, 공식 문서도 master와 노드 구성이 안정된 뒤에 다른 문제를 풀라고 권합니다([Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster)).
+증상이 여러 개면 노드 구성부터 봅니다. 노드가 빠졌다 들어오기를 반복하는 동안에는 RED, 성능 저하, 디스크 문제가 모두 따라 생기므로, 공식 문서도 master와 노드 구성이 안정된 뒤에 다른 문제를 풀라고 권합니다([Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster)).
 
 ## 20에서 30분: 완화 조치
 
@@ -85,7 +85,7 @@ GET _cluster/settings?flat_settings=true
 
 | 순서 | 조치 | 되돌리기 |
 | --- | --- | --- |
-| 1 | 비싼 query 취소([06](../06-expensive-queries/#실행-중인-query를-찾아-취소하기)) | 필요 없음 |
+| 1 | 무거운 query 취소([06](../06-expensive-queries/#실행-중인-query를-찾아-취소하기)) | 필요 없음 |
 | 2 | 적재 속도를 수집기 쪽에서 줄임. 수집기 queue, Kafka가 받아 둠([수집 03](../../ingest/03-no-gap-ingest/)) | 수집기 설정 복원 |
 | 3 | 공간 확보(오래된 index 삭제, replica 임시 축소)([04](../04-disk-full/)) | replica 복원 |
 | 4 | 문제 노드에서 shard를 빼기(`cluster.routing.allocation.exclude._name`) | exclude 해제 |
@@ -96,7 +96,7 @@ GET _cluster/settings?flat_settings=true
 
 - 모든 노드를 한꺼번에 재시작하지 않습니다. 원인 정보가 모두 사라지고, 전체 재시작 절차를 따르지 않으면 recovery가 오래 걸립니다([08의 rolling restart](../08-recoverability/#rolling-restart)).
 - circuit breaker 한도를 올리지 않습니다. 429 대신 OOM으로 노드가 죽습니다([03](../03-node-failure-triage/#circuit-breaker-429)).
-- `allocate_empty_primary`, `allocate_stale_primary`를 서둘러 쓰지 않습니다. 데이터를 버리는 명령입니다. 노드를 되살릴 가능성이 남아 있으면 쓰지 않습니다([02](../02-red-yellow/#사본이-없을-때)).
+- `allocate_empty_primary`, `allocate_stale_primary`를 서둘러 쓰지 않습니다. 데이터를 버리는 명령입니다. 노드를 복구할 가능성이 남아 있으면 쓰지 않습니다([02](../02-red-yellow/#남은-복사본이-없을-때)).
 - data 디렉터리의 파일을 지우거나 옮기지 않습니다. 디스크를 비우는 것은 API로 합니다.
 - 바꾼 설정을 기록하지 않은 채 넘어가지 않습니다. rolling restart 뒤 `cluster.routing.allocation.enable`을 되돌리지 않아 YELLOW가 계속되는 일이 흔합니다.
 
@@ -124,7 +124,7 @@ curl -k -u recovery-admin https://<그 노드>:9200/_cluster/health
 | 로그 | 문제 노드와 elected master의 로그, GC 로그(장애 시각 앞뒤) |
 | 지금까지 한 조치 | 기록의 시각순 목록 |
 
-공식 문서도 지원 요청 전에 diagnostic을 먼저 만들어 두면 답을 받는 시간이 줄어든다고 적고 있습니다([Capture diagnostics](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnostic)). 시각은 진단 파일, 로그, 기록에서 같은 기준(UTC 권장)으로 맞춥니다.
+공식 문서도 지원 요청 전에 diagnostic을 먼저 만들어 두면 답을 받는 시간이 줄어든다고 설명합니다([Capture diagnostics](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnostic)). 시각은 진단 파일, 로그, 기록에서 같은 기준(UTC 권장)으로 맞춥니다.
 
 ## 사후 분석 양식
 
@@ -134,7 +134,7 @@ curl -k -u recovery-admin https://<그 노드>:9200/_cluster/health
 | --- | --- |
 | 요약 | 무엇이, 언제부터 언제까지, 얼마나 영향을 줬는지 세 문장 |
 | 타임라인 | 징후, 알림, 인지, 조치, 복구 시각 |
-| 직접 원인 | 노드 OOM, 디스크 95%, 비싼 query 같은 기술적 원인 |
+| 직접 원인 | 노드 OOM, 디스크 95%, 무거운 query 같은 기술적 원인 |
 | 근본 원인 | 그 상태가 되도록 둔 것. 보관 정책 없음, shard 과다, 보호 설정 없음 |
 | 잘 된 것, 안 된 것 | 알림이 제때 왔는지, 정보를 남겼는지, runbook이 맞았는지 |
 | 재발 방지 | 담당자와 기한이 있는 작업. [01의 점검표](../01-daily-checks/)나 알림 기준에 넣을 것 |

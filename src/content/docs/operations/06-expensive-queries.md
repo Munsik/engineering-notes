@@ -1,8 +1,8 @@
 ---
-title: "비싼 query로부터 클러스터를 어떻게 보호하는가"
-description: 사용자 한 명의 query가 클러스터 전체를 느리게 만드는 유형(큰 집계, 깊은 페이지, 앞이 열린 wildcard, script, runtime field)과 이를 막는 Elasticsearch, Kibana 설정, 실행 중인 query를 찾아 취소하는 절차, 같은 결과를 싸게 얻는 대안을 정리합니다.
+title: "무거운 query로부터 클러스터를 어떻게 보호하는가"
+description: 사용자 한 명의 query가 클러스터 전체를 느리게 만드는 유형(큰 집계, 깊은 페이지, 앞이 열린 wildcard, script, runtime field)과 이를 막는 Elasticsearch, Kibana 설정, 실행 중인 query를 찾아 취소하는 절차, 같은 결과를 더 가볍게 얻는 대안을 정리합니다.
 sidebar:
-  label: 06. 비싼 query
+  label: 06. 무거운 query
   order: 6
 ---
 
@@ -11,13 +11,13 @@ Elasticsearch는 이런 query를 기본으로 막지 않습니다. 막을지, �
 
 :::note[기준]
 - Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. 기능마다 GA 버전이 다른 경우는 본문에 적었습니다.
-- Serverless에서는 아래 클러스터 설정 대부분을 바꿀 수 없습니다. 이 글은 self-managed와 Elastic Cloud Hosted 기준입니다.
+- Serverless에서는 아래 클러스터 설정 대부분을 바꿀 수 없습니다. self-managed와 Elastic Cloud Hosted 기준으로 씁니다.
 - 명령 모음은 [`labs/operations/expensive-queries.console`](https://github.com/Munsik/engineering-notes/blob/main/labs/operations/expensive-queries.console)에 있습니다.
 :::
 
 ## 위험한 query 유형
 
-| 유형 | 왜 비싼가 | 대안 |
+| 유형 | 부담이 큰 이유 | 대안 |
 | --- | --- | --- |
 | 고유값이 많은 필드의 terms 집계, 큰 `size` | bucket마다 heap을 쓰고, keyword 필드는 global ordinals를 만듦 | composite 집계로 나눠 가져오기, 기간 줄이기 |
 | 깊은 페이지(`from` + `size`가 큼) | shard마다 `from + size`개를 모아 정렬 | `search_after`와 PIT |
@@ -72,8 +72,8 @@ PUT _cluster/settings
 - `search.allow_expensive_queries: false`는 해당 query를 실행하지 않고 설정 이름이 들어간 오류를 돌려줍니다. Kibana에서 wildcard 검색이나 runtime field를 쓰는 화면이 함께 막힐 수 있으므로 사용자에게 먼저 알립니다.
 - `search.default_search_timeout`은 요청에 `timeout`이 없을 때만 적용되고, 시간을 넘으면 task 취소 API로 요청을 취소합니다. 판정 해상도는 `thread_pool.estimated_time_interval`(기본 200ms)을 따르므로 200ms보다 짧은 값은 의미가 없습니다([The search API](https://www.elastic.co/docs/solutions/search/the-search-api#search-timeout)).
 - 요청 본문의 `timeout`은 shard마다 query 단계에 적용되고, 넘으면 부분 결과를 돌려줍니다. 요청 전체를 끝내는 장치가 아닙니다(같은 문서).
-- ES|QL의 `LIMIT`과 결과 상한은 돌려주는 행 수만 제한합니다. `WHERE`와 `STATS`는 대상 데이터 전체에서 돕니다. 상한이 있다고 비싼 ES|QL이 싸지지는 않습니다([ES|QL limitations](https://www.elastic.co/docs/reference/query-languages/esql/limitations)).
-- `index.max_result_window`를 올려 깊은 페이지를 허용하지 않습니다. 공식 문서도 이 값을 올리는 대신 `search_after`를 쓰라고 적고 있습니다.
+- ES|QL의 `LIMIT`과 결과 상한은 돌려주는 행 수만 제한합니다. `WHERE`와 `STATS`는 대상 데이터 전체에서 돕니다. 상한이 있다고 무거운 ES|QL이 가벼워지지는 않습니다([ES|QL limitations](https://www.elastic.co/docs/reference/query-languages/esql/limitations)).
+- `index.max_result_window`를 올려 깊은 페이지를 허용하지 않습니다. 공식 문서도 이 값을 올리는 대신 `search_after`를 쓰라고 설명합니다.
 
 bucket이 많은 집계는 `search.max_buckets`에 걸리기 전에 request circuit breaker에 먼저 걸리기도 합니다. 429 `[request]` breaker 오류의 원인을 좁히는 방법은 [03](../03-node-failure-triage/#circuit-breaker-429)에 있습니다.
 
@@ -116,9 +116,9 @@ POST _tasks/<node_id>:<task_id>/_cancel
 3. `cancellable`이 `true`인지 보고, child가 아닌 parent task를 취소합니다. 한 query가 task를 여러 개 만들기 때문입니다.
 4. `cancelled: true`는 취소 요청을 받았다는 뜻일 뿐입니다. 목록에서 사라질 때까지 다시 조회합니다. 사라지지 않으면 hot threads로 무엇이 멈춰 있는지 봅니다.
 
-task 목록은 지금 도는 작업의 snapshot입니다. 이미 끝난 query는 보이지 않으므로, 반복되는 비싼 query는 [05의 query logging이나 slow log](../05-slow-cluster/#느린-요청을-기록해-두기)로 찾습니다.
+task 목록은 지금 도는 작업의 snapshot입니다. 이미 끝난 query는 보이지 않으므로, 반복되는 무거운 query는 [05의 query logging이나 slow log](../05-slow-cluster/#느린-요청을-기록해-두기)로 찾습니다.
 
-## 같은 결과를 싸게 얻는 방법
+## 같은 결과를 더 가볍게 얻는 방법
 
 **고유값이 많은 필드의 전체 목록**은 composite 집계로 나눠 가져옵니다. 한 번에 정해진 수만큼 bucket을 받고 `after_key`로 다음 묶음을 요청합니다.
 
@@ -162,7 +162,7 @@ GET _search
 | --- | --- |
 | 새로 운영을 시작함 | `search.default_search_timeout`을 1분에서 5분 사이로, `search.max_buckets`는 기본값 유지 |
 | 사용자가 많은 로그 클러스터 | Kibana 대시보드 기본 시간 범위를 짧게, `histogram:maxBars` 기본값 유지 |
-| 같은 사용자의 비싼 query가 반복됨 | query logging으로 찾아 대안을 안내. 그래도 반복되면 `search.allow_expensive_queries: false` |
+| 같은 사용자의 무거운 query가 반복됨 | query logging으로 찾아 대안을 안내. 그래도 반복되면 `search.allow_expensive_queries: false` |
 | 앞이 열린 wildcard가 꼭 필요함 | 그 필드만 `wildcard` 타입으로 |
 | 지금 클러스터가 느림 | Query activity나 tasks API로 찾아 취소, 그다음 원인 query를 고침 |
 | breaker 한도를 올리자는 의견 | 올리지 않음. query를 고치거나 [03](../03-node-failure-triage/)의 heap 원인부터 |

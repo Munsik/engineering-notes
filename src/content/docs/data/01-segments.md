@@ -2,7 +2,7 @@
 title: "Shard 안의 Lucene: segment가 생기고 사라지기까지"
 description: shard 안에서 segment가 만들어지고, 검색 가능해지고, 디스크에 commit되고, 삭제 표시를 거쳐 사라지기까지를 Lucene 수준에서 따라가고 ECH 9.5.5 실측으로 확인합니다.
 sidebar:
-  label: 01. Segment의 생애
+  label: 01. Segment 생명주기
   order: 1
 ---
 
@@ -10,7 +10,7 @@ sidebar:
 문서를 넣었는데 바로 검색이 안 됩니다. update만 했는데 디스크가 늘어납니다. merge가 끝났는데도 용량이 그대로입니다. 재시작하면 shard가 늦게 올라옵니다.
 이 증상들은 모두 shard 안에서 segment가 어떻게 생기고 사라지는지로 설명됩니다. 이 구조를 모르면 `refresh_interval`, translog, force merge 같은 설정을 감으로 바꾸게 됩니다.
 
-이 글은 segment의 생애를 Lucene 수준에서 따라갑니다. merge와 force merge는 [다음 글](../02-merge-and-force-merge/)에서 다룹니다.
+segment가 생기고 사라지는 과정을 Lucene 수준에서 차례로 봅니다. merge와 force merge는 [다음 글](../02-merge-and-force-merge/)에서 다룹니다.
 
 :::note[기준]
 - Elasticsearch 9.5.5(Lucene 10.5.1) 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -85,7 +85,7 @@ POST segments-lab-refresh-off/_disk_usage?run_expensive_tasks=true
 | norms | 1.0MB | 1% | `message` |
 
 이 데이터에서는 원본 JSON인 `_source`가 전체의 3분의 2를 차지했습니다(실측).
-logsdb나 synthetic `_source`가 저장 공간을 크게 줄이는 이유가 여기 있습니다. 이 비교는 데이터 설계 컬렉션의 저장 용량 글에서 따로 다룰 예정입니다.
+logsdb나 synthetic `_source`가 저장 공간을 크게 줄이는 이유가 여기 있습니다. 비교 결과는 [03. 저장 용량 비교](../03-storage-footprint/)에 있습니다.
 
 ## 문서 하나가 검색되기까지
 
@@ -142,7 +142,7 @@ shard가 많을수록 buffer가 잘게 나뉘고, segment도 작아집니다. �
 
 ### translog와 flush
 
-Lucene은 commit할 때만 변경 내용을 디스크에 확실히 남깁니다. commit은 비싸서 요청마다 할 수 없습니다.
+Lucene은 commit할 때만 변경 내용을 디스크에 확실히 남깁니다. commit은 부담이 커서 요청마다 할 수 없습니다.
 그래서 Elasticsearch는 모든 index, delete 작업을 응답하기 전에 translog에 씁니다. 프로세스가 죽으면 마지막 commit 이후 작업을 translog에서 다시 실행해서 복구합니다([Translog settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/translog)).
 
 | 설정 | 기본값 | 의미 | 근거 |
@@ -240,7 +240,7 @@ segment는 고칠 수 없기 때문에 "지운다"는 것은 표시를 붙이는
 retention lease는 shard copy마다 하나씩 있었습니다. 마지막 update가 끝나고 15초 뒤에 보니 lease가 가장 최근 작업보다 9만 건 정도 뒤에 있었습니다(`retaining_seq_no` 1,110,000, `max_seq_no` 1,199,999). 그래도 `expunge_deletes_allowed: 0`으로 정리하자 삭제 문서가 모두 사라졌습니다.
 replica가 정상일 때는 lease가 공간 회수를 막지 않았습니다(실측). lease 때문에 공간이 안 돌아오는 경우는 replica가 내려가 있거나 CCR follower가 밀린 경우로 보면 됩니다. 결과 원본은 [`results/B_update_replica1.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/B_update_replica1.csv)에 있습니다.
 
-## Segment의 생애 한눈에 보기
+## Segment 생명주기 요약
 
 ```mermaid
 stateDiagram-v2
@@ -268,7 +268,7 @@ stateDiagram-v2
 
 아래는 제가 운영 점검 때 보는 순서입니다.
 
-| 확인할 것 | 요청 | 이상 신호 |
+| 확인할 것 | 요청 | 이상 징후 |
 | --- | --- | --- |
 | segment 수와 상태 | `GET _cat/segments/<index>?v&h=shard,prirep,segment,docs.count,docs.deleted,size,committed,searchable` | 같은 shard에 작은 segment가 수십 개 이상 계속 남아 있음 |
 | 삭제 문서 비율 | `GET _cat/indices/<index>?v&h=index,docs.count,docs.deleted,store.size` | Tiered 인덱스에서 `docs.deleted`가 `docs.count`의 20%를 넘는 상태가 오래 감. `@timestamp` 인덱스는 추세가 계속 오르는지 봄 |

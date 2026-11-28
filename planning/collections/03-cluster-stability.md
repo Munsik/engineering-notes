@@ -23,8 +23,8 @@
 | 02 | `operations/02-red-yellow.md` | 클러스터가 RED나 YELLOW일 때 무엇부터 보는가 | 징후, 장애 |
 | 03 | `operations/03-node-failure-triage.md` | 노드가 왜 죽었는지 어떻게 좁혀 가는가 | 장애 |
 | 04 | `operations/04-disk-full.md` | 디스크가 차면 무슨 일이 생기고 어떻게 푸는가 | 장애 |
-| 05 | `operations/05-slow-cluster.md` | 클러스터가 느려질 때 어디서 막혔는지 어떻게 찾는가 | 장애 |
-| 06 | `operations/06-expensive-queries.md` | 비싼 query로부터 클러스터를 어떻게 보호하는가 | 예방 |
+| 05 | `operations/05-slow-cluster.md` | 클러스터가 느려질 때 병목을 어떻게 찾는가 | 장애 |
+| 06 | `operations/06-expensive-queries.md` | 무거운 query로부터 클러스터를 어떻게 보호하는가 | 예방 |
 | 07 | `operations/07-unstable-cluster.md` | 노드가 클러스터에서 자꾸 빠질 때 | 장애 |
 | 08 | `operations/08-recoverability.md` | 노드 하나를 잃어도 데이터를 잃지 않으려면 | 복구 설계 |
 | 09 | `operations/09-offline-diagnostics.md` | 진단 파일을 밖으로 낼 수 없을 때 어떻게 점검하는가 | 점검 |
@@ -74,7 +74,7 @@
 - 범위: high CPU 진단(hot threads), thread pool rejection과 queue, task queue backlog(pending tasks, 오래 걸리는 task), hot spotting(데이터 컬렉션 04와 연결), slow log, search profiler, 클라이언트 쪽 원인(연결 재사용, timeout, TCP keepalive)
 - 근거: High CPU usage, Rejected requests, Task queue backlog, Hot spotting, Slow log, Troubleshooting searches
 
-## 3-6. 비싼 query로부터 보호 (06)
+## 3-6. 무거운 query로부터 보호 (06)
 
 상태: `발행` (기존 3-3)
 

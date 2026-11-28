@@ -7,7 +7,7 @@ sidebar:
 ---
 
 업그레이드는 계획을 세우고 승인을 받지만, 인증서 교체나 노드 교체는 "간단한 작업"으로 처리되곤 합니다. 그런데 인증서는 만료일에 갑자기 노드 간 통신을 끊고, master 후보 노드 두 대를 한꺼번에 빼면 클러스터가 master를 뽑지 못합니다.
-이 글은 버전을 바꾸지 않는 구성 변경을 종류별로 정리합니다.
+버전 업그레이드가 아닌 구성 변경도 종류마다 영향과 순서가 다릅니다.
 
 :::note[기준]
 - Elasticsearch 9.5.x, self-managed 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -152,7 +152,7 @@ API로 바꾸는 cluster settings는 바로 반영됩니다. 변경 관리에서
 role, role mapping, API key, service account token은 바꾸는 즉시 반영됩니다. 잘못 바꾸면 사용자와 수집기가 바로 권한을 잃습니다.
 
 - role을 바꾸기 전에 그 role을 쓰는 사용자, role mapping, API key를 찾습니다. API key는 만들 때의 권한을 key에 담기 때문에, role을 바꿔도 key의 권한이 함께 바뀌는지는 key 종류에 따라 다릅니다. 확인 필요.
-- API key의 만료를 정기적으로 봅니다. 수집기와 자동화가 쓰는 key가 만료되면 적재나 배포가 조용히 멈춥니다.
+- API key의 만료를 정기적으로 봅니다. 수집기와 자동화가 쓰는 key가 만료되면 적재나 배포가 경고 없이 멈춥니다.
 
 ```console
 GET _security/api_key?active_only=true&filter_path=api_keys.name,api_keys.expiration,api_keys.username

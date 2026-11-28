@@ -1,6 +1,6 @@
 ---
 title: "필드 수와 mapping은 어떻게 관리할 것인가"
-description: 필드 수가 heap과 master에 주는 비용, 필드 한도에 닿았을 때 standard, logsdb, failure store가 각각 어떻게 동작하는지, 이름에 값이 들어가는 필드를 다루는 법, template 계층과 integration 업그레이드 때의 매핑 충돌을 공식 문서와 Elasticsearch 9.5.5 실측으로 정리합니다.
+description: 필드 수가 heap과 master에 주는 비용, 필드 한도를 넘었을 때 standard, logsdb, failure store가 각각 어떻게 동작하는지, 이름에 값이 들어가는 필드를 다루는 법, template 계층과 integration 업그레이드 때의 매핑 충돌을 공식 문서와 Elasticsearch 9.5.5 실측으로 정리합니다.
 sidebar:
   label: 06. Mapping과 필드 수
   order: 6
@@ -10,7 +10,7 @@ sidebar:
 당장은 적재가 다시 되지만, 필드는 index를 만든 뒤에는 줄일 수 없습니다. 한도를 몇 번 올리다 보면 필드가 수만 개인 index가 수백 개 쌓이고, 그때부터는 heap과 master가 버티지 못합니다.
 필드가 왜 늘어나는지 보면 대개 원인은 데이터 쪽에 있습니다. 필드 이름에 ID나 UUID 같은 값이 들어가는 경우가 가장 흔합니다.
 
-이 글은 필드 하나가 무엇을 비싸게 만드는지, 한도에 닿으면 무슨 일이 생기는지, 필드 수를 처음부터 어떻게 묶어 두는지 정리합니다.
+필드 하나가 드는 비용, 한도를 넘었을 때 생기는 일, 필드 수를 처음부터 관리하는 방법을 차례로 봅니다.
 
 :::note[기준]
 - Elasticsearch 9.5.5 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -52,7 +52,7 @@ index 하나에 숫자 필드를 n개 가진 문서를 넣고, 노드의 `total_
 
 다른 사례에서는 Agent 9.4.3의 모니터링 데이터에 UUID가 든 필드 이름이 생겨 필드가 계속 늘었습니다. 한도를 3,000으로 올려도 곧바로 다시 찼습니다. 원인을 고치지 않고 한도만 올리면 같은 일이 반복됩니다.
 
-## 한도에 닿으면 무슨 일이 생기나
+## 한도를 넘으면 생기는 일
 
 한도가 1,000인 상태에서 키 1,200개를 가진 문서 하나를 세 가지 대상에 넣었습니다.
 
@@ -82,7 +82,7 @@ index 하나에 숫자 필드를 n개 가진 문서를 넣고, 노드의 `total_
 - 키에 wildcard를 쓸 수 없고, highlight가 안 됩니다.
 - 9.4부터 `properties`로 특정 키만 타입을 지정해 따로 매핑할 수 있습니다(같은 문서). 자주 쓰는 몇 개 키는 이렇게 살립니다.
 
-가장 좋은 해법은 구조를 바꾸는 것입니다. 값을 키에서 꺼내 `{"dataset_id": "<UUID>", "events": 12}`처럼 배열이나 별도 문서로 두면 필드 수가 고정됩니다. 원천을 바꿀 수 없을 때 ingest pipeline에서 이렇게 바꾸거나, `flattened`로 받습니다.
+가장 좋은 해법은 구조를 바꾸는 것입니다. 값을 키에서 꺼내 `{"dataset_id": "<UUID>", "events": 12}`처럼 배열이나 별도 문서로 두면 필드 수가 고정됩니다. 소스를 바꿀 수 없을 때 ingest pipeline에서 이렇게 바꾸거나, `flattened`로 받습니다.
 
 ## Mapper 수를 줄이는 설정
 
@@ -97,7 +97,7 @@ index 하나에 숫자 필드를 n개 가진 문서를 넣고, 노드의 `total_
 
 ## Template 계층과 이름
 
-설정을 어디에 넣느냐에 따라 integration 업그레이드 때 살아남는지가 갈립니다.
+설정을 어디에 넣느냐에 따라 integration 업그레이드 뒤에도 유지되는지가 갈립니다.
 
 - Elasticsearch 내장 template(`logs-*-*`, `metrics-*-*` 등)의 priority는 100이고, Fleet integration이 만드는 template은 200까지 씁니다. Fleet을 쓰는 클러스터에서 이 패턴에 직접 index template을 만들면 integration template을 덮어쓸 수 있습니다([Templates](https://www.elastic.co/docs/manage-data/data-store/templates)).
 - 그래서 integration data stream의 설정과 매핑은 `@custom` component template에 넣습니다. 범위별로 세 가지가 있습니다([Data streams](https://www.elastic.co/docs/reference/fleet/data-streams)).

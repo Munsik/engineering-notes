@@ -113,7 +113,7 @@ detector가 여러 개인 job은 독립된 single metric job 여러 개를 한 �
 | 장애 영향 | 한 job이 멈춰도 나머지는 그대로 돕니다. | job이 멈추거나 메모리 한도에 걸리면 모든 detector가 같이 영향을 받습니다. |
 
 :::note[forecast와 population detector, 직접 해 본 결과]
-API 문서는 `over_field_name`이 있는 job에 forecast를 요청하면 에러가 난다고 적고 있습니다.
+API 문서는 `over_field_name`이 있는 job에 forecast를 요청하면 에러가 난다고 설명합니다.
 9.5.5(Elastic Cloud Hosted)에서 확인해 보니 조금 달랐습니다.
 
 - population detector만 있는 job(`url_scanning`)은 `Forecast is not supported for population analysis` 에러가 납니다.

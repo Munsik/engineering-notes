@@ -1,6 +1,6 @@
 ---
 title: "수집기가 멈춰도 로그가 끊기지 않게 하려면"
-description: Logstash와 Elastic Agent에 clustering이 없다는 전제에서, 원천의 성격별로 끊김이 생기는 지점을 나누고 송신 측 부하 분산, L4 부하 분산, Kafka 분리, persistent queue, 순차 업그레이드로 무중단 수집을 구성하는 방법을 정리합니다.
+description: Logstash와 Elastic Agent에 clustering이 없다는 전제에서, 소스의 성격별로 끊김이 생기는 지점을 나누고 송신 측 부하 분산, L4 부하 분산, Kafka 분리, persistent queue, 순차 업그레이드로 무중단 수집을 구성하는 방법을 정리합니다.
 sidebar:
   label: 03. 무중단 수집
   order: 3
@@ -8,7 +8,7 @@ sidebar:
 
 수집기를 업그레이드하거나 설정을 바꿀 때마다 몇 분씩 로그가 비는 환경이 많습니다.
 보안 관제나 감사 요구사항은 "무중단"인데, Logstash도 Elastic Agent도 여러 대를 하나로 묶는 clustering 기능이 없습니다. "Logstash를 cluster로 묶어 달라"는 요구는 기능으로는 풀 수 없고, 구성으로 풀어야 합니다.
-이 글은 끊김이 어디서 생기는지부터 나누고, 원천의 성격에 맞는 구성 패턴과 업그레이드 절차를 정리합니다.
+끊김이 생기는 지점부터 나누고, 소스 특성에 맞는 구성 패턴과 업그레이드 절차를 봅니다.
 
 :::note[기준]
 - Elastic Agent, Fleet, Logstash 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -17,13 +17,13 @@ sidebar:
 
 ## 끊김은 어디서 생기나
 
-수집기가 멈췄을 때 데이터가 어떻게 되는지는 수집기보다 원천이 결정합니다.
+수집기가 멈췄을 때 데이터가 어떻게 되는지는 수집기보다 소스가 결정합니다.
 
-| 원천의 성격 | 예 | 수집기가 멈추면 |
+| 소스의 성격 | 예 | 수집기가 멈추면 |
 | --- | --- | --- |
-| 원천이 데이터를 들고 있음 | 파일, 클라우드 큐(S3+SQS 등), API 폴링, Kafka | 수집기가 다시 시작하면 마지막 위치부터 다시 읽음. 원천의 보존 기간 안이면 유실 없음 |
+| 소스가 데이터를 들고 있음 | 파일, 클라우드 큐(S3+SQS 등), API 폴링, Kafka | 수집기가 다시 시작하면 마지막 위치부터 다시 읽음. 소스의 보존 기간 안이면 유실 없음 |
 | 송신 측이 ack를 받고 다시 보냄 | Agent → Logstash, Agent → Elasticsearch | 송신 측이 ack를 못 받은 이벤트를 다시 보냄. 유실은 없고 중복이 생길 수 있음 |
-| 원천이 밀어 넣고 끝 | TCP, UDP syslog, HTTP push | 수집기가 멈춘 동안 들어온 데이터는 받을 곳이 없음 |
+| 소스가 밀어 넣고 끝 | TCP, UDP syslog, HTTP push | 수집기가 멈춘 동안 들어온 데이터는 받을 곳이 없음 |
 
 여기에 수집기 내부에 쌓여 있던 이벤트가 있습니다. memory queue에 있던 이벤트는 프로세스가 죽으면 사라지고, 앞 단계가 다시 보내 주지 않으면 그대로 유실됩니다.
 
@@ -35,7 +35,7 @@ sidebar:
 
 ```mermaid
 flowchart LR
-    subgraph R["원천"]
+    subgraph R["소스"]
         F["파일, 큐, API"]
         P["TCP, UDP, HTTP push"]
     end
@@ -52,12 +52,12 @@ flowchart LR
 
 ## 구성 패턴
 
-| 패턴 | 맞는 원천 | 한 대가 멈추면 | 비용 |
+| 패턴 | 맞는 소스 | 한 대가 멈추면 | 비용 |
 | --- | --- | --- | --- |
 | 1. 송신 측 부하 분산 | Agent → Logstash | Agent가 다른 Logstash로 다시 보냄. 중복 가능 | Logstash 2대 이상 |
-| 2. L4 부하 분산 | TCP, HTTP push | LB가 health check로 빼고 새 연결을 다른 노드로. 끊긴 연결의 미전송분은 원천의 재연결 동작에 달림 | LB 이중화(VIP) |
-| 3. Kafka로 분리 | push 원천, 처리 계층을 자주 바꾸는 환경 | 처리 계층은 자유롭게 재시작. 수신 계층은 패턴 2로 이중화 | Kafka 운영 |
-| 4. 원천 보존 활용 | 파일, 큐 | 다시 시작하면 이어서 읽음 | 로그 회전, 큐 보존 기간을 수집기 정지 시간보다 길게 |
+| 2. L4 부하 분산 | TCP, HTTP push | LB가 health check로 빼고 새 연결을 다른 노드로. 끊긴 연결의 미전송분은 소스의 재연결 동작에 달림 | LB 이중화(VIP) |
+| 3. Kafka로 분리 | push 소스, 처리 계층을 자주 바꾸는 환경 | 처리 계층은 자유롭게 재시작. 수신 계층은 패턴 2로 이중화 | Kafka 운영 |
+| 4. 소스 보존 활용 | 파일, 큐 | 다시 시작하면 이어서 읽음 | 로그 회전, 큐 보존 기간을 수집기 정지 시간보다 길게 |
 
 ### 출력을 바꿀 때: 수정과 교체는 다르다
 
@@ -72,9 +72,9 @@ flowchart LR
 
 - 정책에 새 출력을 할당하면 Agent는 그 출력에 연결된 integration을 모두 지우고 다시 만듭니다. 새 출력에는 새 UUID가 붙습니다.
 - UUID가 바뀌면서 수집 위치를 기록하는 registry가 새로 만들어집니다. 그래서 Agent가 수집하도록 설정된 이벤트와 로그를 다시 보냅니다.
-- 출력을 바꿔야 한다면 새 출력을 만드는 것보다 기존 출력을 수정하는 편이 낫습니다. 예로, 고정 IP를 같은 클러스터를 가리키는 global load balancer로 바꿀 때 새 출력으로 바꾸면 다시 수집되고, 기존 출력을 수정하면 다시 수집되지 않는다고 적고 있습니다.
+- 출력을 바꿔야 한다면 새 출력을 만드는 것보다 기존 출력을 수정하는 편이 낫습니다. 예로, 고정 IP를 같은 클러스터를 가리키는 global load balancer로 바꿀 때 새 출력으로 바꾸면 다시 수집되고, 기존 출력을 수정하면 다시 수집되지 않는다고 설명합니다.
 
-다시 수집되는 양은 원천에 남아 있는 만큼입니다. 호스트마다 30일치 로그가 디스크에 있다면, 출력을 바꾼 정책의 Agent가 그 30일치를 거의 동시에 다시 보냅니다. 정책 변경은 그 정책의 Agent에 거의 동시에 퍼지기 때문입니다([08](../08-fleet-at-scale/#fleet-구조-정책-revision-check-in)). 수집 계층과 Elasticsearch에 부하가 몰리고, 저장 단계에서는 중복이 됩니다.
+다시 수집되는 양은 소스에 남아 있는 만큼입니다. 호스트마다 30일치 로그가 디스크에 있다면, 출력을 바꾼 정책의 Agent가 그 30일치를 거의 동시에 다시 보냅니다. 정책 변경은 그 정책의 Agent에 거의 동시에 퍼지기 때문입니다([08](../08-fleet-at-scale/#fleet-구조-정책-revision-check-in)). 수집 계층과 Elasticsearch에 부하가 몰리고, 저장 단계에서는 중복이 됩니다.
 
 판단은 이렇게 나눕니다.
 
@@ -155,11 +155,11 @@ lab에서 이 구성으로 Logstash 한 대를 멈춰 봤습니다. 수신 Agent
 | `lab-ls-01` 정지 5분 | 0 | 약 1,850 | 약 10만 5천 |
 | `lab-ls-01` 재시작 후 | 약 900 | 약 900 | 약 10만 5천 |
 
-남은 한 대가 곧바로 두 배를 받아 저장량이 꺼지지 않았습니다. 순번으로 세어 본 중복은 0건이었습니다. `docker compose stop`은 Logstash에 종료 신호를 보내 처리 중인 batch를 마무리하게 하므로, 프로세스가 갑자기 죽는 경우보다 중복이 덜 생기는 조건입니다. 저장량이 송신량(분당 12만 건)보다 적은 것은 UDP 구간의 유실이고, [04](../04-syslog-udp/#lab에서-본-것)에서 다룹니다.
+남은 한 대가 곧바로 두 배를 받아 저장량이 줄지 않았습니다. 순번으로 세어 본 중복은 0건이었습니다. `docker compose stop`은 Logstash에 종료 신호를 보내 처리 중인 batch를 마무리하게 하므로, 프로세스가 갑자기 죽는 경우보다 중복이 덜 생기는 조건입니다. 저장량이 송신량(분당 12만 건)보다 적은 것은 UDP 구간의 유실이고, [04](../04-syslog-udp/#lab에서-본-것)에서 다룹니다.
 
-### 패턴 2: TCP, HTTP 원천 앞에 L4 부하 분산
+### 패턴 2: TCP, HTTP 소스 앞에 L4 부하 분산
 
-원천이 밀어 넣는 경우, 원천에 수신기 주소를 여러 개 줄 수 없으면 앞에 부하 분산기를 둡니다. 공식 문서도 HAProxy 같은 부하 분산기로 Logstash 그룹에 나눠 보내라고 권합니다(같은 문서).
+소스가 밀어 넣는 경우, 소스에 수신기 주소를 여러 개 줄 수 없으면 앞에 부하 분산기를 둡니다. 공식 문서도 HAProxy 같은 부하 분산기로 Logstash 그룹에 나눠 보내라고 권합니다(같은 문서).
 
 ```text
 frontend syslog_tcp
@@ -175,10 +175,10 @@ backend logstash_syslog
     server ls2 10.0.0.12:6514 check inter 2s fall 2 rise 3
 ```
 
-부하 분산기를 넣을 때 알아 둘 것입니다.
+부하 분산기를 넣을 때 주의할 점입니다.
 
-- **연결 단위로 나뉩니다.** 방화벽처럼 TCP 연결 하나를 오래 유지하는 원천은 처음 붙은 노드에 계속 머뭅니다. 원천 수가 적으면 부하가 고르게 나뉘지 않습니다.
-- **노드를 뺄 때는 연결을 먼저 비웁니다.** 부하 분산기에서 해당 노드를 drain 상태로 바꾸고, 원천이 다른 노드로 다시 붙은 것을 확인한 뒤 멈춥니다. 바로 멈추면 그 노드에 붙어 있던 연결의 송신 버퍼에 있던 데이터를 잃을 수 있습니다.
+- **연결 단위로 나뉩니다.** 방화벽처럼 TCP 연결 하나를 오래 유지하는 소스는 처음 붙은 노드에 계속 머뭅니다. 소스 수가 적으면 부하가 고르게 나뉘지 않습니다.
+- **노드를 뺄 때는 연결을 먼저 비웁니다.** 부하 분산기에서 해당 노드를 drain 상태로 바꾸고, 소스가 다른 노드로 다시 붙은 것을 확인한 뒤 멈춥니다. 바로 멈추면 그 노드에 붙어 있던 연결의 송신 버퍼에 있던 데이터를 잃을 수 있습니다.
 - **부하 분산기도 이중화합니다.** keepalived 같은 VIP 구성이 없으면 장애점이 Logstash에서 부하 분산기로 옮겨 갈 뿐입니다.
 
 ### 패턴 3: Kafka로 수신과 처리를 나누기
@@ -209,7 +209,7 @@ flowchart LR
 Kafka output에서 유실과 관련된 설정은 세 가지입니다.
 
 - ACK reliability는 기본값 Wait for local commit 대신 Wait for all replicas to commit으로 둡니다. 기본값은 leader가 기록하면 ack를 받으므로, replica에 복제되기 전에 leader가 죽으면 그 이벤트를 잃을 수 있습니다. Do not wait는 오류가 나도 조용히 잃습니다.
-- Default topic은 처음에는 하나로 둡니다. 원천별로 보존 기간이나 처리량이 크게 다르면 `data_stream.dataset` 기준으로 나눕니다. 토픽을 나누면 뒷단 integration의 Topics 목록도 같이 늘려야 합니다.
+- Default topic은 처음에는 하나로 둡니다. 소스별로 보존 기간이나 처리량이 크게 다르면 `data_stream.dataset` 기준으로 나눕니다. 토픽을 나누면 뒷단 integration의 Topics 목록도 같이 늘려야 합니다.
 - Kafka의 `log.message.timestamp.type`은 기본값 CreateTime 대신 LogAppendTime으로 둡니다. Agent는 Kafka 메시지 시각에 이벤트의 원래 시각을 넣습니다. 그래서 보존 기간보다 오래된 이벤트(예: 밀려 있던 파일 로그)는 Kafka에 들어오자마자 지워집니다. Kafka 3.6부터는 시각 차이가 크면 아예 거부될 수도 있습니다.
 
 ACK reliability와 timestamp 동작은 [Kafka output settings](https://www.elastic.co/docs/reference/fleet/kafka-output-settings) 기준입니다. timestamp는 Agent 설정이 아니라 Kafka broker나 topic 설정이라 Kafka 운영 쪽과 같이 정합니다.
@@ -296,11 +296,11 @@ input {
 
 어느 구성이든 Kafka 보존 기간은 소비 계층이 멈출 수 있는 최대 시간보다 길게 잡습니다.
 
-### 패턴 4: 원천의 보존을 버퍼로 쓰기
+### 패턴 4: 소스의 보존을 버퍼로 쓰기
 
 파일 로그는 수집기가 멈춰도 디스크에 남아 있고, Agent는 다시 시작하면 기록해 둔 위치부터 읽습니다. 이 경우 "무중단"의 조건은 수집기가 아니라 로그 회전 정책입니다. 수집기가 멈춰 있는 동안 회전으로 파일이 지워지면 그 부분은 잃습니다. 업그레이드나 장애로 수집기가 멈출 수 있는 최대 시간보다 로그 보존을 길게 둡니다.
 
-"기록해 둔 위치"는 파일을 무엇으로 알아보느냐(file identity)에 달려 있습니다. 9.x의 filestream은 기본으로 파일 앞부분 1024 byte의 hash(fingerprint)로 파일을 알아봅니다. inode를 다시 쓰는 경우에도 같은 파일로 착각하지 않게 하려는 것입니다([filestream input](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-input-filestream)). 이 방식 때문에 생기는 동작을 알아 둡니다.
+"기록해 둔 위치"는 파일을 무엇으로 식별하느냐(file identity)에 달려 있습니다. 9.x의 filestream은 기본으로 파일 앞부분 1024 byte의 hash(fingerprint)로 파일을 알아봅니다. inode를 다시 쓰는 경우에도 같은 파일로 착각하지 않게 하려는 것입니다([filestream input](https://www.elastic.co/docs/reference/beats/filebeat/filebeat-input-filestream)). 이 방식 때문에 생기는 동작을 알아 둡니다.
 
 | 상황 | 동작 | 근거와 대응 |
 | --- | --- | --- |
@@ -331,7 +331,7 @@ queue.max_bytes: 50gb
 queue.checkpoint.writes: 1
 ```
 
-PQ를 쓸 때 알아 둘 것입니다.
+PQ를 쓸 때 주의할 점입니다.
 
 - **PQ는 그 노드에만 있습니다.** 노드가 멈추면 그 안의 이벤트는 노드가 돌아올 때까지 처리되지 않습니다. 다른 노드가 이어받지 못합니다. 그래서 PQ는 이중화가 아니라 "그 노드가 잠시 멈췄다 다시 올 때 잃지 않게" 하는 장치입니다.
 - **at-least-once를 원하면 `queue.checkpoint.writes: 1`을 씁니다.** 공식 문서가 권하는 값이고, 디스크 쓰기가 늘어납니다([Deploying and scaling Logstash](https://www.elastic.co/docs/reference/logstash/deploying-scaling-logstash)).
@@ -355,7 +355,7 @@ PQ 크기 산정은 [07](../07-collector-sizing/#persistent-queue-디스크)에�
 
 ### Agent
 
-- Fleet 업그레이드는 대상이 10대 이상이면 rollout 기간이 자동으로 붙어 나눠서 진행됩니다. 기간은 10분과 `대수 x 0.03`초 중 큰 값입니다. 유지 보수 시간 창을 직접 지정할 수도 있습니다([Upgrade Elastic Agents](https://www.elastic.co/docs/reference/fleet/upgrade-elastic-agent)).
+- Fleet 업그레이드는 대상이 10대 이상이면 rollout 기간이 자동으로 붙어 나눠서 진행됩니다. 기간은 10분과 `대수 x 0.03`초 중 큰 값입니다. 유지 보수 시간대을 직접 지정할 수도 있습니다([Upgrade Elastic Agents](https://www.elastic.co/docs/reference/fleet/upgrade-elastic-agent)).
 - 업그레이드하는 동안 Agent는 다시 시작합니다. 파일 입력은 이어서 읽지만, 그 Agent가 받던 TCP, UDP 수신은 그동안 멈춥니다. 수신 전용 Agent는 두 대 이상을 두고 한 대씩 업그레이드합니다.
 - 9.3부터는 Fleet 관리 Agent의 업그레이드를 되돌릴 수 있습니다(구독 등급 조건)(같은 문서).
 
@@ -366,7 +366,7 @@ Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 �
 
 ## 운영
 
-- 수집 계층의 끊김은 대개 건수가 줄어드는 것으로 먼저 보입니다. 원천별 마지막 수신 시각과 단계별 처리량을 [06](../06-flow-dashboard/)의 대시보드로 봅니다.
+- 수집 계층의 끊김은 대개 건수가 줄어드는 것으로 먼저 보입니다. 소스별 마지막 수신 시각과 단계별 처리량을 [06](../06-flow-dashboard/)의 대시보드로 봅니다.
 - Agent 내장 알림 규칙의 "High pipeline queue"(queue 사용률 90% 초과)와 "Dropped events"(drop 비율 5% 이상)를 켭니다. 9.2부터 GA이고, 구독 등급에 따라 제공됩니다([Elastic Agent built-in alerts](https://www.elastic.co/docs/reference/fleet/alert-templates)).
 - PQ 사용량(`queue_backpressure`, queue 크기)이 계속 늘면 출력 쪽, 대개 Elasticsearch가 받는 속도가 모자란 것입니다.
 
@@ -380,7 +380,7 @@ Fleet Server가 멈춰도 Agent의 데이터 전송은 계속됩니다. 정책 �
 | TCP syslog, HTTP push | L4 부하 분산(VIP) + 수신기 2대 이상. 노드는 drain 후 정지 |
 | 처리 계층을 자유롭게 멈추고 바꿔야 하는 환경 | 수신 Agent → Kafka → 소비 Agent. 모두 Fleet으로 관리. Logstash는 ingest pipeline으로 안 되는 변환이 필요할 때만 |
 | Elasticsearch 장애를 수집 계층에서 버텨야 함 | Logstash PQ. 크기는 버틸 시간 기준으로 |
-| UDP만 되는 원천 | [04](../04-syslog-udp/)의 구성 |
+| UDP만 되는 소스 | [04](../04-syslog-udp/)의 구성 |
 
 ## 참고 문서
 

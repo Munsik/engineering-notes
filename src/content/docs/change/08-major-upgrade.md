@@ -1,5 +1,5 @@
 ---
-title: 메이저 업그레이드는 되돌릴 수 없다는 전제로
+title: 롤백할 수 없다는 전제로 준비하는 메이저 업그레이드
 description: 8.x에서 9.x로 올리는 메이저 업그레이드를 되돌릴 수 없다는 전제에서 계획합니다. 되돌릴 수 없는 이유와 공식 근거, 롤백 대안 비교, 업그레이드 전용 snapshot, 준비 절차, 구성 요소 순서, 업그레이드 당일 확인, Kibana 롤백, 업그레이드 뒤 관찰과 patch 버전 선택을 정리합니다.
 sidebar:
   label: 08. 메이저 업그레이드
@@ -7,7 +7,7 @@ sidebar:
 ---
 
 "문제가 생기면 이전 버전으로 돌아갈 수 있습니까?" 업그레이드 승인 회의에서 거의 반드시 나오는 질문입니다. 정직한 답은 "그대로는 돌아갈 수 없습니다"입니다. 그래서 롤백 계획은 "이전 버전으로 되돌리기"가 아니라 "이전 버전의 새 클러스터로 서비스를 옮기기"로 세워야 하고, 그 사이에 쌓인 데이터를 어떻게 할지까지 정해야 합니다.
-이 글은 그 전제에서 메이저 업그레이드를 계획하는 방법을 정리합니다. 마이너 업그레이드에도 대부분 그대로 적용됩니다.
+아래 절차는 이 전제에서 출발합니다. 마이너 업그레이드에도 대부분 그대로 적용됩니다.
 
 :::note[기준]
 - 8.19.x에서 9.5.x로 올리는 self-managed 업그레이드 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. ECH, ECE, ECK는 다른 점만 적었습니다.
@@ -30,16 +30,16 @@ sidebar:
 
 | 방법 | 절차 | 업그레이드 뒤 쌓인 데이터 | 비용 |
 | --- | --- | --- | --- |
-| 업그레이드 전 snapshot 복원 | 이전 버전으로 새 클러스터를 만들고 snapshot 복원 | 잃음. 원천에서 다시 넣어야 함 | 복원 시간 동안 서비스 중단. 클러스터 하나분 하드웨어(임시) |
-| 원천 재처리 | 위 복원 뒤 Kafka 같은 메시지 큐의 offset을 업그레이드 시점으로 되돌려 다시 적재 | 복구됨. 큐 보관 기간 안에서만 | 큐가 있어야 함. 재적재 시간 |
+| 업그레이드 전 snapshot 복원 | 이전 버전으로 새 클러스터를 만들고 snapshot 복원 | 잃음. 소스에서 다시 넣어야 함 | 복원 시간 동안 서비스 중단. 클러스터 하나분 하드웨어(임시) |
+| 소스 재처리 | 위 복원 뒤 Kafka 같은 메시지 큐의 offset을 업그레이드 시점으로 되돌려 다시 적재 | 복구됨. 큐 보관 기간 안에서만 | 큐가 있어야 함. 재적재 시간 |
 | 병행 클러스터(blue/green) | 새 버전 클러스터를 따로 만들고 수집 계층에서 양쪽에 함께 씀. 검증 뒤 전환 | 양쪽에 있음 | 하드웨어 두 배, 이중 적재 구성 |
 | Logstash로 새 데이터를 이전 클러스터에 복사 | 업그레이드 뒤 9.x의 데이터를 Logstash `elasticsearch` input으로 읽어 8.19 클러스터에 output으로 씀 | 복구됨. `_source`가 있어야 함 | 복사 시간. 이전 클러스터를 계속 유지해야 함 |
 | CCR로 이전 버전 follower 유지 | 불가 | | follower 클러스터는 leader와 같거나 더 새 버전이어야 함([CCR version compatibility](https://www.elastic.co/docs/deploy-manage/tools/cross-cluster-replication)) |
 | VM이나 디스크 snapshot으로 되돌리기 | 지원하지 않음 | | 공식 문서는 snapshot만이 신뢰할 수 있고 지원되는 백업 방법이며, 파일 시스템 수준의 복사본에서 복원하는 방법은 지원하지 않는다고 명시함. 노드를 멈추고 복사하거나 원자적인 파일 시스템 snapshot을 써도 마찬가지 |
 
-Logstash 방식은 8.19의 Logstash가 9.x Elasticsearch와 호환된다는 점에 기댑니다. 공식 문서는 8.19의 Agent, Beats, Logstash가 모든 9.x Elasticsearch와 호환된다고 적고 있습니다([Prepare to upgrade](https://www.elastic.co/docs/deploy-manage/upgrade/prepare-to-upgrade#prepare-upgrade-from-8.x)). 그래서 8.19 Logstash 하나로 9.x에서 읽고 8.19에 쓸 수 있습니다. 다만 이것은 롤백 전용 공식 절차가 아니라 호환 범위를 이용한 방법이므로, 리허설에서 반드시 시험합니다. 이전 클러스터의 template과 mapping이 새 데이터를 받을 수 있어야 하고, 9.x에서 새로 생긴 필드나 type은 8.19에서 받지 못할 수 있습니다.
+Logstash 방식은 8.19의 Logstash가 9.x Elasticsearch와 호환된다는 점에 기댑니다. 공식 문서는 8.19의 Agent, Beats, Logstash가 모든 9.x Elasticsearch와 호환된다고 설명합니다([Prepare to upgrade](https://www.elastic.co/docs/deploy-manage/upgrade/prepare-to-upgrade#prepare-upgrade-from-8.x)). 그래서 8.19 Logstash 하나로 9.x에서 읽고 8.19에 쓸 수 있습니다. 다만 이것은 롤백 전용 공식 절차가 아니라 호환 범위를 이용한 방법이므로, 리허설에서 반드시 시험합니다. 이전 클러스터의 template과 mapping이 새 데이터를 받을 수 있어야 하고, 9.x에서 새로 생긴 필드나 type은 8.19에서 받지 못할 수 있습니다.
 
-현장에서 롤백 계획을 승인받은 조합은 대개 "업그레이드 전 snapshot 복원 + 원천 재처리"였습니다. 수집 계층에 Kafka가 있으면 업그레이드 시점의 offset을 기록해 두는 것만으로 롤백 비용이 크게 줄어듭니다([수집 03](../../ingest/03-no-gap-ingest/)). 큐가 없고 업그레이드 뒤 데이터도 잃으면 안 된다면 병행 클러스터나 Logstash 방식을 검토합니다.
+현장에서 롤백 계획을 승인받은 조합은 대개 "업그레이드 전 snapshot 복원 + 소스 재처리"였습니다. 수집 계층에 Kafka가 있으면 업그레이드 시점의 offset을 기록해 두는 것만으로 롤백 비용이 크게 줄어듭니다([수집 03](../../ingest/03-no-gap-ingest/)). 큐가 없고 업그레이드 뒤 데이터도 잃으면 안 된다면 병행 클러스터나 Logstash 방식을 검토합니다.
 
 ## 업그레이드 전용 snapshot
 
@@ -133,7 +133,7 @@ Kibana는 Elasticsearch 다음에 같은 버전으로 올립니다. rolling upgr
 
 ## 업그레이드 당일
 
-1. 변경 창 시작 전에 maintenance window를 켭니다([02](../02-change-process/#알림-억제)).
+1. 작업 시간 시작 전에 maintenance window를 켭니다([02](../02-change-process/#알림-억제)).
 2. 사전 점검(GREEN, 진행 중 recovery 없음, 디스크 여유)을 확인합니다.
 3. 업그레이드 전용 snapshot을 만들고 성공을 확인합니다.
 4. 수집 계층에 큐가 있으면 offset을 기록합니다.

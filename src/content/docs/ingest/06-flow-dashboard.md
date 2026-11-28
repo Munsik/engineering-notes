@@ -1,14 +1,14 @@
 ---
 title: "수집 흐름을 대시보드로 어떻게 보는가"
-description: 원천에서 Agent, Logstash, Elasticsearch까지 단계별 처리량과 적체, 지연, 끊김을 한 화면에서 보기 위해 기본 제공 화면으로 되는 것과 안 되는 것을 정리하고, ES|QL 패널로 흐름 대시보드를 만드는 방법과 끊김 알림을 다룹니다.
+description: 소스에서 Agent, Logstash, Elasticsearch까지 단계별 처리량과 적체, 지연, 끊김을 한 화면에서 보기 위해 기본 제공 화면으로 되는 것과 안 되는 것을 정리하고, ES|QL 패널로 흐름 대시보드를 만드는 방법과 끊김 알림을 다룹니다.
 sidebar:
   label: 06. 흐름 대시보드
   order: 6
 ---
 
 수집이 줄었을 때 처음 받는 질문은 "어디서 막혔나"입니다.
-원천에서 덜 보냈는지, Agent가 못 읽었는지, Logstash가 밀렸는지, Elasticsearch가 거부했는지에 따라 할 일이 전혀 다릅니다. 그런데 각 단계의 지표가 서로 다른 화면에 흩어져 있어서 한눈에 비교하기 어렵습니다.
-이 글은 기본 제공 화면으로 어디까지 되는지 먼저 정리하고, 단계별 지표를 한 화면에 모으는 흐름 대시보드를 만드는 방법과 끊김 알림을 다룹니다.
+소스에서 덜 보냈는지, Agent가 못 읽었는지, Logstash가 밀렸는지, Elasticsearch가 거부했는지에 따라 할 일이 전혀 다릅니다. 그런데 각 단계의 지표가 서로 다른 화면에 흩어져 있어서 한눈에 비교하기 어렵습니다.
+기본 제공 화면으로 확인할 수 있는 범위를 먼저 보고, 단계별 지표를 한 화면에 모으는 흐름 대시보드와 끊김 알림을 만듭니다.
 
 :::note[기준]
 - Kibana, Fleet, Logstash 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -18,9 +18,9 @@ sidebar:
 
 ## 단계별로 무엇을 재나
 
-| 단계 | 처리량 | 적체, 실패 | 원천 |
+| 단계 | 처리량 | 적체, 실패 | 소스 |
 | --- | --- | --- | --- |
-| 원천 | 원천이 보낸 건수(가능한 경우) | | 원천 시스템 |
+| 소스 | 소스가 보낸 건수(가능한 경우) | | 소스 시스템 |
 | Agent 입력 | 입력별 받은 이벤트(`filebeat_input.events_processed_total`) | UDP `filebeat_input.system_packet_drops`, `filebeat_input.receive_queue_length` | `metrics-elastic_agent.filebeat_input-*` |
 | Agent 출력 | `beat.stats.libbeat.output.events.acked` | `pipeline.queue.filled.pct`(0에서 1 사이 비율), `pipeline.events.dropped`, `output.events.failed` | `metrics-elastic_agent.elastic_agent-*`(9.2 이후 Agent), `metrics-elastic_agent.filebeat-*`(이전 Agent) |
 | Logstash | `logstash.pipeline.total.events.in`(counter), `logstash.pipeline.total.flow.input_throughput` | `total.flow.queue_backpressure`, `total.flow.worker_utilization`, DLQ | Logstash integration(`metrics-logstash.pipeline-*`) |
@@ -41,7 +41,7 @@ Logstash integration의 pipeline data stream은 `logstash.pipeline.total.flow` �
 
 근거는 다음과 같습니다.
 
-- Logstash integration 문서는 Agent로 수집하는 방식을 권하면서, 이 방식은 Kibana Stack Monitoring UI와 호환되지 않는다고 적고 있습니다(elastic/integrations `logstash` 패키지 README).
+- Logstash integration 문서는 Agent로 수집하는 방식을 권하면서, 이 방식은 Kibana Stack Monitoring UI와 호환되지 않는다고 설명합니다(elastic/integrations `logstash` 패키지 README).
 - Streams는 Stack 9.1 preview, 9.2 GA입니다([Streams](https://www.elastic.co/docs/solutions/observability/streams/streams)). Streams Map과 수집 전 처리, 라우팅 기능(sources, destinations)은 Serverless preview이고 Stack에서는 쓸 수 없습니다. 수집 전 처리는 private preview라 기본으로 켜져 있지 않습니다([Streams Map](https://www.elastic.co/docs/manage-data/ingest/streams/streams-map)).
 - Data Set Quality는 Stack, Serverless 모두 beta입니다([Data set quality](https://www.elastic.co/docs/solutions/observability/data-set-quality-monitoring)).
 
@@ -54,7 +54,7 @@ Logstash integration의 pipeline data stream은 `logstash.pipeline.total.flow` �
 
 ## 직접 만드는 흐름 대시보드
 
-기본 화면으로는 "원천 → Agent → Logstash → Elasticsearch" 단계를 한 줄로 비교하기 어렵습니다. 그래서 단계별 지표를 같은 시간 축에 놓는 대시보드를 따로 만듭니다.
+기본 화면으로는 "소스 → Agent → Logstash → Elasticsearch" 단계를 한 줄로 비교하기 어렵습니다. 그래서 단계별 지표를 같은 시간 축에 놓는 대시보드를 따로 만듭니다.
 
 Lens의 차트 종류에는 흐름(sankey) 차트가 없습니다(Kibana 문서의 chart 목록 기준). 단계 비교는 같은 시간 축의 선 차트와 표로 구성합니다. 꼭 흐름 그림이 필요하면 Vega로 그릴 수 있지만, 유지 보수 비용이 커서 권하지 않습니다.
 
@@ -70,8 +70,8 @@ Lens의 차트 종류에는 흐름(sankey) 차트가 없습니다(Kibana 문서�
 | 2행 | Logstash backpressure | 선 차트 | 출력 쪽이 받는 속도가 모자란 시점 |
 | 3행 | UDP drop | 선 차트 | UDP 수신기별 `system_packet_drops` 증가분 |
 | 3행 | 실패 문서 | 표 | data stream, 오류 종류별 failure store 건수 |
-| 3행 | 출력 이상 신호 | 표 | Agent별 `duplicates`, `toomany`, `dropped` 증가분 |
-| 4행 | 원천별 마지막 수신 | 표 | 기준 시간 이상 들어오지 않은 dataset, 호스트 |
+| 3행 | 출력 이상 징후 | 표 | Agent별 `duplicates`, `toomany`, `dropped` 증가분 |
+| 4행 | 소스별 마지막 수신 | 표 | 기준 시간 이상 들어오지 않은 dataset, 호스트 |
 
 ### ES|QL 예시
 
@@ -92,7 +92,7 @@ FROM logs-*
 | SORT t
 ```
 
-원천별 마지막 수신입니다.
+소스별 마지막 수신입니다.
 
 ```sql
 FROM logs-*
@@ -142,9 +142,9 @@ FROM metrics-logstash.pipeline-*
 
 ![직접 만든 수집 흐름 대시보드. Agent 출력 ack, Logstash 입력, Elasticsearch 저장 세 선이 거의 겹쳐 움직이고, 아래에 수집 지연과 Agent queue 사용률 표가 있습니다.](../../../assets/ingest/ingest-flow-dashboard.jpg)
 
-위 화면은 lab의 30분입니다. 세 선이 거의 겹칩니다. Logstash 한 대를 멈춘 5분에도 남은 한 대가 받아 선이 벌어지지 않았습니다. 그런데 같은 시간 순번으로 세어 보면 송신량의 13%가 UDP 구간에서 사라졌습니다([04](../04-syslog-udp/#lab에서-본-것)). 이 대시보드는 Agent가 받은 뒤의 구간만 보여 줍니다. 원천에서 Agent까지의 유실은 원천 쪽 건수와 대조해야 보입니다([05](../05-count-reconciliation/)).
+위 화면은 lab의 30분입니다. 세 선이 거의 겹칩니다. Logstash 한 대를 멈춘 5분에도 남은 한 대가 받아 선이 벌어지지 않았습니다. 그런데 같은 시간 순번으로 세어 보면 송신량의 13%가 UDP 구간에서 사라졌습니다([04](../04-syslog-udp/#lab에서-본-것)). 이 대시보드는 Agent가 받은 뒤의 구간만 보여 줍니다. 소스에서 Agent까지의 유실은 소스 쪽 건수와 대조해야 보입니다([05](../05-count-reconciliation/)).
 
-Agent 출력의 이상 신호입니다. 정상이면 세 값 모두 0에 가깝습니다.
+Agent 출력의 이상 징후입니다. 정상이면 세 값 모두 0에 가깝습니다.
 
 ```sql
 TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
@@ -170,17 +170,17 @@ TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
 
 | 알림 | 조건 | 만드는 방법 |
 | --- | --- | --- |
-| 원천 무수신 | dataset, 호스트별로 기준 시간 이상 새 문서 없음 | 위의 "원천별 마지막 수신" 쿼리로 ES\|QL rule |
+| 소스 무수신 | dataset, 호스트별로 기준 시간 이상 새 문서 없음 | 위의 "소스별 마지막 수신" 쿼리로 ES\|QL rule |
 | Agent queue 적체 | queue 사용률 90% 초과 | Agent 내장 규칙 "High pipeline queue" |
 | Agent drop | drop 비율 5% 이상 | Agent 내장 규칙 "Dropped events" |
 | Agent 출력 오류 | 분당 오류 6건 이상 | Agent 내장 규칙 "Output errors" |
 | 실패 문서 | failure store 건수 증가 | `::failures` 쿼리로 ES\|QL rule |
-| Agent가 버린 문서 | `output.events.dropped` 증가 | 위의 출력 이상 신호 쿼리로 ES\|QL rule |
+| Agent가 버린 문서 | `output.events.dropped` 증가 | 위의 출력 이상 징후 쿼리로 ES\|QL rule |
 | UDP drop | `system_packet_drops` 증가 | ES\|QL rule |
 
 Agent 내장 규칙은 9.2부터 GA이고, Agent를 설치하거나 업그레이드할 때 자동으로 만들어집니다. 기본은 꺼져 있고, 구독 등급에 따라 제공됩니다. 라이선스가 먼저 있어야 규칙이 만들어집니다([Elastic Agent built-in alerts](https://www.elastic.co/docs/reference/fleet/alert-templates)).
 
-원천 무수신 알림은 원천마다 정상 간격이 다릅니다. 몇 초마다 쏟아지는 방화벽과 하루에 몇 건 오는 배치 로그를 같은 기준으로 보면 알림이 쏟아지거나 놓칩니다. dataset별로 기준 시간을 따로 둡니다.
+소스 무수신 알림은 소스마다 정상 간격이 다릅니다. 몇 초마다 쏟아지는 방화벽과 하루에 몇 건 오는 배치 로그를 같은 기준으로 보면 알림이 쏟아지거나 놓칩니다. dataset별로 기준 시간을 따로 둡니다.
 
 ## 대시보드를 코드로 관리하기
 
@@ -204,7 +204,7 @@ API로 만들 때 ES|QL 표 패널의 `type`은 `data_table`, 선 차트는 `xy`
 | 수집 경로 전체를 한 화면에서 | ES\|QL 패널로 흐름 대시보드를 직접 만든다 |
 | Logstash 지표 | Logstash integration(Agent 수집). Stack Monitoring UI가 꼭 필요하면 Stack Monitoring 방식 |
 | 실패 문서 확인과 수정 | Streams Data quality 탭(9.2 이후) |
-| 끊김을 바로 알기 | 원천 무수신 rule + Agent 내장 규칙 |
+| 끊김을 바로 알기 | 소스 무수신 rule + Agent 내장 규칙 |
 
 ## 참고 문서
 

@@ -7,7 +7,7 @@ sidebar:
 ---
 
 Kibana에는 화면에서 만든 것들이 쌓입니다. dashboard, data view, rule, connector, space, role. 대부분 누군가 UI에서 만들었고, 원본은 운영 Kibana 안에만 있습니다. 개발 환경에서 만든 dashboard를 운영으로 옮기려고 export했더니 import가 안 되고, 담당자가 퇴사하자 rule이 멈춥니다.
-이 글은 Kibana 객체를 종류별로 어디서 관리하고, 환경 사이에 어떻게 옮기고, 어떤 설정을 파일로 고정할지 정리합니다. dashboard의 CI/CD는 [06](../06-dashboards-as-code/)에서 따로 다룹니다.
+Kibana 객체를 종류별로 어디서 관리하고, 환경 사이에 어떻게 옮기고, 어떤 설정을 파일로 고정할지를 봅니다. dashboard의 CI/CD는 [06](../06-dashboards-as-code/)에서 따로 다룹니다.
 
 :::note[기준]
 - Kibana 9.5.x 기준입니다. 공식 문서와 Kibana API reference는 2026년 11월에 다시 확인했습니다.
@@ -100,7 +100,7 @@ POST kbn:/api/data_views/data_view
 
 ## rule과 API key
 
-Kibana의 alerting rule과 detection rule은 실행할 때 API key를 씁니다. rule을 만들거나 수정한 사용자의 권한으로 key가 만들어지고 rule에 붙습니다. detection rule API 문서는 이 동작을 경고로 적고 있습니다. API key로 rule을 수정하면 그 key가 rule에 붙고, key가 삭제되거나 사용자가 비활성화되면 rule이 멈추고, 권한이 다른 key로 수정하면 rule 동작이 달라질 수 있습니다([Patch a detection rule](https://www.elastic.co/docs/api/kibana/operation/operation-patchrule)).
+Kibana의 alerting rule과 detection rule은 실행할 때 API key를 씁니다. rule을 만들거나 수정한 사용자의 권한으로 key가 만들어지고 rule에 붙습니다. detection rule API 문서는 이 동작을 경고로 안내합니다. API key로 rule을 수정하면 그 key가 rule에 붙고, key가 삭제되거나 사용자가 비활성화되면 rule이 멈추고, 권한이 다른 key로 수정하면 rule 동작이 달라질 수 있습니다([Patch a detection rule](https://www.elastic.co/docs/api/kibana/operation/operation-patchrule)).
 
 현장에서 자주 생기는 일은 두 가지입니다.
 
@@ -115,7 +115,7 @@ Kibana의 alerting rule과 detection rule은 실행할 때 API key를 씁니다.
 
 Kibana는 connector의 비밀번호와 token, rule의 API key 같은 민감한 값을 `xpack.encryptedSavedObjects.encryptionKey`로 암호화해서 저장합니다. 설정하지 않으면 시작할 때 임의의 key를 만들고, 일부 기능은 key를 명시할 때까지 쓸 수 없습니다([Security settings](https://www.elastic.co/docs/reference/kibana/configuration-reference/security-settings)).
 
-변화 관리에서 이 key가 중요한 이유는 이렇습니다.
+변경 관리에서 이 key가 중요한 이유는 이렇습니다.
 
 - 여러 Kibana 인스턴스가 같은 Elasticsearch를 쓰면 모든 인스턴스의 key가 같아야 합니다. 다르면 한 인스턴스가 암호화한 값을 다른 인스턴스가 읽지 못합니다.
 - Kibana를 새 서버로 옮기거나 다시 설치할 때 key를 잃으면, 그 key로 암호화한 connector와 rule의 secret을 복구할 방법이 없습니다. 모든 connector를 다시 만들어야 합니다.
@@ -176,7 +176,7 @@ Kibana는 업그레이드할 때 saved object를 새 버전 형식으로 바꿉�
 
 ## Fleet을 코드로 관리할 때
 
-Fleet 객체를 Terraform으로 관리하는 조직에서 반복해서 들은 함정입니다.
+Fleet 객체를 Terraform으로 관리하는 조직에서 반복해서 들은 문제입니다.
 
 - UI에서 integration을 먼저 업그레이드하면 코드의 integration policy 정의와 어긋납니다. 업그레이드는 코드에서 버전을 바꾸는 것으로만 합니다. UI의 integration policy 화면에서 요청 내용을 보면(Preview API request) 코드에 옮길 정의를 얻을 수 있습니다.
 - agent가 등록된 agent policy는 지울 수 없습니다. 코드에서 policy를 교체(삭제 후 생성)하게 만들면 `apply`가 실패합니다. policy는 교체하지 않고 수정하도록 코드를 짜고, 정말 바꿔야 하면 agent를 새 policy로 먼저 옮깁니다.

@@ -7,7 +7,7 @@ sidebar:
 ---
 
 template을 고쳤는데 데이터는 그대로입니다. 반대로 pipeline 하나를 고쳤을 뿐인데 그때부터 적재가 실패합니다. 데이터 정의의 변경은 반영되는 시점이 제각각이라, 바꾼 사람이 기대한 시점과 실제로 영향이 나타나는 시점이 다릅니다.
-이 글은 데이터 정의 종류별로 언제 반영되는지, 적용 전에 어떻게 확인하는지, 무엇이 같이 깨지는지를 정리합니다. managed 자산을 어디에 고칠지는 [03](../03-managed-assets/)에서 다룹니다.
+그래서 정의 종류마다 반영 시점, 적용 전 확인 방법, 함께 영향을 받는 대상을 먼저 알아 둬야 합니다. managed 자산의 수정 위치는 [03](../03-managed-assets/)에서 다룹니다.
 
 :::note[기준]
 - Elasticsearch 9.5.x 기준입니다. 공식 문서와 API reference는 2026년 11월에 다시 확인했습니다.
@@ -170,7 +170,7 @@ template을 고치지 않고 data stream 하나에만 mapping이나 설정을 �
 
 override는 template보다 우선하고, template만 보는 사람에게는 보이지 않습니다. 임시 조치로 쓰고, 계속 필요하면 `<data stream>@custom` component template으로 옮겨 Git에서 관리합니다. 남아 있는 override는 `GET _data_stream/<name>/_mappings`, `GET _data_stream/<name>/_settings`로 확인합니다.
 
-## 깨지는 변경과 깨지지 않는 변경
+## breaking change와 그렇지 않은 변경
 
 | 변경 | 깨지나 | 처리 방법 |
 | --- | --- | --- |

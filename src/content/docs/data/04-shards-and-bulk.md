@@ -10,7 +10,7 @@ sidebar:
 그사이 데이터는 열 배가 됐는데 shard는 그대로라 하나가 수백 GB가 되거나, 반대로 고객사나 서비스마다 data stream을 따로 만들어 shard가 수천 개로 불어나 있습니다.
 shard 수는 index를 만든 뒤에는 바꾸기 어렵고, bulk 형태는 클라이언트 코드에 묻혀 있어서 문제가 생기기 전까지 잘 보지 않습니다.
 
-이 글은 shard 수와 크기, bulk 크기를 어떤 기준으로 정하는지, 잘못 정하면 무엇이 비싸지는지를 실측으로 보여 줍니다.
+shard 수와 크기, bulk 크기를 정하는 기준과, 잘못 정했을 때 늘어나는 비용을 실측으로 확인합니다.
 
 :::note[기준]
 - Elasticsearch 9.5.5 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. self-managed와 Elastic Cloud Hosted를 기준으로 썼습니다.
@@ -208,7 +208,7 @@ GET _stats/indexing?level=shards&filter_path=indices.*.shards.*.routing.node,ind
 
 노드 통계는 노드가 뜬 뒤 누적값입니다. 몇 분 간격으로 두 번 받아 차이를 봐야 지금 몰리는 곳이 보입니다(Hot spotting 문서).
 
-### 노드당 shard 한도에 가까워질 때의 신호
+### 노드당 shard 한도에 가까워질 때의 징후
 
 - index나 data stream을 만들거나 rollover할 때 `this action would add [x] shards, but this cluster currently has [y]/[z] maximum normal shards open` 오류가 납니다. 한도를 올리는 것은 임시 조치이고, 노드를 늘리거나 shard 수를 줄이는 것이 근본 해결입니다([Size your shards](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/size-shards)).
 - `GET _cluster/stats?filter_path=indices.shards.total`로 전체 shard 수를 보고, 문서가 거의 없는 index는 `GET _cat/count/<index>`로 찾아 지웁니다.
@@ -227,7 +227,7 @@ GET _stats/indexing?level=shards&filter_path=indices.*.shards.*.routing.node,ind
 
 ## 다음 글
 
-- 오래된 데이터를 어디에 두고 어떻게 꺼내 볼지는 [05. 오래된 데이터](../05-tiers-and-retention/)에서 다룹니다.
+- 오래된 데이터를 어디에 보관하고 어떻게 조회할지는 [05. 오래된 데이터](../05-tiers-and-retention/)에서 다룹니다.
 - 이 글의 실측 코드: [`labs/data/shards-and-bulk/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/shards-and-bulk)
 
 ## 참고 문서

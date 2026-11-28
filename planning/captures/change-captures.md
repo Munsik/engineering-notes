@@ -1,4 +1,4 @@
-# 변화 관리 컬렉션 화면 캡처 목록
+# 변경 관리 컬렉션 화면 캡처 목록
 
 `src/content/docs/change/` 글에 넣을 Kibana 실제 화면 목록입니다. 캡처 규칙은 `engineering-notes-writing` 스킬 4절을 따릅니다.
 

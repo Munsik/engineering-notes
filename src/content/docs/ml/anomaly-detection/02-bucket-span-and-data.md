@@ -61,7 +61,7 @@ forecast까지 쓸 생각이라면 예측하려는 기간만큼의 과거 데이
 Elastic Security의 인증 job이 이렇게 합니다. query에서 Elastic Agent나 Beats 같은 수집기 자신의 process는 `must_not`으로 빼고, 성공한 인증 이벤트만 `filter`로 고릅니다.
 조건은 `match`보다 `term` filter처럼 단순하고 빠른 것으로 씁니다.
 
-대략 아래와 같은 모양입니다. 값은 설명하려고 넣은 것이고, 실제 제공 job의 조건과는 다릅니다.
+대략 아래와 같은 형태입니다. 값은 설명하려고 넣은 것이고, 실제 제공 job의 조건과는 다릅니다.
 
 ```json
 "query": {
@@ -83,7 +83,7 @@ datafeed가 이미 지나간 시간대에 뒤늦게 색인된 문서는 분석�
 ingest 지연이 일정하게 반복되면 `low_count` 같은 function에서 오탐이 생길 수 있습니다. 데이터가 덜 들어온 bucket을 "건수가 줄었다"고 보기 때문입니다.
 
 delayed data check는 기본적으로 2시간과 bucket span 8배 중 더 긴 범위를 다시 훑어봅니다. 빠진 문서가 있으면 annotation을 남기고 `Datafeed missed XXXX documents due to ingest latency`라는 메시지를 기록합니다.
-이 메시지가 보이면 `query_delay`부터 늘려 보세요. 그래도 계속 나온다면 ingest 지연의 원인을 찾아야 합니다. 현장에서는 트래픽 burst, 무거운 ingest pipeline, 서버 시계 차이가 흔한 원인이었습니다. 실시간성이 꼭 필요하지 않다면 공식 문서는 그대로 두는 것도 흔한 선택이라고 적고 있습니다.
+이 메시지가 보이면 `query_delay`부터 늘려 보세요. 그래도 계속 나온다면 ingest 지연의 원인을 찾아야 합니다. 현장에서는 트래픽 burst, 무거운 ingest pipeline, 서버 시계 차이가 흔한 원인이었습니다. 실시간성이 꼭 필요하지 않다면 공식 문서는 그대로 두는 것도 흔한 선택이라고 설명합니다.
 
 :::tip
 `query_delay`는 실제 ingest 지연의 상위 백분위(예: P95)에 여유를 조금 더한 값으로 잡으면 무난하다고 봅니다. 지연 분포는 문서의 시간 field와 `event.ingested`의 차이로 볼 수 있습니다.

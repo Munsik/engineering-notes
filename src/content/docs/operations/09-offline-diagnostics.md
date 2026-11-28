@@ -7,7 +7,7 @@ sidebar:
 ---
 
 금융, 제조, 공공 고객의 클러스터는 대부분 폐쇄망에 있습니다. 진단 결과 파일을 밖으로 내려면 반출 심의를 거쳐야 하고, 아예 낼 수 없는 곳도 많습니다. 그러면 장애 원인을 찾는 데 필요한 정보가 고객 쪽 담당자 손에만 남습니다.
-이 글은 support diagnostic 도구가 무엇을 모으는지부터 보고, 반출할 수 없을 때 같은 정보를 직접 모아 읽는 방법을 정리합니다.
+support diagnostic 도구가 무엇을 모으는지부터 보고, 반출할 수 없을 때 같은 정보를 직접 모아 분석하는 방법을 봅니다.
 
 :::note[기준]
 - Elasticsearch 9.x, self-managed 기준입니다. 공식 문서와 support-diagnostics 저장소는 2026년 11월에 다시 확인했습니다.
@@ -16,7 +16,7 @@ sidebar:
 
 ## support diagnostic 도구가 모으는 것
 
-Elastic의 [Support Diagnostic](https://github.com/elastic/support-diagnostics) 도구는 클러스터 통계와 설정 대부분을 한 시점에 모아 압축 파일로 만듭니다. 모든 호출이 읽기 전용 GET이고, 공식 문서는 운영 클러스터에서 돌려도 안전하다고 적고 있습니다. index가 아주 많으면 `_cluster/state`, `_stats` 같은 몇 개의 호출이 오래 걸릴 수 있습니다([Capture diagnostics](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnostic)).
+Elastic의 [Support Diagnostic](https://github.com/elastic/support-diagnostics) 도구는 클러스터 통계와 설정 대부분을 한 시점에 모아 압축 파일로 만듭니다. 모든 호출이 읽기 전용 GET이고, 공식 문서는 운영 클러스터에서 돌려도 안전하다고 설명합니다. index가 아주 많으면 `_cluster/state`, `_stats` 같은 몇 개의 호출이 오래 걸릴 수 있습니다([Capture diagnostics](https://www.elastic.co/docs/troubleshoot/elasticsearch/diagnostic)).
 
 | 모드 | 모으는 것 | 어디서 돌리나 |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ remove:
 
 ## 반출할 수 없다면: 같은 정보를 직접 모은다
 
-도구를 반입하지 못하거나 결과를 낼 수 없으면, 목적에 맞는 API만 직접 모아 현장에서 읽습니다. 아래는 support diagnostic이 모으는 API 가운데 장애 원인을 가르는 데 자주 쓰는 것을 고른 목록입니다. 수집 스크립트는 이 목록을 그대로 돌려 파일로 남깁니다.
+도구를 반입하지 못하거나 결과를 낼 수 없으면, 목적에 맞는 API만 직접 모아 현장에서 읽습니다. 아래는 support diagnostic이 모으는 API 가운데 장애 원인을 찾는 데 자주 쓰는 것을 고른 목록입니다. 수집 스크립트는 이 목록을 그대로 돌려 파일로 남깁니다.
 
 | 목적 | API |
 | --- | --- |

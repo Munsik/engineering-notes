@@ -102,7 +102,7 @@
 - [Health report API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-health-report)
 - GitHub: [elastic/support-diagnostics](https://github.com/elastic/support-diagnostics)
 
-### 변화 관리
+### 변경 관리
 
 - [Prepare to upgrade](https://www.elastic.co/docs/deploy-manage/upgrade/prepare-to-upgrade)
 - [Upgrade from 7.17](https://www.elastic.co/docs/deploy-manage/upgrade/deployment-or-cluster/upgrade-717)

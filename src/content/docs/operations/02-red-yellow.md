@@ -1,13 +1,13 @@
 ---
 title: "클러스터가 RED나 YELLOW일 때 무엇부터 보는가"
-description: RED와 YELLOW의 차이, health report와 allocation explain으로 unassigned shard 원인을 읽는 순서, 자주 보는 원인별 조치, 사본이 없을 때의 선택지와 데이터 손실 범위를 정리합니다.
+description: RED와 YELLOW의 차이, health report와 allocation explain으로 unassigned shard 원인을 읽는 순서, 자주 보는 원인별 조치, 복사본이 없을 때의 선택지와 데이터 손실 범위를 정리합니다.
 sidebar:
   label: 02. RED와 YELLOW
   order: 2
 ---
 
-health가 RED로 바뀌면 대개 급하게 노드를 재시작하거나 설정을 바꾸고 싶어집니다. 그런데 원인을 모른 채 손을 대면 사본이 남아 있던 shard까지 잃을 수 있습니다.
-RED와 YELLOW는 결과일 뿐이고, 원인은 shard마다 Elasticsearch가 이미 설명해 주고 있습니다. 이 글은 그 설명을 읽는 순서를 정리합니다.
+health가 RED로 바뀌면 대개 급하게 노드를 재시작하거나 설정을 바꾸고 싶어집니다. 그런데 원인을 모른 채 조치하면 복사본이 남아 있던 shard까지 잃을 수 있습니다.
+RED와 YELLOW는 결과일 뿐이고, 원인은 shard마다 Elasticsearch가 이미 설명해 주고 있습니다. 그 설명을 읽는 순서만 알면 대부분 원인을 찾을 수 있습니다.
 
 :::note[기준]
 - Elasticsearch 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -34,7 +34,7 @@ flowchart TD
     E -- "디스크 watermark" --> G["04. 디스크 부족"]
     E -- "할당 규칙(tier, 속성, exclude)" --> H["규칙과 노드 속성 확인"]
     E -- "재시도 초과" --> I["원인 해결 후 reroute?retry_failed"]
-    E -- "사본 없음" --> J["노드 복구 또는 snapshot 복원"]
+    E -- "복사본 없음" --> J["노드 복구 또는 snapshot 복원"]
 ```
 
 ```console
@@ -71,15 +71,15 @@ GET _cluster/allocation/explain?filter_path=index,shard,primary,current_state,un
 
 rolling restart 뒤에 `cluster.routing.allocation.enable`을 되돌리지 않아 YELLOW가 계속되는 경우가 흔합니다. 작업 뒤에는 항상 `GET _cluster/settings`로 확인합니다.
 
-## 사본이 없을 때
+## 남은 복사본이 없을 때
 
 primary를 가진 노드를 잃고 replica도 없으면 선택지는 아래 순서입니다(공식 문서 기준).
 
-1. **노드를 되살린다.** 데이터 디렉터리가 남아 있으면 노드가 돌아오는 순간 shard가 다시 할당됩니다. 가장 먼저 시도합니다.
+1. **노드를 복구한다.** 데이터 디렉터리가 남아 있으면 노드가 돌아오는 순간 shard가 다시 할당됩니다. 가장 먼저 시도합니다.
 2. **snapshot에서 그 index를 복원한다.** 마지막 snapshot 이후에 들어온 데이터는 잃습니다([Restore from snapshot](https://www.elastic.co/docs/troubleshoot/elasticsearch/restore-from-snapshot)).
 3. **빈 primary를 할당한다(`allocate_empty_primary`).** 그 shard의 데이터를 모두 버리는 조치입니다. 다시 수집할 수 있는 데이터일 때만 씁니다.
 
-`allocate_stale_primary`는 오래된 사본을 primary로 올려 그 뒤의 변경을 잃습니다. 두 명령 모두 `accept_data_loss: true`를 요구할 만큼 위험합니다([Cluster reroute API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-cluster-reroute)). 노드를 되살릴 가능성이 남아 있으면 쓰지 않습니다.
+`allocate_stale_primary`는 오래된 복사본을 primary로 올려 그 뒤의 변경을 잃습니다. 두 명령 모두 `accept_data_loss: true`를 요구할 만큼 위험합니다([Cluster reroute API](https://www.elastic.co/docs/api/elasticsearch/operation/operation-cluster-reroute)). 노드를 복구할 가능성이 남아 있으면 쓰지 않습니다.
 
 ## 판단 기준
 
