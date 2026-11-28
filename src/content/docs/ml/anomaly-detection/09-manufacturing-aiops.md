@@ -36,6 +36,10 @@ Anomaly detection은 이런 "평소와 다름"을 잡는 도구입니다. 하지
 여기서는 탐지 → alert → Workflow → AI 1차 분석 → 사람의 판단 → 후속 조치를 하나의 흐름으로 연결하고, 그 과정에서 내린 설계 결정을 기록합니다.
 
 ```mermaid
+---
+config:
+  layout: elk
+---
 flowchart LR
   subgraph SRC["데이터"]
     LOG["MES 로그<br/>logs-mes-*"]

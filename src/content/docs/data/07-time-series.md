@@ -123,11 +123,6 @@ downsample된 문서 하나는 이런 형태입니다.
 | 장기 보관 | downsample. 짧은 간격이 필요한 분석 기간은 downsample 전 단계에 둠 |
 | 저장 크기 추정 | 라이선스를 먼저 확인. synthetic `_source` 유무에 따라 두 배 가까이 달라짐 |
 
-## 다음 글
-
-- 데이터 설계 컬렉션은 여기까지입니다. 수집 단계는 [수집 컬렉션](../../ingest/)에서 다룹니다.
-- 이 글의 실측 코드: [`labs/data/time-series/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/time-series)
-
 ## 참고 문서
 
 - [Time series data streams](https://www.elastic.co/docs/manage-data/data-store/data-streams/time-series-data-stream-tsds)

@@ -101,11 +101,6 @@ flowchart TD
 | syslog relay를 넣을까 | UDP만 보내는 장비가 많고, 수집 계층을 자주 바꿔야 할 때 |
 | Fleet 관리와 standalone | 기본은 Fleet. 폐쇄망이나 GitOps로 설정을 관리하는 Kubernetes는 standalone도 검토 |
 
-## 다음 글
-
-- [02. 파싱은 어디서 할 것인가](../02-where-to-parse/)
-- [03. 수집기가 멈춰도 로그가 끊기지 않게 하려면](../03-no-gap-ingest/)
-
 ## 참고 문서
 
 - [Ingest reference architectures](https://www.elastic.co/docs/manage-data/ingest/ingest-reference-architectures)

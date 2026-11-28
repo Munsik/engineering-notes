@@ -225,11 +225,6 @@ GET _stats/indexing?level=shards&filter_path=indices.*.shards.*.routing.node,ind
 | multi-tenant | 공용 data stream + `tenant.id`를 기본으로. 보관 기간이나 규제가 다른 큰 tenant만 분리 |
 | 한 shard로만 쓰기가 몰릴 때 | routing을 쓰는지부터 본다. shard 수를 늘려도 같은 routing 값은 풀리지 않는다 |
 
-## 다음 글
-
-- 오래된 데이터를 어디에 보관하고 어떻게 조회할지는 [05. 오래된 데이터](../05-tiers-and-retention/)에서 다룹니다.
-- 이 글의 실측 코드: [`labs/data/shards-and-bulk/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/shards-and-bulk)
-
 ## 참고 문서
 
 - [Size your shards](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/size-shards)

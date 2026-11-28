@@ -133,11 +133,6 @@ integration을 업그레이드하면 template이 바뀌고, 다음 backing index
 | integration data stream 매핑 변경 | 직접 index template을 만들지 않고 `@custom` component template |
 | integration 업그레이드 | 업그레이드 직후 failure store, `_ignored`, data view conflict 확인 |
 
-## 다음 글
-
-- [07. Metrics와 TSDS](../07-time-series/): metrics data stream은 문서 ID와 받는 시간 범위가 로그와 다릅니다.
-- 이 글의 실측 코드: [`labs/data/mappings-and-fields/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/mappings-and-fields)
-
 ## 참고 문서
 
 - [Mapping limit settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/mapping-limit)

@@ -7,11 +7,40 @@
  */
 :root {
 	--en-toc-width: 15rem;
+	--en-prose-width: 48rem;
+}
+
+/*
+ * Korean typography
+ * - Break lines between words, not inside a Korean word (keep-all).
+ * - Long tokens without spaces (API paths, field names, URLs) may still wrap.
+ */
+:root {
+	word-break: keep-all;
+	overflow-wrap: break-word;
+}
+
+/*
+ * Tables
+ * - Inline code in cells may wrap anywhere so a long API path does not push columns out of view.
+ * - Wide tables keep Starlight's horizontal scroll; a soft shadow shows when more content is off-screen.
+ */
+.sl-markdown-content td code {
+	overflow-wrap: anywhere;
+	word-break: normal;
+}
+
+.sl-markdown-content table:not(:where(.not-content *)) {
+	background:
+		linear-gradient(to right, var(--sl-color-bg), var(--sl-color-bg)) left / 2rem 100% no-repeat local,
+		linear-gradient(to left, var(--sl-color-bg), var(--sl-color-bg)) right / 2rem 100% no-repeat local,
+		radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.18), transparent) left / 0.75rem 100% no-repeat scroll,
+		radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.18), transparent) right / 0.75rem 100% no-repeat scroll;
 }
 
 @media (min-width: 72rem) {
 	:root {
-		--sl-content-width: 80rem;
+		--sl-content-width: 72rem;
 	}
 
 	.right-sidebar-container {
@@ -71,6 +100,21 @@
 
 	.right-sidebar-container {
 		position: relative;
+	}
+
+	/* Starlight sizes the TOC panel from --sl-sidebar-width; follow the resizable width instead. */
+	.right-sidebar-container .right-sidebar {
+		width: var(--en-toc-width);
+	}
+
+	.right-sidebar-panel .sl-container {
+		width: auto;
+		max-width: none;
+	}
+
+	/* Prose stays at a readable line length; tables, code, diagrams and images may use the full width. */
+	.sl-markdown-content > :is(p, ul, ol, blockquote, dl, hr, aside, details, .sl-heading-wrapper, h1, h2, h3, h4, h5, h6) {
+		max-width: var(--en-prose-width);
 	}
 }
 
