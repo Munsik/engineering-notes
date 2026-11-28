@@ -1,0 +1,48 @@
+{
+  "description": "Engineering Notes 변화 관리 06 예시. 샘플 웹 로그의 응답 크기와 방문자 수",
+  "panels": [
+    {
+      "config": {
+        "data_source": {
+          "index_pattern": "kibana_sample_data_logs",
+          "time_field": "timestamp",
+          "type": "data_view_spec"
+        },
+        "metrics": [
+          {
+            "field": "bytes",
+            "format": { "decimals": 2, "type": "bytes" },
+            "label": "Median response size",
+            "operation": "median",
+            "type": "primary"
+          }
+        ],
+        "type": "metric"
+      },
+      "grid": { "h": 5, "w": 12, "x": 0, "y": 0 },
+      "type": "vis"
+    },
+    {
+      "config": {
+        "data_source": {
+          "index_pattern": "kibana_sample_data_logs",
+          "time_field": "timestamp",
+          "type": "data_view_spec"
+        },
+        "metrics": [
+          {
+            "field": "clientip",
+            "label": "Unique visitors",
+            "operation": "unique_count",
+            "type": "primary"
+          }
+        ],
+        "type": "metric"
+      },
+      "grid": { "h": 5, "w": 12, "x": 12, "y": 0 },
+      "type": "vis"
+    }
+  ],
+  "time_range": { "from": "now-90d", "to": "now" },
+  "title": "Web logs overview (as code)"
+}

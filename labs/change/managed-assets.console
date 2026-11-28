@@ -1,0 +1,67 @@
+# 03. managed 자산
+
+# managed 표시와 우선순위
+GET _index_template?filter_path=index_templates.name,index_templates.index_template._meta,index_templates.index_template.priority
+GET _component_template?filter_path=component_templates.name,component_templates.component_template._meta
+GET _ingest/pipeline?filter_path=*._meta
+GET _ilm/policy?filter_path=*.policy._meta
+
+# data stream이 쓰는 template과 policy, template의 구성
+GET _data_stream/logs-nginx.access-default?filter_path=data_streams.template,data_streams.ilm_policy,data_streams.next_generation_managed_by
+GET _index_template/logs-nginx.access?filter_path=index_templates.index_template.composed_of,index_templates.index_template.priority
+
+# 어떤 template이 이기는지 미리 확인
+POST _index_template/_simulate_index/logs-nginx.access-production
+
+# 보관 기간: managed policy를 고치지 않고 새 policy를 만든다
+PUT _ilm/policy/logs-90d
+{
+  "policy": {
+    "_meta": { "owner": "platform-team", "based_on": "logs@lifecycle" },
+    "phases": {
+      "hot": {
+        "actions": {
+          "rollover": { "max_primary_shard_size": "50gb", "max_age": "30d" }
+        }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
+    }
+  }
+}
+
+# logs@custom이 이미 있으면 먼저 읽어서 내용을 합친다. PUT은 통째로 바꾼다
+GET _component_template/logs@custom
+
+PUT _component_template/logs@custom
+{
+  "_meta": { "owner": "platform-team", "change": "PR-512 logs retention 90d" },
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "logs-90d"
+    }
+  }
+}
+
+# data stream 수준 @custom pipeline
+PUT _ingest/pipeline/logs-nginx.access@custom
+{
+  "version": 3,
+  "_meta": { "owner": "web-team", "change": "PR-530 drop query string" },
+  "processors": [
+    {
+      "script": {
+        "tag": "strip-query-string",
+        "description": "URL의 query string 제거",
+        "if": "ctx.url?.original != null",
+        "source": "int i = ctx.url.original.indexOf('?'); if (i > 0) { ctx.url.original = ctx.url.original.substring(0, i); }"
+      }
+    }
+  ]
+}
+
+# 반영 확인
+POST logs-nginx.access-default/_rollover
+GET logs-nginx.access-default/_settings?filter_path=*.settings.index.lifecycle,*.settings.index.default_pipeline

@@ -1,0 +1,81 @@
+# 04. 데이터 정의 변경
+
+# 적용 전 확인: template 결과
+POST _index_template/_simulate_index/logs-app-default
+
+# 적용 전 확인: 저장하지 않은 template 정의의 결과(GA)
+POST _index_template/_simulate
+{
+  "index_patterns": ["logs-app-*"],
+  "priority": 50,
+  "composed_of": ["logs@mappings", "logs@settings", "app-logs-mappings"],
+  "data_stream": {}
+}
+
+# 적용 전 확인: pipeline 하나, processor별 결과(simulate pipeline API, GA)
+POST _ingest/pipeline/_simulate?verbose=true
+{
+  "pipeline": {
+    "processors": [
+      { "gsub": { "tag": "strip-ms", "field": "http.response.time", "pattern": "ms$", "replacement": "" } },
+      { "convert": { "tag": "to-long", "field": "http.response.time", "type": "long" } }
+    ]
+  },
+  "docs": [
+    { "_source": { "http": { "response": { "time": "35ms" } } } },
+    { "_source": { "http": { "response": { "time": "-" } } } }
+  ]
+}
+
+# data stream 하나에만 남아 있는 override 확인
+GET _data_stream/logs-app-default/_mappings
+GET _data_stream/logs-app-default/_settings
+
+# 적용 전 확인: default, final pipeline과 mapping 검증까지(simulate ingest API, experimental)
+# pipeline_substitutions는 default, final pipeline 자리에만 적용된다. logs@custom 변경은 default pipeline 정의에 합쳐서 넣는다
+POST _ingest/_simulate
+{
+  "docs": [
+    {
+      "_index": "logs-app-default",
+      "_source": {
+        "@timestamp": "2026-11-28T01:00:00Z",
+        "message": "GET /api/orders?id=1 200 35ms",
+        "http": { "response": { "time": "35ms" } }
+      }
+    }
+  ],
+  "pipeline_substitutions": {
+    "logs@default-pipeline": {
+      "processors": [
+        { "set": { "field": "@timestamp", "copy_from": "_ingest.timestamp", "override": false } },
+        { "gsub": { "tag": "strip-ms", "field": "http.response.time", "pattern": "ms$", "replacement": "" } },
+        { "convert": { "tag": "to-long", "field": "http.response.time", "type": "long" } }
+      ]
+    }
+  },
+  "component_template_substitutions": {
+    "logs@custom": {
+      "template": {
+        "mappings": {
+          "properties": {
+            "http.response.time": { "type": "long" }
+          }
+        }
+      }
+    }
+  }
+}
+
+# 반영
+POST logs-app-default/_rollover
+GET logs-app-default/_mapping
+
+# ILM: 각 index의 policy, phase, 캐시된 정의 버전
+GET logs-app-default/_ilm/explain?filter_path=indices.*.policy,indices.*.phase,indices.*.phase_execution.version,indices.*.phase_execution.modified_date_in_millis
+
+# 영향 분석의 원본
+GET _ml/anomaly_detectors?filter_path=jobs.job_id,jobs.analysis_config
+GET _ml/datafeeds?filter_path=datafeeds.datafeed_id,datafeeds.indices,datafeeds.query
+GET _transform?filter_path=transforms.id,transforms.source,transforms.pivot
+GET _enrich/policy

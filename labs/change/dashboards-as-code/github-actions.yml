@@ -1,0 +1,60 @@
+# .github/workflows/dashboards.yml 로 복사해서 쓴다.
+# environments/staging.env, production.env 를 저장소에 두고, API key는 secret으로.
+name: dashboards
+on:
+  pull_request:
+    paths: ['dashboards/**']
+  push:
+    branches: [main]
+    paths: ['dashboards/**']
+  schedule:
+    - cron: '0 0 * * *'   # 매일 drift 검사
+
+jobs:
+  validate:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JSON 형식, 필수 필드, 패널 수
+        run: |
+          for f in dashboards/*.json; do
+            jq -e '.title and (.panels | type == "array")' "$f" > /dev/null || { echo "invalid: $f"; exit 1; }
+            n=$(jq '[.panels[] | (.panels // [.]) | length] | add // 0' "$f")
+            [ "$n" -le 1000 ] || { echo "too many panels: $f ($n)"; exit 1; }
+          done
+
+  staging:
+    if: github.event_name != 'schedule'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY_STAGING }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/deploy.sh staging
+      - run: ./scripts/verify.sh staging
+
+  production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: staging
+    runs-on: ubuntu-latest
+    environment: production   # 승인자를 지정한 환경
+    env:
+      KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 배포 직전 drift 검사. UI 변경이 있으면 멈춤
+        run: ./scripts/drift.sh production
+      - run: ./scripts/deploy.sh production
+      - run: ./scripts/verify.sh production
+
+  drift:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/drift.sh production

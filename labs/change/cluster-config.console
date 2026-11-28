@@ -1,0 +1,35 @@
+# 07. 클러스터 구성 변경
+
+# rolling restart
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.enable": "primaries" } }
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.enable": null } }
+GET _cluster/health?wait_for_status=green&timeout=30m
+
+# data 노드 제거
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.exclude._name": "data-hot-05" } }
+GET _cat/allocation/data-hot-05?v
+PUT _cluster/settings
+{ "persistent": { "cluster.routing.allocation.exclude._name": null } }
+
+# master 후보 교체(절반 이상을 한 번에 뺄 때만)
+GET _cluster/state?filter_path=metadata.cluster_coordination
+POST _cluster/voting_config_exclusions?node_names=master-01,master-02
+DELETE _cluster/voting_config_exclusions
+
+# 인증서 만료
+GET _ssl/certificates?filter_path=path,subject_dn,expiry
+
+# 라이선스
+GET _license
+
+# 남은 임시 설정
+GET _cluster/settings?flat_settings=true
+
+# API key 만료
+GET _security/api_key?active_only=true&filter_path=api_keys.name,api_keys.expiration,api_keys.username
+
+# 새 snapshot 저장소 검증
+POST _snapshot/new-repo/_analyze?blob_count=100&max_blob_size=10mb&timeout=300s

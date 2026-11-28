@@ -12,5 +12,6 @@ export const siteCollections = [
   { dir: 'data', axis: '설계', topic: 'Elasticsearch 데이터 설계' },
   { dir: 'ingest', axis: '수집', topic: 'Elastic 데이터 수집' },
   { dir: 'operations', axis: '운영', topic: 'Elasticsearch 안정성 운영' },
+  { dir: 'change', axis: '변화 관리', topic: 'Elastic 변화 관리' },
   { dir: 'ml/anomaly-detection', axis: '탐지와 알림', topic: 'Elasticsearch ML anomaly detection' },
 ];
