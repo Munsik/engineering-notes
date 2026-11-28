@@ -1,0 +1,80 @@
+---
+// sidebar 맨 위의 영역 목록입니다. 그 아래에는 Starlight 기본 sidebar(지금 영역의 개요와 컬렉션)를 그대로 둡니다.
+// - 목록은 src/site-areas.mjs의 영역 순서이고, 맨 끝에 About 같은 공통 페이지가 옵니다.
+// - 지금 페이지가 속한 항목을 강조합니다. 영역이나 공통 페이지를 추가할 때 이 파일은 고치지 않습니다.
+// - 모바일 메뉴도 이 컴포넌트를 쓰므로 같은 목록이 보입니다.
+import Default from '@astrojs/starlight/components/Sidebar.astro';
+import { getCollection } from 'astro:content';
+import { findArea, findExtra, siteAreas, siteExtras } from '../site-areas.mjs';
+
+const docs = await getCollection('docs', ({ data }) => import.meta.env.DEV || !data.draft);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const indexOf = (dir: string) => docs.find((d) => d.id === dir || d.id === `${dir}/index`);
+
+const id = Astro.locals.starlightRoute.entry.id.replace(/(^|\/)index$/, '');
+const current = findArea(id)?.dir ?? findExtra(id)?.dir;
+
+const sections = [...siteAreas, ...siteExtras]
+	.map((s) => ({ dir: s.dir, fixed: 'label' in s ? s.label : undefined, entry: indexOf(s.dir) }))
+	.filter(({ entry }) => entry)
+	.map(({ dir, fixed, entry }) => ({
+		dir,
+		label: fixed ?? entry!.data.title,
+		href: `${base}/${dir}/`,
+		isArea: siteAreas.some((a) => a.dir === dir),
+	}));
+---
+
+<nav class="en-sections" aria-label="영역">
+	{
+		[sections.filter((s) => s.isArea), sections.filter((s) => !s.isArea)].map((group) => (
+			<ul>
+				{group.map(({ dir, label, href }) => (
+					<li>
+						<a href={href} aria-current={dir === current ? 'page' : undefined}>
+							{label}
+						</a>
+					</li>
+				))}
+			</ul>
+		))
+	}
+</nav>
+<Default><slot /></Default>
+
+<style>
+	.en-sections {
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--sl-color-gray-5);
+	}
+	.en-sections ul {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+	.en-sections a {
+		display: block;
+		padding: 0.3em 0.5rem;
+		border-radius: 0.25rem;
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.en-sections a:hover {
+		color: var(--sl-color-white);
+	}
+	.en-sections a[aria-current='page'] {
+		background-color: var(--sl-color-accent-low);
+		color: var(--sl-color-text-accent);
+	}
+	.en-sections ul + ul {
+		margin-top: 0.5rem;
+	}
+	.en-sections ul + ul a {
+		font-weight: 400;
+	}
+</style>

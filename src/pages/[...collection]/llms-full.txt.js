@@ -4,11 +4,11 @@ import { bundle, siteSections, textResponse } from '../../lib/agent-markdown.mjs
 export async function getStaticPaths() {
   const sections = await siteSections();
   return sections
-    .filter((s) => s.topic)
+    .filter((s) => s.kind === 'collection')
     .map((section) => ({ params: { collection: section.dir }, props: { section } }));
 }
 
 export function GET({ props }) {
   const { section } = props;
-  return textResponse(bundle([section], `# ${section.title}: 컬렉션 전체 원문 (${section.topic})`));
+  return textResponse(bundle([section], `# ${section.title}: 컬렉션 전체 원문 (${section.area}, ${section.topic})`));
 }

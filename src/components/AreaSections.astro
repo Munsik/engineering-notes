@@ -1,0 +1,67 @@
+---
+// 홈의 영역별 컬렉션 목록입니다. src/site-areas.mjs의 영역마다 이름, 한 줄 설명, 컬렉션 카드를 그립니다.
+// 이름과 설명은 영역 개요(<dir>/index.md)의 title, description이고, 이름은 개요 페이지로 링크합니다.
+// 영역을 추가할 때 이 파일은 고치지 않습니다. 영역 index.md가 draft면 production build에서 빠집니다.
+import { getCollection } from 'astro:content';
+import { Icon } from '@astrojs/starlight/components';
+import CollectionCards from './CollectionCards.astro';
+import { siteAreas } from '../site-areas.mjs';
+
+const docs = await getCollection('docs');
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const areas = siteAreas
+	.map(({ dir }) => ({ dir, index: docs.find((d) => d.id === dir || d.id === `${dir}/index`) }))
+	.filter(({ index }) => index && !(import.meta.env.PROD && index.data.draft));
+---
+
+{
+	areas.map(({ dir, index }) => (
+		<section class="en-area">
+			<div class="en-area-head">
+				<h3>
+					<a href={`${base}/${dir}/`}>{index!.data.title}</a>
+				</h3>
+				<a class="en-area-go" href={`${base}/${dir}/`}>
+					영역 개요
+					<Icon name="right-arrow" size="1rem" />
+				</a>
+			</div>
+			<p class="en-area-desc">{index!.data.description}</p>
+			<CollectionCards area={dir} />
+		</section>
+	))
+}
+
+<style>
+	.en-area + .en-area {
+		margin-top: 2.5rem;
+	}
+	.en-area-head {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 0.5rem 1rem;
+	}
+	.en-area-head h3 {
+		margin: 0;
+	}
+	.en-area-head h3 a {
+		color: var(--sl-color-white);
+		text-decoration: none;
+	}
+	.en-area-go {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--sl-color-text-accent);
+		font-size: var(--sl-text-sm);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.en-area-desc {
+		margin: 0.5rem 0 1rem;
+		color: var(--sl-color-gray-2);
+	}
+</style>

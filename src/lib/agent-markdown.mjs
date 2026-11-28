@@ -6,10 +6,10 @@
 // - 원본 Markdown을 그대로 쓰되, 상대 링크는 사이트의 절대 URL로 바꿉니다.
 //   글을 한 파일로 묶거나 다른 곳에 붙여도 링크가 깨지지 않게 하기 위해서입니다.
 // - 이미지는 GitHub 저장소의 원본 파일 URL로 바꿉니다. alt 문장이 그림 설명 역할을 합니다.
-// - 공개된 컬렉션(site-collections.mjs)과 About만 넣습니다. draft는 넣지 않습니다.
+// - 공개된 영역 개요와 컬렉션(site-areas.mjs), About만 넣습니다. draft는 넣지 않습니다.
 import { posix } from 'node:path';
 import { getCollection } from 'astro:content';
-import { siteCollections } from '../site-collections.mjs';
+import { siteAreas, siteCollections } from '../site-areas.mjs';
 import { author, siteUrl } from '../site-seo.mjs';
 import { gitDates } from './git-dates.mjs';
 
@@ -24,23 +24,42 @@ const byOrder = (a, b) => (a.data.sidebar?.order ?? 0) - (b.data.sidebar?.order 
 
 /**
  * 공개된 페이지를 사이트 순서대로 묶어 돌려줍니다.
- * [{ dir, topic, title, description, index, articles }] 형태이고, 마지막에 About이 옵니다.
+ * 영역마다 [영역 개요 섹션, 컬렉션 섹션...] 순서이고, 마지막에 About이 옵니다.
+ * 섹션은 { kind: 'area' | 'collection' | 'extra', dir, area, topic, title, description, index, articles } 형태입니다.
+ * area는 소속 영역 개요 페이지의 title입니다.
  */
 export async function siteSections() {
   const docs = await getCollection('docs', ({ data }) => !data.draft);
-  const sections = siteCollections
-    .map(({ dir, topic }) => {
-      const index = docs.find((d) => indexId(d.id) === dir);
-      if (!index) return undefined;
+  const indexOf = (dir) => docs.find((d) => indexId(d.id) === dir);
+  const sections = [];
+  for (const area of siteAreas) {
+    const areaIndex = indexOf(area.dir);
+    if (!areaIndex) continue;
+    const areaTitle = areaIndex.data.title;
+    sections.push({
+      kind: 'area',
+      dir: area.dir,
+      area: areaTitle,
+      topic: undefined,
+      title: areaTitle,
+      description: areaIndex.data.description,
+      index: areaIndex,
+      articles: docs.filter((d) => d.id.startsWith(`${area.dir}/`) && d !== areaIndex && !siteCollections.some((c) => d.id.startsWith(`${c.dir}/`) || indexId(d.id) === c.dir)).sort(byOrder),
+    });
+    for (const { dir, topic } of area.collections) {
+      const index = indexOf(dir);
+      if (!index) continue;
       const articles = docs.filter((d) => d.id.startsWith(`${dir}/`) && d !== index).sort(byOrder);
-      return { dir, topic, title: index.data.title, description: index.data.description, index, articles };
-    })
-    .filter(Boolean);
+      sections.push({ kind: 'collection', dir, area: areaTitle, topic, title: index.data.title, description: index.data.description, index, articles });
+    }
+  }
   const aboutPages = docs.filter((d) => d.id === 'about' || d.id.startsWith('about/')).sort(byOrder);
   const aboutIndex = aboutPages.find((d) => indexId(d.id) === 'about');
   if (aboutIndex) {
     sections.push({
+      kind: 'extra',
       dir: 'about',
+      area: undefined,
       topic: undefined,
       title: 'About',
       description: aboutIndex.data.description,
@@ -83,7 +102,8 @@ export function entryToMarkdown(entry, section) {
   const { modified } = gitDates(entry.filePath);
   const meta = [
     `- URL: ${pageUrl(id)}`,
-    section?.topic ? `- 컬렉션: ${section.title} (${section.topic})` : undefined,
+    section?.area ? `- 영역: ${section.area}` : undefined,
+    section?.kind === 'collection' ? `- 컬렉션: ${section.title} (${section.topic})` : undefined,
     modified ? `- 마지막 수정: ${modified.toISOString().slice(0, 10)}` : undefined,
     `- 글쓴이: ${author.name}(${author.alternateName}), ${author.jobTitle} at ${author.worksFor}`,
   ].filter(Boolean);

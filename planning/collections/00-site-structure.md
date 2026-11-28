@@ -12,9 +12,9 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 
 - sidebar 최상위는 컬렉션이다. 모든 컬렉션이 같은 깊이에 있다. "Machine Learning" 같은 중간 단계는 두지 않는다. 문제 축 이름은 sidebar 그룹이 아니라 홈 카드의 작은 badge로 보여 준다. 그래서 "Machine Learning" label을 "탐지와 알림"으로 바꿀지는 더 고민하지 않는다.
 - 모든 컬렉션 그룹은 접힌 상태로 시작하고, 지금 읽는 글이 있는 컬렉션만 펼쳐진다. 어느 글에 있든 다른 컬렉션 이름이 화면 위쪽에 같이 보인다. About은 항상 맨 아래다.
-- 공개할 컬렉션 목록은 `src/site-collections.mjs` 한 곳에서 관리한다. sidebar와 홈 카드가 모두 이 목록을 따른다. 순서는 ROADMAP의 문제 축 순서다.
+- 공개할 컬렉션 목록은 `src/site-collections.mjs` 한 곳에서 관리한다(2026-11-28부터 `src/site-areas.mjs`, 0-6 참고). sidebar와 홈 카드가 모두 이 목록을 따른다. 순서는 ROADMAP의 문제 축 순서다.
 - 컬렉션 이름과 설명은 각 컬렉션 `index.md`의 `title`, `description`을 그대로 쓴다. 홈 카드의 글 수는 build할 때 세고, draft는 세지 않는다.
-- 새 컬렉션을 공개할 때는 `index.md`를 발행하고 `src/site-collections.mjs`에 한 줄(`{ dir, axis }`)을 추가한다. `astro.config.mjs`와 홈 `index.mdx`는 고치지 않는다. `index.md`가 draft면 production build에서 sidebar와 홈 카드에서 자동으로 빠진다.
+- 새 컬렉션을 공개할 때는 `index.md`를 발행하고 `src/site-collections.mjs`(지금은 `src/site-areas.mjs`의 해당 영역)에 한 줄을 추가한다. `astro.config.mjs`와 홈 `index.mdx`는 고치지 않는다. `index.md`가 draft면 production build에서 sidebar와 홈 카드에서 자동으로 빠진다.
 - 홈의 "다음에 쓸 글"은 `src/site-upcoming.mjs` 목록을 `UpcomingTopics` 컴포넌트가 그린다(2026-11-27). 글을 발행하거나 계획 순서가 바뀌면 이 목록만 고친다. 기존 컬렉션에 더하는 글은 그 컬렉션 개요로 링크한다.
 - 홈 hero 버튼은 특정 컬렉션이 아니라 "컬렉션 보기"(홈의 컬렉션 목록으로 이동)로 둔다. 컬렉션이 늘어도 hero는 고치지 않는다.
 
@@ -40,6 +40,28 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 - [x] A안 또는 B안 결정, 결정 이유를 이 문서에 기록 (A안. URL을 바꾸지 않고 sidebar 깊이만 맞춘다)
 - [x] `astro.config.mjs`의 `sidebar` 수정. 컬렉션 목록은 `src/site-collections.mjs`에서 읽는다
 - [x] 홈(`src/content/docs/index.mdx`)의 컬렉션 안내를 `CollectionCards` 컴포넌트로 바꿔 목록에서 자동 생성
+
+## 0-6. 영역 단계 도입
+
+상태: `결정` (2026-11-28). 0-1의 sidebar 규칙 중 "최상위는 컬렉션, 중간 단계는 두지 않는다"를 대체합니다.
+
+배경: 사이트 이름과 sidebar 어디에도 Elastic이 나오지 않아, 검색으로 들어온 사람은 무슨 제품 이야기인지 알기 어려웠습니다. 앞으로 Elastic 밖의 주제도 쓸 계획이라, 서로 다른 기술의 컬렉션이 한 sidebar에 섞이지 않는 구조가 필요했습니다.
+
+결정한 것:
+
+- 구조는 영역 > 컬렉션 > 글 세 단계로 고정합니다. 영역은 기술의 경계이고, 컬렉션은 그 안에서 업무 문제 하나를 다룹니다. 컬렉션 안에 하위 그룹은 두지 않습니다.
+- 첫 영역 이름은 "Elastic Stack"입니다. Elasticsearch 밖의 Kibana, Agent, Fleet, Logstash도 다루기 때문입니다. 개요 페이지는 `/elastic/`입니다.
+- 화면에는 한 번에 한 영역만 보입니다. sidebar 맨 위에 영역 목록(영역들, 그리고 About)이 있고, 그 아래에는 지금 영역의 개요 링크와 컬렉션 그룹만 나옵니다. 영역이 늘어도 sidebar는 한 영역의 컬렉션 수만큼만 길어집니다.
+- 글 제목 위에 "영역 › 컬렉션" 위치를 표시합니다. 컬렉션 개요의 `<title>`은 "컬렉션 | 영역"입니다. JSON-LD BreadcrumbList, llms.txt, RSS category에도 영역이 들어갑니다.
+- 기존 Elastic Stack 컬렉션의 URL은 바꾸지 않습니다. 영역 소속은 설정에서만 정합니다. 새 영역의 컬렉션은 처음부터 `/<영역>/<컬렉션>/` 아래에 둡니다.
+- 목록은 `src/site-areas.mjs` 한 곳에서 관리합니다(`src/site-collections.mjs`를 대체). 영역이나 컬렉션을 추가할 때 다른 파일은 고치지 않습니다.
+- 다음 영역은 정하지 않았습니다. `site-areas.mjs`에 주석으로 자리만 두고, 빈 "준비 중" 영역은 공개하지 않습니다. 고객에게 링크로 전달되는 사이트라 비어 있는 영역이 미완성으로 보이기 때문입니다.
+
+구현에서 고른 것:
+
+- 외부 plugin(starlight-sidebar-topics)을 검토했지만, 의존성을 늘리지 않고 Starlight 기본 기능으로 만들었습니다. route middleware에서 지금 영역의 sidebar 그룹만 남기고(`src/route-middleware.ts`), Sidebar와 PageTitle 컴포넌트를 override합니다(`src/components/Sidebar.astro`, `PageTitle.astro`).
+- 영역 목록이 6개를 넘으면 목록을 dropdown으로 바꾸는 것을 검토합니다.
+- 시험용 영역 하나를 임시로 넣어 빌드해서, 영역 목록, sidebar 교체, 위치 표시, 홈, llms.txt가 영역마다 따로 동작하는 것과 draft 영역이 빠지는 것을 확인했습니다.
 
 ## 0-2. 컬렉션 개요(`index.md`) 뼈대
 
@@ -84,7 +106,7 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 
 | 대상 | 내용 | 파일 |
 | --- | --- | --- |
-| 페이지 제목 | 컬렉션 글은 `글 제목 \| 컬렉션 topic`. 홈은 사이트 범위를 붙임. 화면 H1은 그대로 | `src/route-middleware.ts`, `src/site-collections.mjs`의 `topic` |
+| 페이지 제목 | 컬렉션 글은 `글 제목 \| 컬렉션 topic`, 컬렉션 개요는 `컬렉션 \| 영역`. 홈은 사이트 범위를 붙임. 화면 H1은 그대로 | `src/route-middleware.ts`, `src/site-areas.mjs`의 `topic` |
 | 구조화 데이터 | 홈 WebSite, 컬렉션 개요 CollectionPage(글 목록 포함), 글 TechArticle, About ProfilePage, 하위 페이지 BreadcrumbList | `src/route-middleware.ts` |
 | 날짜 | datePublished(git에서 처음 추가된 commit), dateModified(마지막 commit). sitemap lastmod와 RSS pubDate도 같은 값 | `src/lib/git-dates.mjs` |
 | 공유 미리보기 | 기본 og:image(1200x630), twitter:image | `public/og-default.png`, `src/site-seo.mjs` |
@@ -93,7 +115,7 @@ sidebar와 홈의 공통 규칙(2026-11-25):
 | AI agent | `/llms.txt`(컬렉션별 글 목록), `/llms-full.txt`, 컬렉션별 `/<컬렉션>/llms-full.txt`, 글마다 `.md` 원문, HTML head의 `rel="alternate" type="text/markdown"` | `src/lib/agent-markdown.mjs`, `src/pages/` |
 | 소유권 확인 | Google, 네이버, Bing의 HTML 태그 값을 넣는 자리. 빈 값이면 태그를 만들지 않음 | `src/site-seo.mjs` |
 
-새 컬렉션을 공개할 때: `src/site-collections.mjs`에 `{ dir, axis, topic }` 한 줄을 넣으면 sidebar, 홈 카드, 페이지 제목, llms.txt, RSS가 함께 바뀝니다.
+새 컬렉션을 공개할 때: `src/site-areas.mjs`의 해당 영역에 `{ dir, axis, topic }` 한 줄을 넣으면 sidebar, 홈 카드, 페이지 제목, llms.txt, RSS가 함께 바뀝니다.
 
 글을 쓸 때 지킬 것:
 - `description`은 이 글이 답하는 질문과 범위를 한 문장으로 씁니다. 검색 결과 설명과 llms.txt 목록에 그대로 나갑니다.

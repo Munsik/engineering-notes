@@ -1,16 +1,23 @@
 ---
-// 홈의 컬렉션 카드입니다. src/site-collections.mjs 목록을 순서대로 그립니다.
-// 제목과 설명은 컬렉션 index.md의 title, description을, 글 수는 그 폴더의 공개된 글 수를 씁니다.
-// 컬렉션을 추가하거나 글을 발행할 때 이 파일은 고치지 않습니다.
+// 컬렉션 카드 목록입니다. src/site-areas.mjs의 컬렉션을 순서대로 그립니다.
+// - area를 주면 그 영역의 컬렉션만 그립니다. 홈에서는 AreaSections가 영역마다 이 컴포넌트를 씁니다.
+// - 제목과 설명은 컬렉션 index.md의 title, description을, 글 수는 그 폴더의 공개된 글 수를 씁니다.
+// - 컬렉션을 추가하거나 글을 발행할 때 이 파일은 고치지 않습니다.
 import { getCollection } from 'astro:content';
 import { Icon } from '@astrojs/starlight/components';
-import { siteCollections } from '../site-collections.mjs';
+import { siteCollections } from '../site-areas.mjs';
+
+interface Props {
+	area?: string;
+}
+const { area } = Astro.props;
 
 const docs = await getCollection('docs');
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const isIndex = (id: string, dir: string) => id === dir || id === `${dir}/index`;
 
 const cards = siteCollections
+	.filter((c) => !area || c.area === area)
 	.map(({ dir, axis }) => {
 		const index = docs.find((d) => isIndex(d.id, dir));
 		const articles = docs.filter(
