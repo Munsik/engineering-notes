@@ -90,7 +90,7 @@ GET _migration/deprecations
 GET kbn:/api/upgrade_assistant/status
 ```
 
-`GET _migration/deprecations`의 응답은 `cluster_settings`, `node_settings`, `index_settings`, `data_streams`, `templates`, `ilm_policies`, `ml_settings`로 나뉩니다. 공식 문서는 이 API를 Upgrade Assistant가 쓰는 것으로 두고, 문제를 고칠 때는 Upgrade Assistant 화면을 쓰라고 권합니다([Get deprecation information](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-migration-deprecations)). API는 업그레이드 전후 상태를 기록으로 남기는 용도로 씁니다(해석). 두 요청 모두 9.5.5 lab에서 실행해 응답 구조를 확인했습니다. 8.19에서의 실제 항목은 확인하지 못했습니다.
+`GET _migration/deprecations`의 응답은 `cluster_settings`, `node_settings`, `index_settings`, `data_streams`, `templates`, `ilm_policies`, `ml_settings`로 나뉩니다. 공식 문서는 이 API를 Upgrade Assistant가 쓰는 것으로 두고, 문제를 고칠 때는 Upgrade Assistant 화면을 쓰라고 권합니다([Get deprecation information](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-migration-deprecations)). API는 업그레이드 전후 상태를 기록으로 남기는 용도로 씁니다. 두 요청 모두 9.5.5 lab에서 실행해 응답 구조를 확인했습니다. 8.19에서의 실제 항목은 확인하지 못했습니다.
 
 ### client
 

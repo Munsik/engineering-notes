@@ -79,7 +79,7 @@ Lens의 차트 종류에는 흐름(sankey) 차트가 없습니다(Kibana 문서�
 
 쿼리를 쓰기 전에 알아 둘 점이 두 가지 있습니다(lab 확인).
 
-- Agent 9.5.3의 self-monitoring 지표(`beat.stats.*`)는 `metrics-elastic_agent.elastic_agent-*`에 `component.id`별로 들어왔고, `metrics-elastic_agent.filebeat-*`는 만들어지지 않았습니다. 9.2부터 self-monitoring이 Agent 내장 OpenTelemetry Collector의 Beat receiver로 돌기 때문으로 봅니다(해석, [Elastic Agent as an OpenTelemetry Collector](https://www.elastic.co/docs/reference/fleet/elastic-agent-as-otel-collector)). 9.2 이전 Agent가 섞여 있으면 두 data stream을 같이 지정합니다.
+- Agent 9.5.3의 self-monitoring 지표(`beat.stats.*`)는 `metrics-elastic_agent.elastic_agent-*`에 `component.id`별로 들어왔고, `metrics-elastic_agent.filebeat-*`는 만들어지지 않았습니다. 9.2부터 self-monitoring이 Agent 내장 OpenTelemetry Collector의 Beat receiver로 돌기 때문으로 봅니다([Elastic Agent as an OpenTelemetry Collector](https://www.elastic.co/docs/reference/fleet/elastic-agent-as-otel-collector)). 9.2 이전 Agent가 섞여 있으면 두 data stream을 같이 지정합니다.
 - 이 data stream들은 time series(TSDS)이고 `acked` 같은 누적값은 `counter` 타입입니다. ES|QL은 counter 필드에 `MAX`, `MIN`을 허용하지 않습니다. 증가분은 `TS` 명령과 `INCREASE`로 셉니다(Stack 9.4부터 GA, [INCREASE](https://www.elastic.co/docs/reference/query-languages/esql/functions-operators/time-series-aggregation-functions/increase)). `INCREASE`는 시계열마다 계산하므로 Agent 재시작으로 카운터가 0부터 다시 시작해도 증가분이 틀어지지 않습니다.
 
 수집 지연 분포입니다.
