@@ -99,12 +99,14 @@ export const onRequest = defineRouteMiddleware(async (context) => {
     setMeta(head, 'property', 'og:title', fullTitle);
   }
 
-  // 2. 공유 미리보기 이미지
-  setMeta(head, 'property', 'og:image', ogImageUrl);
+  // 2. 공유 미리보기 이미지. 영역, 컬렉션, About 페이지는 제목이 들어간 이미지(src/pages/og/)를, 홈은 기본 이미지를 씁니다.
+  const hasOwnImage = !!id && (!!area || !!findExtra(id));
+  const imageUrl = hasOwnImage ? new URL(`og/${id}.png`, siteUrl).href : ogImageUrl;
+  setMeta(head, 'property', 'og:image', imageUrl);
   setMeta(head, 'property', 'og:image:width', '1200');
   setMeta(head, 'property', 'og:image:height', '630');
-  setMeta(head, 'property', 'og:image:alt', defaultOgImage.alt);
-  setMeta(head, 'name', 'twitter:image', ogImageUrl);
+  setMeta(head, 'property', 'og:image:alt', hasOwnImage ? title : defaultOgImage.alt);
+  setMeta(head, 'name', 'twitter:image', imageUrl);
   setMeta(head, 'name', 'author', author.name);
 
   // 3. Markdown 원문 주소. 공개 컬렉션과 About의 .md 글만 있습니다. 홈은 llms.txt를 가리킵니다.
@@ -214,7 +216,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
         mainEntityOfPage: url,
         inLanguage: 'ko',
         about: collection.topic,
-        image: ogImageUrl,
+        image: imageUrl,
         datePublished: published,
         dateModified: modified,
         author: person,

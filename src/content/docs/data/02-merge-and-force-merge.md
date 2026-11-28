@@ -240,11 +240,6 @@ merge disk watermark에 걸린 노드에서는 force merge도 끝나지 않습�
 
 디스크 여유는 이렇게 계산합니다. 한 노드에서 동시에 force merge되는 shard 수는 `force_merge` thread pool 크기와 같습니다. 그래서 필요한 여유 공간은 "그 노드에서 가장 큰 shard 크기 x 3 x `force_merge` thread pool 크기"입니다. thread pool 크기를 바꿨다면 그 값으로 계산합니다. vCPU 16개 노드라면 thread pool이 2이므로, 50GB shard 기준으로 300GB가 필요합니다(예시 값).
 
-## 다음 글
-
-- [03. 저장 용량 비교](../03-storage-footprint/): logsdb, `best_compression`, synthetic `_source`를 force merge와 flush 뒤의 크기로 비교합니다.
-- 이 글의 실측 코드: [`labs/data/segments-and-merge/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/segments-and-merge)
-
 ## 참고 문서
 
 - [Merge settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/merge)

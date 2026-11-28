@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import mermaid from 'astro-mermaid';
 import sitemap from '@astrojs/sitemap';
+import starlightImageZoom from 'starlight-image-zoom';
 import { readFileSync, readdirSync } from 'node:fs';
 import { siteAreas } from './src/site-areas.mjs';
 import { siteUrl, siteVerification } from './src/site-seo.mjs';
@@ -75,9 +76,12 @@ export default defineConfig({
       },
     }),
     // Mermaid는 Starlight보다 먼저 등록해야 ```mermaid 코드 블록이 다이어그램으로 바뀝니다.
-    mermaid({ theme: 'default', autoTheme: true, enableLog: false }),
+    // Mermaid 12의 기본 layout은 elk(약 1.5MB)입니다. 이 사이트의 flowchart는 dagre로 충분해서 dagre로 고정합니다.
+    mermaid({ theme: 'default', autoTheme: true, enableLog: false, mermaidConfig: { layout: 'dagre' } }),
     starlight({
       title: 'Engineering Notes',
+      // 본문 이미지(Kibana 화면 캡처)를 누르면 크게 볼 수 있습니다.
+      plugins: [starlightImageZoom()],
       description: '엔터프라이즈 환경에서 기술을 프로덕션에 올릴 때 필요한 판단 기준과 운영 경험',
       locales: {
         root: { label: '한국어', lang: 'ko' },

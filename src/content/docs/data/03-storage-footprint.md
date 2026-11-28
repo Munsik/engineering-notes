@@ -277,11 +277,6 @@ flowchart TD
 | 크기가 기대만큼 줄지 않을 때 | `_disk_usage`로 필드별 크기를 보고, 고 cardinality ID 필드가 색인과 doc values를 모두 갖고 있는지 확인한다 |
 | 우리 데이터의 절감률을 미리 보고 싶을 때 | 하루치 정도를 template 기반 data stream 두 개에 넣고 force merge 뒤 `store.size`와 `_disk_usage`를 비교한다. 측정 스크립트는 `labs/data/storage-footprint/run.py` |
 
-## 다음 글
-
-- shard 수와 크기, bulk 형태는 [04. Shard와 bulk](../04-shards-and-bulk/)에서 다룹니다.
-- 이 글의 실측 코드: [`labs/data/storage-footprint/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/storage-footprint)
-
 ## 참고 문서
 
 - [Logs data streams](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream)

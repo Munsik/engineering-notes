@@ -259,11 +259,6 @@ flowchart TD
 | frozen 데이터를 고쳐야 할 때 | 원래 snapshot에서 새 regular index로 복원한다. 복원할 tier에 전체 크기만큼 디스크를 확보한다 |
 | repository 운영 | 클러스터마다 쓰기 repository는 하나. 다른 클러스터는 read-only. mount된 snapshot은 지우지 않는다 |
 
-## 다음 글
-
-- [06. Mapping과 필드 수](../06-mappings-and-fields/): 필드 수가 heap과 master에 주는 비용, 한도를 넘었을 때의 동작, template 계층을 다룹니다.
-- 이 글의 실측 코드: [`labs/data/tiers-and-retention/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/tiers-and-retention)
-
 ## 참고 문서
 
 - [Data tiers](https://www.elastic.co/docs/manage-data/lifecycle/data-tiers)

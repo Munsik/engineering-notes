@@ -280,11 +280,6 @@ stateDiagram-v2
 20%는 TieredMergePolicy가 삭제 문서를 많다고 보는 기본 기준(`index.merge.policy.deletes_pct_allowed`, 소스 `MergePolicyConfig.java`)에서 가져온 값입니다.
 `@timestamp`가 있어 LogByteSizeMergePolicy를 쓰는 인덱스에는 이 기준이 없습니다. 삭제 비율로 merge 대상을 고르지 않기 때문에 update나 delete가 많으면 삭제 문서가 더 오래 남을 수 있습니다(같은 소스, [lucene#16701](https://github.com/apache/lucene/issues/16701)). 두 policy의 차이는 [다음 글](../02-merge-and-force-merge/#merge-policy는-두-가지다)에서 다룹니다.
 
-## 다음 글
-
-- [02. Merge와 force merge](../02-merge-and-force-merge/): merge policy 두 가지, merge가 indexing을 늦추는 조건, force merge를 해도 되는 때와 하면 안 되는 때
-- 이 글의 실측 코드: [`labs/data/segments-and-merge/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/segments-and-merge)
-
 ## 참고 문서
 
 - [Near real-time search](https://www.elastic.co/docs/manage-data/data-store/near-real-time-search)
