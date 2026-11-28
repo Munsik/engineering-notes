@@ -16,8 +16,8 @@ POST _index_template/_simulate_index/logs-nginx.access-production
 # 보관 기간: managed policy를 고치지 않고 새 policy를 만든다
 PUT _ilm/policy/logs-90d
 {
-  "_meta": { "owner": "platform-team", "based_on": "logs@lifecycle" },
   "policy": {
+    "_meta": { "owner": "platform-team", "based_on": "logs@lifecycle" },
     "phases": {
       "hot": {
         "actions": {

@@ -101,11 +101,13 @@ tier를 새로 만들 때(예: warm 추가)는 노드를 먼저 추가하고, IL
 
 인증서는 만료일에 바로 문제가 됩니다. 노드 간 transport 인증서가 만료되면 노드가 서로 연결하지 못하고, HTTP 인증서가 만료되면 Kibana, Agent, 애플리케이션이 연결하지 못합니다.
 
-만료일은 API로 미리 봅니다. 결과의 `expiry`를 정기 점검이나 alert에 넣어 두면 만료 전에 알 수 있습니다.
+만료일은 API로 미리 봅니다. 결과의 `expiry`를 정기 점검이나 alert에 넣어 두면 만료 전에 알 수 있습니다. 응답이 배열이라 `filter_path`에는 `*.` 없이 필드 이름만 씁니다. `*.path`처럼 쓰면 빈 응답이 옵니다(9.5.5 lab 실행 결과).
 
 ```console
-GET _ssl/certificates?filter_path=*.path,*.subject_dn,*.expiry
+GET _ssl/certificates?filter_path=path,subject_dn,expiry
 ```
+
+![`GET _ssl/certificates` 결과의 일부. 인증서마다 `expiry`가 나오므로 이 값을 정기 점검에 넣어 만료 전에 알 수 있습니다.](../../../assets/change/ssl-certificates-expiry.jpg)
 
 교체 절차는 같은 CA로 새로 서명하느냐, CA 자체를 바꾸느냐에 따라 다릅니다([Updating certificates](https://www.elastic.co/docs/deploy-manage/security/updating-certificates)).
 
@@ -115,7 +117,7 @@ GET _ssl/certificates?filter_path=*.path,*.subject_dn,*.expiry
 | keystore 비밀번호도 바뀜 | 비밀번호가 secure settings에 있으므로 rolling restart가 필요합니다. 재시작 전에 파일을 다시 읽지 않도록 새 keystore는 다른 파일 이름으로 둡니다 |
 | CA 변경 | 새 CA를 먼저 모든 노드와 client의 신뢰 목록에 추가하고, 그다음 인증서를 바꾸고, 마지막에 이전 CA를 신뢰 목록에서 뺍니다. 단계마다 rolling restart가 필요합니다 |
 
-`GET _ssl/certificates`는 이럴 때 씁니다. 분기 점검에서 모든 노드 인증서의 만료일을 모을 때, 인증서 파일을 바꾼 뒤 Elasticsearch가 새 파일을 실제로 읽었는지 볼 때, 노드마다 다른 인증서가 들어가 있지 않은지 확인할 때입니다. 교체 뒤에는 이 API로 새 인증서가 읽혔는지 확인합니다([Same CA](https://www.elastic.co/docs/deploy-manage/security/same-ca), [Different CA](https://www.elastic.co/docs/deploy-manage/security/different-ca)).
+`GET _ssl/certificates`는 요청을 받은 노드가 읽은 인증서를 돌려줍니다. lab에서 같은 요청을 두 번 보내자 서로 다른 노드의 인증서가 나왔습니다. 그래서 모든 노드를 보려면 노드마다 직접 요청해야 합니다(해석). 이 API는 이럴 때 씁니다. 분기 점검에서 노드별 인증서 만료일을 모을 때, 인증서 파일을 바꾼 뒤 Elasticsearch가 새 파일을 실제로 읽었는지 볼 때, 노드마다 다른 인증서가 들어가 있지 않은지 확인할 때입니다. 교체 뒤에는 이 API로 새 인증서가 읽혔는지 확인합니다([Same CA](https://www.elastic.co/docs/deploy-manage/security/same-ca), [Different CA](https://www.elastic.co/docs/deploy-manage/security/different-ca)).
 
 Elasticsearch 인증서만 보면 안 됩니다. Kibana의 Elasticsearch 연결 설정, Fleet Server와 Agent, Logstash output, Beats, 애플리케이션의 신뢰 설정이 모두 같은 CA 변경의 영향을 받습니다. CA를 바꾸는 작업은 client 목록부터 만듭니다.
 

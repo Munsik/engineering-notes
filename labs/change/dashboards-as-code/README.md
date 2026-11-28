@@ -1,6 +1,6 @@
 # 06. Dashboard CI/CD
 
-Kibana Dashboards API(9.5 GA)로 dashboard를 Git에 두고 배포하는 예시입니다. 공식 문서와 API reference 기준으로 작성했고 lab에서 실행 확인은 하지 않았습니다.
+Kibana Dashboards API(9.5 GA)로 dashboard를 Git에 두고 배포하는 예시입니다. 공식 문서와 API reference 기준으로 작성했습니다. `deploy.sh`와 같은 `PUT` 요청은 9.5.5 lab에서 201과 패널 표시를 확인했고, 나머지 스크립트는 실행하지 않았습니다.
 
 | 파일 | 하는 일 |
 | --- | --- |

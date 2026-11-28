@@ -117,6 +117,8 @@ POST _ingest/pipeline/_simulate?verbose=true
 
 simulate ingest API의 예입니다. 실제 index 이름으로 넣고, 아직 저장하지 않은 pipeline과 component template을 대체 정의로 줍니다.
 
+`pipeline_substitutions`는 대상 index의 default pipeline, final pipeline 자리에서 실행되는 pipeline에만 적용됩니다. `logs@custom`처럼 다른 pipeline 안의 `pipeline` processor로 불리는 pipeline은 이름을 넣어도 바뀌지 않았습니다(9.5.5 lab 실행 결과). 그래서 `logs@custom`에 넣을 processor를 시험할 때는 default pipeline인 `logs@default-pipeline` 자리에 기존 processor와 새 processor를 합친 정의를 넣습니다.
+
 ```console
 POST _ingest/_simulate
 {
@@ -131,8 +133,9 @@ POST _ingest/_simulate
     }
   ],
   "pipeline_substitutions": {
-    "logs@custom": {
+    "logs@default-pipeline": {
       "processors": [
+        { "set": { "field": "@timestamp", "copy_from": "_ingest.timestamp", "override": false } },
         { "gsub": { "tag": "strip-ms", "field": "http.response.time", "pattern": "ms$", "replacement": "" } },
         { "convert": { "tag": "to-long", "field": "http.response.time", "type": "long" } }
       ]
@@ -152,7 +155,9 @@ POST _ingest/_simulate
 }
 ```
 
-응답에는 처리된 문서, 실행된 pipeline 목록, 저장될 index 이름이 나오고, mapping과 맞지 않으면 그 오류가 문서마다 붙습니다. 같은 문서로 `component_template_substitutions`를 넣은 요청과 뺀 요청을 각각 돌리면, 새 mapping에서 통과하는지와 아직 rollover되지 않은 현재 mapping에서 통과하는지를 따로 볼 수 있습니다. 배포 순서(template 먼저, pipeline 나중)를 정할 때 이 비교가 근거가 됩니다.
+![9.5.5 lab에서 실행한 `_ingest/_simulate` 결과. 대체한 default pipeline이 실행돼 `time`이 35로 바뀌었지만, 문서에 `_id` 오류가 붙어 mapping 검증 결과는 볼 수 없었습니다.](../../../assets/change/ingest-simulate-result.jpg)
+
+응답에는 처리된 문서, 실행된 pipeline 목록, 저장될 index 이름이 나오고, mapping과 맞지 않으면 그 오류가 문서마다 붙습니다. 다만 9.5.5 lab에서는 logsdb와 standard index 모두에서 모든 문서에 `_id should have been set on the coordinating node` 오류가 붙어, mapping 검증 결과를 확인하지 못했습니다(확인 필요). 앞에서 simulate ingest 테스트를 경고 단계로 두자고 한 것도 이런 경우 때문입니다. 같은 문서로 `component_template_substitutions`를 넣은 요청과 뺀 요청을 각각 돌리면, 새 mapping에서 통과하는지와 아직 rollover되지 않은 현재 mapping에서 통과하는지를 따로 볼 수 있습니다. 배포 순서(template 먼저, pipeline 나중)를 정할 때 이 비교가 근거가 됩니다.
 
 ### data stream override API와 template 수정
 
@@ -223,6 +228,8 @@ ILM은 index가 phase에 들어갈 때 그 phase의 정의를 index 메타데이
 # 각 index가 어느 policy의 어느 phase, 어느 버전에 있는지
 GET logs-app-default/_ilm/explain?filter_path=indices.*.policy,indices.*.phase,indices.*.phase_execution.version,indices.*.phase_execution.modified_date_in_millis
 ```
+
+![backing index의 Index lifecycle 탭. 적용 중인 policy와 현재 phase, 캐시된 phase 정의와 그 version을 봅니다.](../../../assets/change/ilm-explain-backing-index.jpg)
 
 `phase_execution.version`이 policy의 현재 version보다 낮으면 그 index는 이전 정의로 phase를 실행 중입니다.
 

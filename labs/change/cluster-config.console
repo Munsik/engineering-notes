@@ -20,7 +20,7 @@ POST _cluster/voting_config_exclusions?node_names=master-01,master-02
 DELETE _cluster/voting_config_exclusions
 
 # 인증서 만료
-GET _ssl/certificates?filter_path=*.path,*.subject_dn,*.expiry
+GET _ssl/certificates?filter_path=path,subject_dn,expiry
 
 # 라이선스
 GET _license

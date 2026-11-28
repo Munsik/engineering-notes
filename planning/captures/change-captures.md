@@ -43,3 +43,14 @@
 
 - 06의 GitHub Actions 실행 화면: GitHub UI라 사이트 규칙상 넣지 않습니다. 필요하면 workflow 로그 텍스트를 코드 블록으로 넣습니다.
 - 10의 이관 화면: Kibana 화면이 아니라 API 결과라 넣지 않습니다.
+
+## 캡처 결과(2026-11-28, ECH 9.5.5)
+
+- 17장을 반영했습니다. 17번(8.19 Upgrade Assistant)은 8.19 lab이 없어 넣지 않았습니다.
+- 3번: 9.5 Index Templates 목록에는 priority 열이 없어 Managed 배지만 보이게 찍었습니다. priority는 4번 상세 화면에 나옵니다.
+- 6번: prebuilt rule 하나에 tag를 추가해 찍고, 원래 tag로 되돌렸습니다.
+- 7번: integration policy가 없는 lab이라 policy 자동 업그레이드 체크박스는 화면에 나오지 않았습니다.
+- 12번: API key로 rule을 만든 뒤 key를 무효화해 재현했고, 캡처 뒤 rule을 지웠습니다.
+- 13번: 9.5에서는 Share 화면의 Permissions에서 Can edit, Can view로 바꿉니다.
+- 16번: 인증서 subject의 클러스터, 계정 식별자가 들어간 항목은 잘라 냈습니다.
+- 18번: 9.5 Fleet Agents 목록에는 버전 필터 버튼이 없어 KQL 검색으로 찍었습니다.

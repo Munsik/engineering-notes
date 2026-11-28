@@ -32,6 +32,7 @@ GET _data_stream/logs-app-default/_mappings
 GET _data_stream/logs-app-default/_settings
 
 # 적용 전 확인: default, final pipeline과 mapping 검증까지(simulate ingest API, experimental)
+# pipeline_substitutions는 default, final pipeline 자리에만 적용된다. logs@custom 변경은 default pipeline 정의에 합쳐서 넣는다
 POST _ingest/_simulate
 {
   "docs": [
@@ -45,8 +46,9 @@ POST _ingest/_simulate
     }
   ],
   "pipeline_substitutions": {
-    "logs@custom": {
+    "logs@default-pipeline": {
       "processors": [
+        { "set": { "field": "@timestamp", "copy_from": "_ingest.timestamp", "override": false } },
         { "gsub": { "tag": "strip-ms", "field": "http.response.time", "pattern": "ms$", "replacement": "" } },
         { "convert": { "tag": "to-long", "field": "http.response.time", "type": "long" } }
       ]

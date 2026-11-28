@@ -46,11 +46,13 @@ ESA에서 확인할 항목은 다섯 가지입니다.
 | Elasticsearch | `GET _nodes?filter_path=nodes.*.name,nodes.*.version,nodes.*.jvm.version,nodes.*.jvm.vm_vendor,nodes.*.os.name` |
 | Elasticsearch plugin | `GET _cat/plugins?v` |
 | Kibana | `GET kbn:/api/status`의 `version.number`. 인스턴스가 여럿이면 각각 |
-| Fleet 관리 Agent | Fleet API `GET kbn:/api/fleet/agents`의 `local_metadata.elastic.agent.version`, Fleet 화면의 버전 필터 |
+| Fleet 관리 Agent | Fleet API `GET kbn:/api/fleet/agents`의 `local_metadata.elastic.agent.version`. Fleet 화면에서는 검색창에 `local_metadata.elastic.agent.version : "9.5.4"`처럼 KQL로 거름 |
 | standalone Agent, Beats | 구성 관리 도구의 인벤토리, 또는 Agent와 Beats가 보내는 monitoring 데이터의 버전 필드 |
 | Logstash | `GET :9600/` 노드 API의 `version` |
 | 애플리케이션 client | 각 애플리케이션의 의존성 목록 |
 | OS | `_nodes`의 `os` 정보 |
+
+![Fleet Agents 목록을 KQL로 거른 화면. 공지에 나온 버전을 넣으면 해당 Agent 수와 호스트가 바로 나옵니다.](../../../assets/change/fleet-agent-versions.jpg)
 
 ```console
 # Elasticsearch 노드별 버전과 JVM

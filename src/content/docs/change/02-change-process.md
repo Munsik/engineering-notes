@@ -93,7 +93,9 @@ GET _cat/snapshots/prod-repo?v&s=end_epoch:desc&h=id,status,end_epoch,indices
 
 계획된 변경 중에는 alert가 쏟아집니다. 노드를 재시작하면 노드 다운 alert가, 업그레이드 중에는 적재 지연 alert가 납니다. 이때 rule을 끄면 다시 켜는 것을 잊습니다.
 
-Kibana maintenance window를 씁니다. 9.0과 9.1에서는 tech preview, 9.2부터 GA입니다. 알림 대상 rule을 space, category, filter로 좁힐 수 있습니다. 동작은 다음과 같습니다([Maintenance windows](https://www.elastic.co/docs/explore-analyze/alerting/alerts/maintenance-windows)).
+Kibana maintenance window를 씁니다. 9.0과 9.1에서는 tech preview, 9.2부터 GA입니다. maintenance window는 만든 space 안의 모든 rule에 적용되고, **Filter alerts**를 켜면 KQL로 대상 alert를 좁힐 수 있습니다. rule category를 고르는 옵션은 9.2에서 없어졌습니다. Stack Monitoring rule처럼 alert에 필요한 필드가 없는 일부 rule에는 filter가 적용되지 않습니다. 동작은 다음과 같습니다([Maintenance windows](https://www.elastic.co/docs/explore-analyze/alerting/alerts/maintenance-windows)).
+
+![Maintenance window 생성 화면. 일정과 반복을 정하고, Filter alerts를 켜면 KQL로 대상 alert를 좁힙니다. rule category 선택은 9.2부터 없고, 화면에도 그 안내가 나옵니다.](../../../assets/change/maintenance-window-create.jpg)
 
 - alert는 계속 생성되고 알림만 억제됩니다. 기록은 남습니다.
 - maintenance window 중에 생긴 alert는 나중에 회복돼도 알림이 가지 않습니다. 변경 창이 끝난 뒤에도 남아 있는 alert는 Alerts 화면에서 직접 확인해야 합니다.

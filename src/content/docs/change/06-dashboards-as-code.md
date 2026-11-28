@@ -113,6 +113,8 @@ curl -sf "$KIBANA_URL/s/$SPACE/api/dashboards/$ID" \
 
 UI에서는 dashboard의 **Export** 메뉴에서 **Export JSON**을 고르면 API가 받는 형식의 JSON을 볼 수 있습니다. 이 화면은 Stack 9.4와 9.5에서 tech preview입니다. 이때 API가 아직 지원하지 않는 패널이나 속성은 빠지고, **Unsupported properties were removed** 아래에 목록으로 표시됩니다([Export JSON](https://www.elastic.co/docs/explore-analyze/dashboards/sharing#export-dashboards)). 이 목록이 비어 있지 않으면 그 dashboard는 아직 코드로 관리할 수 없거나, 빠지는 부분을 다른 패널로 바꿔야 합니다.
 
+![Export JSON 플라이아웃(tech preview). API가 받는 형식의 JSON을 보여 줍니다. API로 만든 dashboard라 빠진 속성 목록은 나오지 않습니다.](../../../assets/change/dashboard-export-json.jpg)
+
 ### deploy
 
 만드는 API는 둘입니다.
@@ -155,6 +157,8 @@ exit $fail
 ### 배포 후 검증
 
 배포한 뒤 다시 GET해서 Git의 정의와 비교합니다. API가 기본값을 채워 넣는 필드가 있으면 차이가 나므로, 처음에는 차이를 확인하고 그 필드를 Git 정의에 명시해 둡니다. 그다음부터는 차이가 없어야 정상입니다.
+
+![Dashboards API로 배포한 "Web logs overview (as code)". data view 저장 객체 없이 샘플 웹 로그를 읽어 두 metric 패널에 값이 나옵니다.](../../../assets/change/dashboard-deployed.jpg)
 
 ```bash
 for f in dashboards/*.json; do

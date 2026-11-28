@@ -53,6 +53,8 @@ import 옵션은 셋이고, 서로 함께 쓸 수 없는 조합이 있습니다.
 | `compatibilityMode=true` | 버전 간 호환을 위한 보정 | 이전 마이너에서 export한 파일을 import했더니 객체가 열리지 않는 등 문제가 있을 때만 |
 | 아무 옵션 없음 | 같은 ID가 있으면 충돌 오류 | 대상 환경에 같은 객체가 이미 있는지 먼저 확인하고 싶을 때. 충돌 목록을 보고 `_resolve_import_errors`로 객체별로 처리 |
 
+![saved objects Import 옵션. ID를 유지하려면 Check for existing objects와 덮어쓰기를, 새 ID가 필요하면 Create new objects with random IDs를 고릅니다.](../../../assets/change/saved-objects-import-options.jpg)
+
 space 사이로 복사하는 `POST /api/spaces/_copy_saved_objects`는 `createNewCopies`의 기본값이 `true`입니다([Copy saved objects between spaces](https://www.elastic.co/docs/api/kibana/operation/operation-post-spaces-copy-saved-objects)). 기본값 그대로 복사하면 ID가 새로 생겨서, 같은 ID로 관리하려던 계획이 깨집니다. ID를 유지하려면 `createNewCopies: false`와 `overwrite: true`를 명시합니다.
 
 ```bash
@@ -94,6 +96,8 @@ POST kbn:/api/data_views/data_view
 }
 ```
 
+![data view 생성 화면에서 advanced settings를 펼친 모습. Custom data view ID에 환경마다 같은 ID를 넣습니다.](../../../assets/change/data-view-custom-id.jpg)
+
 ## rule과 API key
 
 Kibana의 alerting rule과 detection rule은 실행할 때 API key를 씁니다. rule을 만들거나 수정한 사용자의 권한으로 key가 만들어지고 rule에 붙습니다. detection rule API 문서는 이 동작을 경고로 적고 있습니다. API key로 rule을 수정하면 그 key가 rule에 붙고, key가 삭제되거나 사용자가 비활성화되면 rule이 멈추고, 권한이 다른 key로 수정하면 rule 동작이 달라질 수 있습니다([Patch a detection rule](https://www.elastic.co/docs/api/kibana/operation/operation-patchrule)).
@@ -102,6 +106,8 @@ Kibana의 alerting rule과 detection rule은 실행할 때 API key를 씁니다.
 
 - 담당자 계정으로 만든 rule이 퇴사나 계정 비활성화 뒤에 일제히 멈춥니다. 오류가 rule 실행 상태에만 나오기 때문에 알림이 오지 않는 것을 "조용하다"로 오해합니다.
 - 자동화가 만든 rule을 누군가 운영 화면에서 한 번 수정하면, key가 그 사람의 것으로 바뀝니다. 다음 배포 때 다시 자동화의 key로 돌아가고, 그사이 권한 차이 때문에 결과가 달라집니다.
+
+![API key를 무효화한 뒤의 rule. 상태가 Error로 바뀌고, History의 실패 기록에 인증 오류가 남습니다. 연결된 알림이 없으면 이 화면을 열기 전까지 알 수 없습니다.](../../../assets/change/rule-execution-error.jpg)
 
 대응은 [01의 CI/CD 계정 설계](../01-change-map/#cicd-계정-설계)와 같습니다. rule은 전용 계정으로만 만들고 수정합니다. 이미 사람 계정에 붙은 rule이 있다면 전용 계정으로 다시 저장해서 key를 교체합니다. 그리고 rule 실행 실패를 보는 alert를 따로 둡니다. "alert가 없다"가 "rule이 죽었다"일 수 있기 때문입니다.
 
@@ -162,6 +168,9 @@ Kibana는 업그레이드할 때 saved object를 새 버전 형식으로 바꿉�
 
 - 운영 space에서 dashboard, rule, data view에 쓰기 권한을 가진 사람을 최소로 둡니다. Kibana role의 feature 권한으로 나눕니다.
 - 9.x의 dashboard에는 소유자가 다른 사용자의 편집을 막는 설정이 있습니다(`access_control.access_mode`의 `write_restricted`). 자동화가 관리하는 dashboard에 쓰면 실수로 고치는 일을 줄일 수 있습니다([Export and share dashboards](https://www.elastic.co/docs/explore-analyze/dashboards/sharing#manage-dashboard-access)).
+
+![dashboard Share 화면의 Permissions. space 사용자의 권한을 Can view로 바꾸면 소유자 외에는 편집할 수 없습니다.](../../../assets/change/dashboard-access-mode.jpg)
+
 - Saved Objects Management 권한은 다른 앱의 객체까지 모두 관리할 수 있게 합니다. 이 권한은 관리자에게만 줍니다([Saved objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/saved-objects)).
 - Kibana audit log의 `saved_object_update`, `saved_object_delete` 이벤트로 Git 밖에서 일어난 변경을 찾습니다([01](../01-change-map/#누가-바꿨는지-남긴다)).
 

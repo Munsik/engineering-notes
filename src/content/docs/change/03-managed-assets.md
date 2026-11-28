@@ -49,6 +49,8 @@ GET _ingest/pipeline?filter_path=*._meta
 GET _ilm/policy?filter_path=*.policy._meta
 ```
 
+![Index Templates 목록. built-in `logs`와 integration template에는 Managed 배지가 붙고, 샘플 데이터 template처럼 사용자가 만든 것에는 붙지 않습니다.](../../../assets/change/index-templates-managed.jpg)
+
 결과에서 `managed: true`인 것은 고치지 않을 대상, 이름이 `@custom`으로 끝나는 것은 고칠 대상입니다. data stream 하나가 어떤 template과 policy를 쓰는지는 이렇게 봅니다.
 
 ```console
@@ -59,6 +61,8 @@ GET _index_template/logs-nginx.access?filter_path=index_templates.index_template
 ```
 
 Kibana 쪽은 화면에 표시됩니다. integration이 설치한 dashboard는 **Managed** 배지가 붙고 직접 편집할 수 없습니다([Edit a dashboard](https://www.elastic.co/docs/explore-analyze/dashboards/open-dashboard)). prebuilt detection rule은 Rules 표에서 Elastic rule로 구분되고, 수정한 rule에는 9.1부터 **Modified** 배지가 붙습니다.
+
+![integration dashboard의 Managed 배지. Edit 버튼이 없고, 배지를 누르면 Duplicate로 복제해서 고치라는 안내가 나옵니다.](../../../assets/change/managed-dashboard-badge.jpg)
 
 ## 고칠 곳을 정하는 표
 
@@ -86,6 +90,8 @@ Fleet은 integration을 설치할 때 수정 가능한 `@custom` component templ
 
 `composed_of` 목록에서 뒤에 있는 component template이 앞의 것을 덮어씁니다. 같은 설정을 여러 수준에 넣었다면 data stream 수준이 이깁니다.
 
+![`logs-nginx.access` index template 상세. priority는 200이고, component template은 `@package` 다음에 `logs@custom`, `nginx@custom`, `logs-nginx.access@custom` 순으로 와서 뒤의 것이 덮어씁니다.](../../../assets/change/integration-template-composed-of.jpg)
+
 Fleet 없이 `logs-<dataset>-<namespace>` 이름으로 직접 보내는 애플리케이션 로그는 built-in `logs` template을 탑니다. Elasticsearch 소스 기준으로 이 template은 `logs@mappings`, `logs@settings`, `logs@custom`, `ecs@mappings` 순으로 구성되고, `logs@custom`이 없어도 동작하도록 `ignore_missing_component_templates`에 들어 있습니다. 그래서 이 경우에는 `logs@custom`이 유일한 사용자 수정 지점입니다.
 
 예를 들어 integration 로그 전체의 보관 기간을 바꾸는 순서는 이렇습니다. 먼저 새 policy를 만듭니다. built-in `logs@lifecycle`은 Elasticsearch 소스 기준으로 hot phase의 rollover(50GB, 30일)만 있고 delete phase가 없습니다. 그대로 두면 로그가 지워지지 않습니다.
@@ -93,8 +99,8 @@ Fleet 없이 `logs-<dataset>-<namespace>` 이름으로 직접 보내는 애플�
 ```console
 PUT _ilm/policy/logs-90d
 {
-  "_meta": { "owner": "platform-team", "based_on": "logs@lifecycle" },
   "policy": {
+    "_meta": { "owner": "platform-team", "based_on": "logs@lifecycle" },
     "phases": {
       "hot": {
         "actions": {
@@ -125,6 +131,8 @@ PUT _component_template/logs@custom
   }
 }
 ```
+
+![rollover 뒤 `logs-nginx.access-default` data stream 상세. Successful ingest lifecycle이 `logs-90d`로 바뀌었고 Inherited로 표시됩니다.](../../../assets/change/data-stream-ilm-after-custom.jpg)
 
 새 설정은 다음 rollover로 만들어지는 backing index부터 적용됩니다. 바로 확인하려면 대상 data stream을 rollover합니다. 기존 backing index는 이전 policy로 남아 있으므로, 기존 index에도 새 policy를 적용하려면 `PUT <index>/_settings`로 `index.lifecycle.name`을 따로 바꿉니다. 이 경우 진행 중인 phase는 이전 정의로 마치고 다음 phase부터 새 policy를 따릅니다([04의 ILM](../04-data-definitions/#ilm-policy-변경)).
 
@@ -219,6 +227,8 @@ prebuilt rule을 어떻게 고칠 수 있는지는 구독 등급에 따라 다�
 
 직접 수정할 수 없는 등급에서 rule을 바꾸려면 복제본을 만들어 운영하고, 원본은 꺼 둡니다. 직접 수정할 수 있는 등급이라도 수정이 많아질수록 업데이트 때 충돌 해결 비용이 커집니다. exception으로 해결되는 것은 exception으로 처리하는 편이 낫습니다. 9.1부터는 수정한 rule을 Elastic 버전으로 되돌릴 수 있고, 9.5부터는 변경 이력을 보고 이전 revision으로 복원할 수 있습니다([Update prebuilt rules](https://www.elastic.co/docs/solutions/security/detect-and-alert/update-prebuilt-rules)).
 
+![tag 하나를 추가한 prebuilt rule. Modified Elastic rule 배지가 붙고, 배지를 누르면 Elastic 원본과 현재 rule의 차이가 필드별로 나옵니다.](../../../assets/change/prebuilt-rule-modified.jpg)
+
 ## 이미 managed 자산을 고쳐 놓은 환경
 
 기존 환경을 점검해 보면 managed 자산이 이미 수정돼 있는 경우가 많습니다. 정리 순서는 이렇습니다.
@@ -228,7 +238,7 @@ flowchart TB
   A["1. 현재 정의 export<br/>managed 자산 전부"] --> B["2. 기준 정의와 비교<br/>검증 환경에 같은 버전을 새로 설치해 얻음"]
   B --> C["3. 차이를 분류<br/>필요한 변경, 실수, 오래된 임시 조치"]
   C --> D["4. 필요한 변경을 @custom으로 옮김"]
-  D --> E["5. 자산 재설치<br/>Fleet의 Reinstall assets"]
+  D --> E["5. 자산 재설치<br/>Fleet의 Reinstall"]
   E --> F["6. rollover 후 검증<br/>새 backing index의 설정과 mapping"]
 ```
 
@@ -237,6 +247,9 @@ flowchart TB
 3. 차이를 분류합니다. 지금도 필요한 변경, 실수로 들어간 변경, 장애 때 임시로 넣고 잊은 변경이 섞여 있습니다.
 4. 필요한 변경만 `@custom` component template, `@custom` pipeline, 새 ILM policy로 옮깁니다.
 5. Fleet의 integration 설정에서 자산을 재설치해 managed 자산을 기준 정의로 되돌립니다. built-in 자산은 다음 업그레이드 때 되돌아가지만, 그전에 정리하려면 검증 환경에서 방법을 먼저 확인합니다. 확인 필요.
+
+![integration Settings 탭. Reinstall로 Kibana와 Elasticsearch 자산을 다시 설치합니다. 9.5에서는 namespace index template과 이전 버전으로 되돌리는 Rollback도 이 탭에 있습니다.](../../../assets/change/fleet-reinstall-assets.jpg)
+
 6. 대상 data stream을 rollover하고, 새 backing index의 설정과 mapping, 적용된 pipeline과 ILM policy를 확인합니다. failure store에 문서가 쌓이지 않는지도 봅니다.
 
 ## 업그레이드 전 점검 항목
