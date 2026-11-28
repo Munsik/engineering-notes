@@ -17,7 +17,7 @@ Kibana 9.5에서 Dashboards API가 GA가 되면서 dashboard를 읽기 쉬운 JS
 
 ## 무엇이 달라졌나
 
-예전에도 dashboard를 saved objects NDJSON으로 export해서 Git에 둘 수 있었습니다. 문제는 그 파일이 사람이 읽고 리뷰하기 어렵다는 점이었습니다. 패널 설정이 문자열로 직렬화된 JSON 안에 들어 있어서, query 하나를 바꿔도 diff가 한 줄짜리 거대한 문자열로 나옵니다. 공식 문서도 export 결과를 불투명한 데이터로 다루라고 합니다.
+예전에도 dashboard를 saved objects NDJSON으로 export해서 Git에 둘 수 있었습니다. 문제는 그 파일이 사람이 읽고 리뷰하기 어렵다는 점이었습니다. 패널 설정이 문자열로 직렬화된 JSON 안에 들어 있어서, query 하나를 바꿔도 diff가 한 줄짜리 거대한 문자열로 나옵니다. 공식 문서도 export 결과를 opaque 데이터로 다루라고 안내합니다.
 
 Dashboards API는 dashboard를 구조화된 JSON으로 주고받습니다. 패널, control, section, 표시 옵션이 모두 필드로 나뉘어 있어서 PR diff에서 어느 패널의 어느 query가 바뀌었는지 바로 보입니다.
 
@@ -49,7 +49,7 @@ flowchart LR
 
 dashboard를 환경 사이에 옮길 때 가장 큰 문제는 참조입니다. dashboard는 data view와 library visualization을 ID로 참조하는데, 자동 생성된 ID는 환경마다 다릅니다. 공식 문서가 제시하는 해법은 자동화 정도가 높은 순서로 세 가지입니다.
 
-| 방법 | 내용 | 맞는 경우 |
+| 방법 | 내용 | 적합한 경우 |
 | --- | --- | --- |
 | Terraform | provider가 환경별 ID 대응을 추적 | 이미 Terraform을 쓰는 조직 |
 | ES\|QL 패널 | visualization 정의를 dashboard 안에 두고, query가 index를 직접 읽어 data view가 필요 없음 | 새로 만드는 dashboard |
@@ -70,9 +70,9 @@ integration이 설치한 managed dashboard는 코드로 관리하지 않습니�
 | 변경 미리보기 | 스크립트로 GET 결과와 비교 | `terraform plan` |
 | ID 관리 | 직접 정함 | provider가 추적 |
 
-공식 문서는 Terraform 리소스가 처음부터 코드로 작성하는 dashboard에 맞고, 이미 있는 dashboard를 가져오기에는 맞지 않는다고 설명합니다([Automate with Terraform](https://www.elastic.co/docs/explore-analyze/dashboards/manage-dashboards-as-code#dashboards-as-code-terraform)). 분석가가 UI에서 만들고 운영팀이 배포하는 흐름이라면 API 직접 호출이 맞습니다. 아래 내용은 API 직접 호출을 기준으로 합니다.
+공식 문서는 Terraform 리소스가 처음부터 코드로 작성하는 dashboard에 적합하고, 이미 있는 dashboard를 가져오는 데는 적합하지 않다고 설명합니다([Automate with Terraform](https://www.elastic.co/docs/explore-analyze/dashboards/manage-dashboards-as-code#dashboards-as-code-terraform)). 분석가가 UI에서 만들고 운영팀이 배포하는 흐름이라면 API 직접 호출이 맞습니다. 아래 내용은 API 직접 호출을 기준으로 합니다.
 
-현장에서는 Terraform으로 dashboard를 많이 관리할 때 plan과 refresh가 몇 분씩 걸린다는 이야기가 나옵니다. dashboard마다 전체 정의를 읽어 와 비교하기 때문입니다. dashboard 수가 많다면 미리 검증 환경에서 시간을 재 봅니다.
+현장에서는 Terraform으로 dashboard를 많이 관리할 때 plan과 refresh가 몇 분씩 걸린다는 이야기가 나옵니다. dashboard마다 전체 정의를 읽어 와 비교하기 때문입니다. dashboard 수가 많다면 검증 환경에서 소요 시간을 미리 측정합니다.
 
 ## 저장소 구조
 
@@ -119,7 +119,7 @@ UI에서는 dashboard의 **Export** 메뉴에서 **Export JSON**을 고르면 AP
 
 만드는 API는 둘입니다.
 
-| API | ID | 이럴 때 쓴다 |
+| API | ID | 쓰는 상황 |
 | --- | --- | --- |
 | `POST /api/dashboards` | Kibana가 새로 만듦. 호출할 때마다 새 dashboard | 공용 템플릿에서 팀별 dashboard를 한 번 찍어 내고 이후는 각 팀이 UI로 관리할 때 |
 | `PUT /api/dashboards/{id}` | 요청한 ID. 없으면 만들고 있으면 바꿈 | Git에서 관리하는 dashboard를 환경마다 같은 ID로 배포할 때. CI/CD는 항상 이쪽 |

@@ -57,7 +57,7 @@ GET _health_report/master_is_stable
 
 근거: [Troubleshoot an unstable cluster](https://www.elastic.co/docs/troubleshoot/elasticsearch/troubleshooting-unstable-cluster), [Discovery and cluster formation settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/discovery-cluster-formation-settings). 이 값들은 공식 문서가 바꾸지 말라고 경고하는 설정입니다. timeout을 늘리면 노드가 덜 빠지는 것처럼 보이지만, 응답 없는 노드를 더 오래 붙잡게 됩니다.
 
-`lagging`과 `followers check retry count exceeded`는 네트워크 지연 때문일 수도, 노드 과부하 때문일 수도 있습니다. reason만으로는 둘을 가를 수 없습니다.
+`lagging`과 `followers check retry count exceeded`는 네트워크 지연 때문일 수도, 노드 과부하 때문일 수도 있습니다. reason만으로는 둘을 구분할 수 없습니다.
 
 ## 네트워크 문제와 노드 문제 구분
 
@@ -93,7 +93,7 @@ Elasticsearch는 노드 사이에 여러 TCP 연결을 열고 영원히 유지�
 
 | 흔한 원인 | 확인 |
 | --- | --- |
-| 방화벽, NAT의 idle timeout이나 세션 수명 제한 | 노드 사이 경로의 장비 정책. 오래된 연결을 끊는 장비는 쓰면 안 된다고 공식 문서가 적고 있음 |
+| 방화벽, NAT의 idle timeout이나 세션 수명 제한 | 노드 사이 경로의 장비 정책. 오래된 연결을 끊는 장비는 쓰면 안 된다고 공식 문서가 안내함 |
 | TCP keepalive가 장비 timeout보다 늦음 | `sysctl net.ipv4.tcp_keepalive_time`, `transport.tcp.keep_idle` |
 | zero-window 상태를 오래 두지 않는 장비 | 바쁜 노드는 TCP window를 0으로 알려 잠시 받기를 멈춤. 이 상태를 끊는 정책이 있는지 |
 | 패킷 손실, 장비 고장, 혼잡 | 양쪽 노드에서 동시에 packet capture |

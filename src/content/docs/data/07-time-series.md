@@ -77,7 +77,7 @@ TSDS의 backing index는 각자 받을 수 있는 `@timestamp` 범위(`index.tim
 
 ## 저장 크기
 
-호스트 200대가 10초마다 보내는 metrics 100분치(12만 건, 문서마다 dimension 2개, gauge 1개, counter 1개)를 세 가지 index mode로 저장하고 force merge 뒤 크기를 쟀습니다.
+호스트 200대가 10초마다 보내는 metrics 100분치(12만 건, 문서마다 dimension 2개, gauge 1개, counter 1개)를 세 가지 index mode로 저장하고 force merge 뒤 크기를 측정했습니다.
 
 | index mode | basic: 크기 | basic: 문서당 | trial: 크기 | trial: 문서당 |
 | --- | --- | --- | --- | --- |

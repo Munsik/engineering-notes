@@ -8,7 +8,7 @@ sidebar:
 
 anomaly detection job은 실패해도 겉으로 드러나지 않습니다. datafeed가 멈추거나 메모리 한도에 걸려도 결과가 안 나올 뿐이라, 따로 챙기지 않으면 "이상 없음"과 구분이 안 됩니다.
 그리고 검증 없이 alert부터 걸면 처음 몇 주의 오탐이 그대로 알림이 되어, 운영팀이 job을 믿지 않게 됩니다.
-이 장은 job을 실제 운영에 붙일 때 검증, alert, 변경, 장애 대응을 어떤 순서로 가져갈지 다룹니다.
+job을 실제 운영에 붙일 때 검증, alert, 변경, 장애 대응을 어떤 순서로 할지 봅니다.
 
 :::note[기준]
 Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. 기능마다 GA 버전이 다른 경우는 본문에 따로 적었습니다.
@@ -148,7 +148,7 @@ rule을 저장하기 전에 Test 버튼을 누르면, 고른 기간 동안 alert
 
 ### Anomaly detection jobs health rule
 
-| 점검 | 이럴 때 알려 줍니다 |
+| 점검 | 알려 주는 상황 |
 | --- | --- |
 | Datafeed is not started | job은 열려 있는데 datafeed가 시작되지 않았을 때 |
 | Model memory limit reached | 메모리 상태가 `soft_limit`(한도의 60% 초과)나 `hard_limit`(한도 초과)이 됐을 때 |
@@ -225,7 +225,7 @@ job이 failed 상태가 되면 datafeed를 force 옵션으로 멈추고, job도 
 | Kibana 차트 | `freq_rare`, `time_of_day`, `time_of_week`는 Single Metric Viewer와 Anomaly Explorer에 차트가 안 나와서 목록과 표로 봅니다. `lat_long`은 차트 대신 Anomaly Explorer에 지도가 나옵니다. `info_content` 계열과 `varp` 계열은 model plot을 켜야 차트가 나옵니다. |
 | frozen tier, rollup | frozen tier 데이터로는 Kibana wizard에서 job을 만들 수 없어 API를 써야 합니다. rollup index와 rollup index를 포함한 data view는 Kibana의 job과 datafeed에 쓸 수 없습니다. |
 | categorization | 기본 tokenizer(`ml_standard`)와 사전은 영어 로그를 기준으로 만들어졌습니다. 한국어 로그라면 `categorization_analyzer`를 따로 정의하고 결과를 확인해 보세요. |
-| `multivariate_by_fields` | API 문서에 내부용으로 적혀 있습니다. 공식 지원 대상이 아니니 쓰지 않습니다. |
+| `multivariate_by_fields` | API 문서에 내부용으로 적혀 있어 쓰지 않습니다. |
 
 ## 도입 단계별 확인 항목
 

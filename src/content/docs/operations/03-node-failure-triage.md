@@ -24,7 +24,7 @@ sidebar:
 
 근거: [JVM settings](https://www.elastic.co/docs/reference/elasticsearch/jvm-settings). 같은 문서는 자동 heap 설정을 권하고, 같은 호스트에 노드가 여럿이면 heap 합이 메모리의 50%를 넘지 않게 하라고 설명합니다.
 
-## 어떻게 죽었나부터 가른다
+## 종료 원인부터 구분한다
 
 | 흔적 | 의미 | 확인 |
 | --- | --- | --- |
@@ -99,7 +99,7 @@ GC가 계속 돌아도 heap이 줄지 않는 상태는 저절로 회복되지 �
 `vm.max_map_count`는 패키지 업그레이드 뒤에 바뀌어 있을 수 있습니다.
 
 - 9.5.5 RPM, Debian 패키지는 `/usr/lib/sysctl.d/elasticsearch.conf`에 `vm.max_map_count=262144`를 넣고, 설치와 업그레이드 때 `systemd-sysctl`을 다시 시작합니다(Elasticsearch 9.5.5 소스 `distribution/packages`). 9.6 개발 브랜치는 1048576입니다.
-- systemd의 sysctl.d는 디렉터리와 상관없이 파일 이름의 사전 순서로 적용하고, 같은 설정이 여러 파일에 있으면 이름이 가장 뒤인 파일이 이깁니다. `/etc/sysctl.d/99-custom.conf`의 값은 이름 순서상 뒤인 `elasticsearch.conf`(`9`보다 `e`가 뒤)에 덮입니다. `/etc/sysctl.d/elasticsearch.conf`처럼 같은 이름으로 두면 `/usr/lib/sysctl.d`의 패키지 파일을 대체합니다([systemd sysctl.d(5)](https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html)).
+- systemd의 sysctl.d는 디렉터리와 상관없이 파일 이름의 사전 순서로 적용하고, 같은 설정이 여러 파일에 있으면 이름이 가장 뒤인 파일의 설정이 적용됩니다. `/etc/sysctl.d/99-custom.conf`의 값은 이름 순서상 뒤인 `elasticsearch.conf`(`9`보다 `e`가 뒤)에 덮입니다. `/etc/sysctl.d/elasticsearch.conf`처럼 같은 이름으로 두면 `/usr/lib/sysctl.d`의 패키지 파일을 대체합니다([systemd sysctl.d(5)](https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html)).
 - 공식 문서는 `/etc/sysctl.conf`에 두면 패키지 기본값보다 우선한다고 설명합니다([vm.max_map_count](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/vm-max-map-count)). 그런데 `systemd-sysctl`은 `/etc/sysctl.conf`를 직접 읽지 않습니다. 배포판이 `99-sysctl.conf`라는 이름의 링크로 연결해 둔 경우에만 읽고, 이 이름은 `elasticsearch.conf`보다 앞이라 패키지 값에 덮입니다.
 - Ubuntu 24.04(systemd 255, procps-ng 4.0.4)에서 재현했습니다. `/etc/sysctl.conf`에 1048576, `/usr/lib/sysctl.d/elasticsearch.conf`에 262144를 두고 실행한 결과입니다. 패키지를 설치하는 대신 9.5.5 패키지와 같은 내용의 파일을 같은 위치에 두었습니다.
 

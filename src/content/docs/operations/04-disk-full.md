@@ -25,7 +25,7 @@ sidebar:
 
 ### 큰 디스크에서는 남은 공간이 기준이 된다
 
-퍼센트 watermark에는 남은 공간 상한(max headroom)이 함께 있습니다. 기본값은 low 200GB, high 150GB, flood-stage 100GB이고, dedicated frozen 노드의 flood-stage는 20GB입니다. 디스크가 크면 퍼센트보다 이 상한에 먼저 닿습니다. 예를 들어 10TB 디스크의 flood-stage는 95%(남은 공간 500GB)가 아니라 남은 공간 100GB, 즉 약 99%에서 걸립니다([Cluster-level shard allocation and routing settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/cluster-level-shard-allocation-routing-settings#disk-based-shard-allocation)).
+퍼센트 watermark에는 남은 공간 상한(max headroom)이 함께 있습니다. 기본값은 low 200GB, high 150GB, flood-stage 100GB이고, dedicated frozen 노드의 flood-stage는 20GB입니다. 디스크가 크면 퍼센트보다 이 상한에 먼저 닿습니다. 예를 들어 10TB 디스크의 flood-stage는 95%(남은 공간 500GB)가 아니라 남은 공간 100GB(사용률 약 99%)에서 걸립니다([Cluster-level shard allocation and routing settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/cluster-level-shard-allocation-routing-settings#disk-based-shard-allocation)).
 
 같은 문서에 따르면 max headroom 기본값은 해당 watermark를 직접 설정하지 않았을 때만 적용됩니다. watermark를 퍼센트로 직접 바꾸면 headroom 기본값이 사라져서, 큰 디스크에서는 오히려 더 일찍 걸립니다.
 

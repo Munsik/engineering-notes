@@ -71,7 +71,7 @@ Fleet 하나에 정책은 1,000개까지 권장됩니다. 그보다 많으면 Fl
 
 1. Fleet Server와 Kibana, Elasticsearch가 대상 버전을 지원하는지 확인합니다. Fleet Server를 먼저 올립니다.
 2. canary 정책의 Agent를 업그레이드하고 하루 이상 지켜봅니다.
-3. 정책 단위 자동 업그레이드로 비율을 단계적으로 올립니다(예: 10%, 50%, 100%). 이 기능이 없으면 유지 보수 시간대을 지정해 정책별로 나눕니다.
+3. 정책 단위 자동 업그레이드로 비율을 단계적으로 올립니다(예: 10%, 50%, 100%). 이 기능이 없으면 유지 보수 시간대를 지정해 정책별로 나눕니다.
 4. 문제가 생기면 진행을 멈추고, 9.3 이후라면 rollback합니다.
 
 1번에서 known issue를 꼭 봅니다. 예를 들어 Fleet 9.4.6과 9.5.3에는, Agent 모니터링 출력으로 원격 Elasticsearch 출력을 지정한 정책에서 Agent가 시작 직후나 정책 변경 뒤 crash-loop에 빠지는 문제가 있었습니다. 우회 방법은 모니터링 출력을 기본 Elasticsearch 출력으로 바꾸는 것이고, 9.4.7과 9.5.4에서 고쳐졌습니다([Fleet Server known issues](https://www.elastic.co/docs/release-notes/fleet-server/known-issues)). 이런 문제는 특정 설정 조합에서만 나타나므로, canary 정책은 운영 정책과 출력, 모니터링 설정까지 같게 둡니다.
@@ -104,7 +104,7 @@ integration 업그레이드도 같은 순서로 다룹니다. 자동 업그레�
 ## 네트워크가 끊겼을 때
 
 - Agent는 출력에 닿지 못하는 동안 memory queue에 이벤트를 쌓습니다. queue가 차면 파일 입력은 읽기를 멈추고 기다리고, 다시 연결되면 이어서 읽습니다.
-- disk queue는 설정할 수 없으므로, 파일이 아닌 소스(TCP, UDP 수신)은 queue가 찬 뒤의 데이터를 잃습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison), 해석).
+- disk queue는 설정할 수 없으므로, 파일이 아닌 소스(TCP, UDP 수신)는 queue가 찬 뒤의 데이터를 잃습니다([Beats and Elastic Agent capabilities](https://www.elastic.co/docs/reference/fleet/beats-agent-comparison), 해석).
 - 끊긴 동안 로그 회전으로 파일이 지워지면 그 부분도 잃습니다. 네트워크 단절이 잦은 구역은 로그 보존을 길게 둡니다.
 
 ## 운영 점검

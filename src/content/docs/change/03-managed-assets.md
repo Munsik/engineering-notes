@@ -17,7 +17,7 @@ sidebar:
 
 ## managed 자산은 누가 언제 덮어쓰나
 
-managed 자산에는 세 출처가 있습니다.
+managed 자산을 만들고 갱신하는 곳은 세 군데입니다.
 
 | 출처 | 예 | 덮어쓰는 시점 |
 | --- | --- | --- |
@@ -25,13 +25,13 @@ managed 자산에는 세 출처가 있습니다.
 | Fleet integration | integration index template, `@package` component template, integration ingest pipeline, integration ILM policy, Kibana dashboard | integration 업그레이드(자동 업그레이드 포함), 자산 재설치, 그 밖에 예고 없이 |
 | Kibana 앱 | integration dashboard, prebuilt detection rule | integration 업그레이드, prebuilt rule 업데이트 |
 
-Fleet 문서는 managed 자산을 수정하지 말라고 분명히 적고 있습니다. integration index template, `@package` component template, integration에 들어 있는 ingest pipeline을 고치면 integration을 업그레이드할 때 덮어써지고, 그 밖의 시점에도 예고 없이 덮어써질 수 있습니다([Best practices for integration assets](https://www.elastic.co/docs/reference/fleet/integrations-assets-best-practices#assets-restrictions-editing-assets)). ILM policy도 같습니다. built-in policy는 Elasticsearch나 integration 업데이트로 덮어써질 수 있으니 복제해서 쓰라고 안내합니다([Customize built-in ILM policies](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/tutorial-customize-built-in-policies)).
+Fleet 문서는 managed 자산을 수정하지 말라고 분명히 안내합니다. integration index template, `@package` component template, integration에 들어 있는 ingest pipeline을 고치면 integration을 업그레이드할 때 덮어써지고, 그 밖의 시점에도 예고 없이 덮어써질 수 있습니다([Best practices for integration assets](https://www.elastic.co/docs/reference/fleet/integrations-assets-best-practices#assets-restrictions-editing-assets)). ILM policy도 같습니다. built-in policy는 Elasticsearch나 integration 업데이트로 덮어써질 수 있으니 복제해서 쓰라고 안내합니다([Customize built-in ILM policies](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/tutorial-customize-built-in-policies)).
 
 built-in 자산이 업그레이드 때 갱신되는 이유는 정의에 들어 있는 `version`입니다. Elasticsearch 소스의 `logs@template.json`을 보면 `version`이 stack template 버전 변수로 채워지고 `_meta.managed`가 `true`입니다. 새 버전의 Elasticsearch는 클러스터에 있는 정의의 `version`이 없거나 내장 정의보다 낮으면 내장 정의로 다시 씁니다(Elasticsearch 소스 `IndexTemplateRegistry.java` 기준. index template, component template, ingest pipeline, ILM policy 모두 같은 방식). 사용자가 고친 내용은 이때 사라집니다. `version`을 일부러 높여 덮어쓰기를 피하는 방법은 내장 정의의 개선과 수정까지 막으므로 쓰지 않습니다.
 
 자동 업그레이드도 주의해야 합니다. System integration처럼 Fleet 설정 때 기본으로 설치되는 integration은 새 버전이 나오면 자동으로 업그레이드됩니다. Elastic APM처럼 Stack 버전에 맞춰진 integration은 deprecation이 있어도 자동 업그레이드됩니다([Upgrade an integration](https://www.elastic.co/docs/reference/fleet/upgrade-integration), [Deprecated integrations](https://www.elastic.co/docs/reference/fleet/deprecated-integrations)). 사람이 업그레이드 버튼을 누르지 않아도 managed 자산이 바뀔 수 있다는 뜻입니다.
 
-## managed 자산을 알아보는 법
+## managed 자산 구분 방법
 
 Elasticsearch 쪽 자산은 `_meta`로 구분합니다. built-in 자산은 `_meta.managed: true`, Fleet 자산은 여기에 더해 `_meta.managed_by: fleet`와 `_meta.package.name`이 붙습니다.
 
@@ -88,11 +88,11 @@ Fleet은 integration을 설치할 때 수정 가능한 `@custom` component templ
 | `<package>@custom` | integration의 모든 data stream(9.1부터) | 세 번째 |
 | `<type>@custom` | type 전체(예: `logs@custom`) | 가장 낮음 |
 
-`composed_of` 목록에서 뒤에 있는 component template이 앞의 것을 덮어씁니다. 같은 설정을 여러 수준에 넣었다면 data stream 수준이 이깁니다.
+`composed_of` 목록에서 뒤에 있는 component template이 앞의 것을 덮어씁니다. 같은 설정을 여러 수준에 넣었다면 data stream 수준 설정이 적용됩니다.
 
 ![`logs-nginx.access` index template 상세. priority는 200이고, component template은 `@package` 다음에 `logs@custom`, `nginx@custom`, `logs-nginx.access@custom` 순으로 와서 뒤의 것이 덮어씁니다.](../../../assets/change/integration-template-composed-of.jpg)
 
-Fleet 없이 `logs-<dataset>-<namespace>` 이름으로 직접 보내는 애플리케이션 로그는 built-in `logs` template을 탑니다. Elasticsearch 소스 기준으로 이 template은 `logs@mappings`, `logs@settings`, `logs@custom`, `ecs@mappings` 순으로 구성되고, `logs@custom`이 없어도 동작하도록 `ignore_missing_component_templates`에 들어 있습니다. 그래서 이 경우에는 `logs@custom`이 유일한 사용자 수정 지점입니다.
+Fleet 없이 `logs-<dataset>-<namespace>` 이름으로 직접 보내는 애플리케이션 로그는 built-in `logs` template이 적용됩니다. Elasticsearch 소스 기준으로 이 template은 `logs@mappings`, `logs@settings`, `logs@custom`, `ecs@mappings` 순으로 구성되고, `logs@custom`이 없어도 동작하도록 `ignore_missing_component_templates`에 들어 있습니다. 그래서 이 경우에는 `logs@custom`이 사용자가 수정할 수 있는 유일한 곳입니다.
 
 예를 들어 integration 로그 전체의 보관 기간을 바꾸는 순서는 이렇습니다. 먼저 새 policy를 만듭니다. built-in `logs@lifecycle`은 Elasticsearch 소스 기준으로 hot phase의 rollover(50GB, 30일)만 있고 delete phase가 없습니다. 그대로 두면 로그가 지워지지 않습니다.
 
@@ -138,7 +138,7 @@ PUT _component_template/logs@custom
 
 ### pipeline의 `@custom` 계층
 
-integration의 기본 pipeline은 8.4부터 존재하지 않는 `@custom` pipeline을 호출하도록 만들어져 있고, 8.12부터 수준이 나뉩니다([Fleet data streams](https://www.elastic.co/docs/reference/fleet/data-streams#data-streams-pipelines)).
+integration의 기본 pipeline은 8.4부터 존재하지 않는 `@custom` pipeline을 호출하도록 만들어져 있고, 8.12부터 적용 범위별로 나뉩니다([Fleet data streams](https://www.elastic.co/docs/reference/fleet/data-streams#data-streams-pipelines)).
 
 | pipeline 이름 | 적용 범위 |
 | --- | --- |
@@ -170,13 +170,13 @@ Fleet 없이 직접 보내는 `logs-*-*` 데이터도 `logs@default-pipeline`이
 
 ### namespace별 설정
 
-운영 namespace만 보관 기간을 길게 하고 싶을 때, 예전에는 integration index template을 복제해서 index pattern을 namespace로 좁히고 우선순위를 높이는 방법을 많이 썼습니다. 이 방법은 위험합니다. 복제한 template은 그 시점의 구조로 굳어서, integration이 업그레이드돼도 새 mapping이나 index mode가 반영되지 않습니다. 공식 문서는 이 때문에 indexing이 깨지거나 데이터가 유실될 수 있다고 경고합니다([Cloning the index template](https://www.elastic.co/docs/reference/fleet/integrations-assets-best-practices#assets-restrictions-cloning-index-template)).
+운영 namespace만 보관 기간을 길게 하고 싶을 때, 예전에는 integration index template을 복제해서 index pattern을 namespace로 좁히고 우선순위를 높이는 방법을 많이 썼습니다. 이 방법은 위험합니다. 복제한 template은 만든 시점의 구조에 고정돼서, integration이 업그레이드돼도 새 mapping이나 index mode가 반영되지 않습니다. 공식 문서는 이 때문에 indexing이 깨지거나 데이터가 유실될 수 있다고 경고합니다([Cloning the index template](https://www.elastic.co/docs/reference/fleet/integrations-assets-best-practices#assets-restrictions-cloning-index-template)).
 
 9.5부터는 namespace index template을 씁니다. integration 설정에서 namespace를 지정하면 Fleet이 `logs-nginx.access@namespace.production` 같은 template을 우선순위 250으로 만들고, 그 template이 `<namespace>@custom`을 포함합니다([Namespace index templates](https://www.elastic.co/docs/reference/fleet/data-streams-namespace-custom)). 9.4 이하에서 namespace별 설정이 꼭 필요하면 복제 방식밖에 없으므로, integration을 업그레이드할 때마다 복제본을 다시 맞추는 절차를 같이 둡니다.
 
 ## `@custom`에도 위험이 있다
 
-`@custom`이 지원되는 수정 지점이라고 해서 무엇이든 넣어도 되는 것은 아닙니다. 공식 문서가 드는 예는 이렇습니다([Creating custom component templates](https://www.elastic.co/docs/reference/fleet/integrations-assets-best-practices#assets-restrictions-custom-component-templates)).
+`@custom`이 공식적으로 지원되는 수정 위치라고 해서 무엇이든 넣어도 되는 것은 아닙니다. 공식 문서가 드는 예는 이렇습니다([Creating custom component templates](https://www.elastic.co/docs/reference/fleet/integrations-assets-best-practices#assets-restrictions-custom-component-templates)).
 
 - integration의 `@package`가 일반 data stream에서 TSDS나 LogsDB로 바뀌면, `@custom`에 넣은 설정이나 mapping이 그 index mode와 맞지 않을 수 있습니다.
 - ECS 필드의 type을 `keyword`에서 `text`로 바꾸면 그 필드로 집계하는 built-in dashboard가 깨집니다.
@@ -206,7 +206,7 @@ POST _index_template/_simulate_index/logs-nginx.access-production
 
 ## 업그레이드로 정의가 바뀌는 경우
 
-9.3에서는 built-in ILM policy 이름이 바뀌었습니다. 예전 `logs`, `metrics`, `synthetics` policy가 `logs@lifecycle`, `metrics@lifecycle`, `synthetics@lifecycle`로 대체됐습니다. 두 policy를 모두 손대지 않았다면 Fleet이 component template의 참조를 자동으로 옮깁니다. 하나라도 수정했다면 자동으로 옮기지 않으니, 수정 내용을 새 policy로 만들고 `{type}@custom`에서 참조하도록 직접 옮겨야 합니다([Customize built-in ILM policies](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/tutorial-customize-built-in-policies)).
+9.3에서는 built-in ILM policy 이름이 바뀌었습니다. 예전 `logs`, `metrics`, `synthetics` policy가 `logs@lifecycle`, `metrics@lifecycle`, `synthetics@lifecycle`로 대체됐습니다. 두 policy를 모두 수정하지 않았다면 Fleet이 component template의 참조를 자동으로 옮깁니다. 하나라도 수정했다면 자동으로 옮기지 않으니, 수정 내용을 새 policy로 만들고 `{type}@custom`에서 참조하도록 직접 옮겨야 합니다([Customize built-in ILM policies](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/tutorial-customize-built-in-policies)).
 
 이런 변경은 release notes와 breaking changes에 나옵니다. 업그레이드 계획 때 목표 버전까지의 모든 release notes에서 template, pipeline, ILM이라는 단어를 검색해 보는 습관이 도움이 됩니다([08](../08-major-upgrade/)).
 

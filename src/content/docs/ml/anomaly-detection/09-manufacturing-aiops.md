@@ -26,14 +26,14 @@ sidebar:
 
 공장 생산망은 멈추면 바로 손실이 나는 환경입니다. 그런데 실제 장애는 고정 임계값 알림(예: CPU 90% 초과)에 걸리지 않는 모습으로 시작되는 경우가 많습니다.
 
-- 에러 로그 하나 없이 설비 인터페이스가 **조용히 멈추는** 경우
-- 평소 40%로 운영하던 서버가 75%까지 올라왔지만 **임계값에는 닿지 않는** 경우
-- 배포 직후 **처음 보는 예외**가 몇 건씩 나타나기 시작하는 경우
-- DB 지연이 생산 트랜잭션 지연으로 **번져 나가는** 경우
+- 에러 로그 하나 없이 설비 인터페이스가 조용히 멈추는 경우
+- 평소 40%로 운영하던 서버가 75%까지 올라왔지만 임계값에는 닿지 않는 경우
+- 배포 직후 처음 보는 예외가 몇 건씩 나타나기 시작하는 경우
+- DB 지연이 생산 트랜잭션 지연으로 번져 나가는 경우
 
 Anomaly detection은 이런 "평소와 다름"을 잡는 도구입니다. 하지만 탐지만으로는 일이 끝나지 않습니다. alert를 받은 담당자는 여전히 Anomaly Explorer, Discover, APM을 오가며 무엇이 같이 이상한지, 원인 요청이 무엇인지, 조치가 필요한지를 직접 확인해야 합니다.
 
-여기서는 **탐지 → alert → Workflow → AI 1차 분석 → 사람의 판단 → 후속 조치**를 하나의 흐름으로 연결하고, 그 과정에서 내린 설계 결정을 기록합니다.
+여기서는 탐지 → alert → Workflow → AI 1차 분석 → 사람의 판단 → 후속 조치를 하나의 흐름으로 연결하고, 그 과정에서 내린 설계 결정을 기록합니다.
 
 ```mermaid
 flowchart LR
@@ -1249,7 +1249,7 @@ steps:
 | API key | `elasticsearch.*`와 `kibana.*` step은 저장된 API key 하나를 같이 씁니다. connector step은 connector에 저장된 자격 증명으로 외부 시스템에 접속합니다. |
 | 권한이 바뀌었을 때 | 사용자를 비활성화하거나 role을 바꿔도 저장된 key는 자동으로 바뀌지 않습니다. rule이나 workflow를 다시 저장하거나, Enabled를 껐다 켜서 key를 갱신합니다. |
 
-그래서 rule과 workflow는 개인 계정이 아니라 **운영용 계정**으로 저장하는 걸 권합니다. 담당자가 바뀌어도 자동화가 조용히 깨지지 않습니다.
+그래서 rule과 workflow는 개인 계정이 아니라 운영용 계정으로 저장하는 걸 권합니다. 담당자가 바뀌어도 자동화가 조용히 깨지지 않습니다.
 
 #### 실행 단위와 크기
 
@@ -1716,7 +1716,7 @@ flowchart TD
 ```
 
 - **알리는 기준을 AI 분류로 나눕니다.** `planned_or_benign`과 `single_request`는 Case에 기록만 하고 당직자를 깨우지 않습니다. 나머지만 Slack으로 알리고 판단을 기다립니다. `switch.cases`는 map이 아니라 배열입니다([cheat sheet](https://www.elastic.co/docs/explore-analyze/workflows/reference/cheat-sheet)).
-- **판단은 `waitForInput`으로 받습니다.** 선택지가 넷이고 메모와 종료 시각까지 받아야 해서 JSON Schema 폼이 맞습니다([waitForInput](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-input)). 메시지 첫 줄에 결정할 내용을 쓰고, 근거를 메시지 안에 넣고, field는 적게 두라는 공식 가이드를 따랐습니다([Human-in-the-loop](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/human-in-the-loop)).
+- **판단은 `waitForInput`으로 받습니다.** 선택지가 넷이고 메모와 종료 시각까지 받아야 해서 JSON Schema 폼이 적합합니다([waitForInput](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-input)). 메시지 첫 줄에 결정할 내용을 쓰고, 근거를 메시지 안에 넣고, field는 적게 두라는 공식 가이드를 따랐습니다([Human-in-the-loop](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/human-in-the-loop)).
 - **응답 경로를 정해 둡니다.** Kibana의 workflow 실행 화면, resume API(`POST /api/workflows/executions/{executionId}/resume`), 9.5부터는 Slack 응답 링크(preview)로 받을 수 있습니다. 응답 토큰은 한 번만 쓸 수 있어서, 공유 채널에서 여러 명이 눌러도 첫 응답만 반영됩니다([Human-in-the-loop](https://www.elastic.co/docs/explore-analyze/workflows/authoring-techniques/human-in-the-loop)). 여기서는 판단 요청을 일반 `slack` step으로 알리고, 응답은 실행 화면에서 받습니다.
 - **영향이 큰 조치는 한 번 더 승인받습니다.** `line_stop_risk`이고 당직자가 에스컬레이션을 고르면, 설비 I/F 어댑터 재시작을 `waitForApproval`로 다시 묻습니다. 거절해도 step은 성공으로 끝나므로, 실행 step에는 반드시 `if` 조건을 겁니다([waitForApproval](https://www.elastic.co/docs/explore-analyze/workflows/steps/wait-for-approval)).
 - **승인 링크는 밖으로 보내지 않습니다.** 외부 채널은 로그인 없이 누를 수 있는 짧은 수명의 링크를 보내는데, 공식 문서는 영향이 크거나 되돌리기 어려운 조치에는 쓰지 말라고 안내합니다. 그래서 재시작 승인에는 `channels`를 두지 않았습니다. 외부 응답 링크를 아예 끄려면 `kibana.yml`에서 `workflowsManagement.hitlExternalResume.enabled`와 `workflowsExecutionEngine.hitlExternalResume.enabled`를 `false`로 둡니다.
@@ -1929,7 +1929,7 @@ custom rule, group, custom URL, model plot, 결과 보관 기간은 운영 중�
 1. **job**: `_preview`로 datafeed 출력을 보고, 4주 학습 뒤 상위 이상을 실제 장애 이력과 대조합니다([06장](../06-operations/#도입-단계별-확인-항목)).
 2. **workflow 단독**: workflow 편집기의 Test 실행이나 Test workflow API로 각 step의 입력과 출력을 확인합니다. Slack connector는 테스트 채널을 가리키게 합니다.
 3. **rule과 연결**: 테스트 space에서 같은 job group을 대상으로 severity를 낮춘 rule을 만들어 실제 alert로 workflow를 돌려 봅니다. 실행 화면에서 `resolve` step의 출력이 비어 있지 않은지부터 봅니다.
-4. **사람의 판단**: 당직자가 실제로 링크를 받아 응답하는 데 걸리는 시간을 재고, timeout을 정합니다.
+4. **사람의 판단**: 당직자가 실제로 링크를 받아 응답하는 데 걸리는 시간을 측정하고, timeout을 정합니다.
 5. **AI 분류 신뢰도**: 몇 주 동안 Case에 남은 "AI 분류와 비교" 기록을 모아 일치율을 봅니다. 일치율이 낮은 분류는 알림 기준에서 빼지 않습니다.
 
 ### 적용 순서

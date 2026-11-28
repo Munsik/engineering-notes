@@ -259,7 +259,7 @@ POST _ml/anomaly_detectors/lab-weblogs-advanced/_forecast
 | `url_scanning` | `Forecast is not supported for population analysis` 에러 |
 | `lab-weblogs-advanced` | 에러 없이 끝남. forecast 672개 = detector 0(응답코드 3개 × 168) + detector 2(168). population detector 1만 빠짐 |
 
-API 문서는 `over_field_name`이 있으면 에러가 난다고 적고 있지만, 실제로는 population detector만 있는 job에서만 에러가 났습니다. 섞인 job은 해당 detector만 빼고 만들어집니다.
+API 문서는 `over_field_name`이 있으면 에러가 난다고 설명하지만, 실제로는 population detector만 있는 job에서만 에러가 났습니다. 섞인 job은 해당 detector만 빼고 만들어집니다.
 forecast 결과는 Single Metric Viewer에서 Forecast 버튼을 눌러 봅니다.
 
 ![low_request_rate의 Single Metric Viewer. 회색 음영의 model bounds 오른쪽으로 청록색 forecast가 일주일 동안 이어집니다.](../../../../assets/ml-ad/smv-forecast.jpg)

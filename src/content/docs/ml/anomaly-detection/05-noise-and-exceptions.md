@@ -8,7 +8,7 @@ sidebar:
 
 noise를 다루지 못하면 받는 사람이 alert를 무시하기 시작하고, 그러면 진짜 이상도 같이 묻힙니다.
 반대로 noise를 지우는 방법을 잘못 고르면 결과는 깨끗해 보여도 모델은 계속 잘못 배우거나, 봐야 할 이상까지 사라집니다.
-이 장은 noise의 원인을 나누고, 원인마다 맞는 방법을 고르는 기준을 다룹니다.
+noise의 원인을 나누고 원인마다 맞는 방법을 고르는 기준을 봅니다.
 
 :::note[기준]
 Elasticsearch, Kibana 9.x 기준입니다. 공식 문서와 API reference는 2026년 11월에 다시 확인했습니다.
@@ -96,7 +96,7 @@ calendar는 job이나 job group에 연결하고, event는 연결된 job의 모�
 event에는 시작 시각, 끝 시각, 설명이 필요합니다. 보통 몇 시간에서 하루 정도의 드문 이벤트에 씁니다.
 
 event 구간에도 bucket 결과는 만들어지지만 anomaly score는 0입니다.
-event마다 `skip_result`, `skip_model_update`, `force_time_shift`(초 단위)를 줄 수 있고, `skip_result`와 `skip_model_update`는 둘 다 기본값이 true입니다. 즉 따로 지정하지 않으면 그 구간은 결과도 안 만들고 모델도 갱신하지 않습니다.
+event마다 `skip_result`, `skip_model_update`, `force_time_shift`(초 단위)를 줄 수 있고, `skip_result`와 `skip_model_update`는 둘 다 기본값이 true입니다. 따로 지정하지 않으면 그 구간은 결과도 안 만들고 모델도 갱신하지 않습니다.
 
 calendar는 소급되지 않습니다. job이 그 구간을 분석하기 전에 등록해 둬야 합니다.
 

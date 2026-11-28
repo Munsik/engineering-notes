@@ -44,7 +44,7 @@ sidebar:
 | 다 받았다는 것을 어떻게 확인하나 | 소스, 수집기 입력, 출력, Elasticsearch 저장 건수를 같은 시간 범위로 대조합니다. | [05](05-count-reconciliation/) |
 | 실패해 저장되지 않은 문서는 어디서 보나 | failure store에 쌓입니다. Streams의 Data quality 탭에서 건수와 오류 종류를 보고, ES\|QL은 `FROM logs-*::failures`를 `document.index`로 묶어 셉니다. | [02](02-where-to-parse/), [05](05-count-reconciliation/) |
 | UDP 부하 분산에 오픈소스 nginx나 HAProxy를 써도 되나 | 쓸 수는 있지만 멈춘 수신기를 스스로 빼지 못합니다. syslog는 응답이 없어 health check 근거가 없기 때문입니다. keepalived 같은 외부 check를 같이 둡니다. | [04](04-syslog-udp/) |
-| Logstash 한 대에 자원은 얼마나 주나 | heap 4GB에서 8GB로 시작하고, 처리량은 운영 데이터로 직접 잽니다. | [07](07-collector-sizing/) |
+| Logstash 한 대에 자원은 얼마나 주나 | heap 4GB에서 8GB로 시작하고, 처리량은 운영 데이터로 직접 측정합니다. | [07](07-collector-sizing/) |
 
 ## 읽는 순서
 

@@ -32,7 +32,7 @@ sidebar:
 | [General index settings](https://www.elastic.co/docs/reference/elasticsearch/index-settings/index-modules) 문서의 `index.codec` | 최대 약 28% | `best_compression` 대 `default` codec |
 
 같은 logsdb라도 비교 대상이 `default` codec이면 절감률이 크게 나오고, 이미 `best_compression`을 쓰던 인덱스와 비교하면 작게 나옵니다.
-9.5.5에 내장된 `logs@settings` component template도 `index.codec: best_compression`을 넣어 둡니다(로컬 9.5.5에서 `GET _component_template/logs@settings`로 확인). 통합(integration) 템플릿이나 직접 만든 템플릿은 구성에 따라 다르므로, backing index의 실제 `index.codec`을 먼저 봅니다. 이미 `best_compression`을 쓰는 환경에서 logsdb 전환 효과를 가늠할 때는 standard + `best_compression`을 baseline으로 잡아야 합니다.
+9.5.5에 내장된 `logs@settings` component template도 `index.codec: best_compression`을 넣어 둡니다(로컬 9.5.5에서 `GET _component_template/logs@settings`로 확인). integration 템플릿이나 직접 만든 템플릿은 구성에 따라 다르므로, backing index의 실제 `index.codec`을 먼저 봅니다. 이미 `best_compression`을 쓰는 환경에서 logsdb 전환 효과를 가늠할 때는 standard + `best_compression`을 baseline으로 잡아야 합니다.
 
 ## 저장 공간을 차지하는 네 가지 구조
 
@@ -73,7 +73,7 @@ sidebar:
 | `logsdb` | `index.mode: logsdb` | codec `best_compression`, source SYNTHETIC, 정렬 `host.name` asc, `@timestamp` desc |
 | `columnar` | `index.mode: logsdb_columnar` | codec `best_compression`, source SYNTHETIC, 정렬 `host.name` asc, `@timestamp` desc |
 
-- 절차: 5,000건씩 `_bulk`로 적재하고, refresh와 flush 뒤 크기를 잽니다. 그다음 `max_num_segments=1`로 force merge하고 다시 잽니다. 비교는 force merge 뒤의 primary `store.size`로 했습니다. 조합마다 두 번 돌렸습니다.
+- 절차: 5,000건씩 `_bulk`로 적재하고, refresh와 flush 뒤 크기를 측정합니다. 그다음 `max_num_segments=1`로 force merge하고 다시 측정합니다. 비교는 force merge 뒤의 primary `store.size`로 했습니다. 조합마다 두 번 돌렸습니다.
 
 ### 크기
 
@@ -137,7 +137,7 @@ vCPU 1개에 클라이언트까지 같은 머신이라 5% 안팎의 차이는 �
 
 ### 돌아오는 `_source`가 다르다
 
-같은 문서 하나를 네 가지 설정에 넣고 검색으로 꺼냈습니다. 원본은 아래와 같습니다. `debug`는 `enabled: false`인 객체입니다.
+같은 문서 하나를 네 가지 설정에 넣고 검색으로 조회했습니다. 원본은 아래와 같습니다. `debug`는 `enabled: false`인 객체입니다.
 
 ```json
 {
@@ -203,7 +203,7 @@ GET logs-*/_settings/index.mode,index.mapping.source.mode,index.sort.field?inclu
 
 소스에서도 같은 조건이 보입니다. 정렬과 필드 주입은 template에서 읽은 index mode를 기준으로 하는데(`LogsdbIndexModeSettingsProvider.java`), template에서 index mode를 읽는 함수는 data stream template이 아니면 값을 돌려주지 않습니다(`ProjectMetadata.java`의 `retrieveIndexModeFromTemplate`).
 
-일반 인덱스 두 개를 만들고 reindex해서 비교하는 방식으로 logsdb 효과를 재면, 실제 data stream보다 정렬 이득이 빠진 숫자가 나올 수 있습니다. 이 글의 실험은 모두 data stream template으로 만든 data stream으로 했습니다.
+일반 인덱스 두 개를 만들고 reindex해서 비교하는 방식으로 logsdb 효과를 측정하면, 실제 data stream보다 정렬 이득이 빠진 숫자가 나올 수 있습니다. 이 글의 실험은 모두 data stream template으로 만든 data stream으로 했습니다.
 
 ## 적용 방법
 
@@ -227,11 +227,11 @@ PUT _index_template/app-logs
 
 `logsdb_columnar`를 시험해 보려면 같은 위치에 `"index.mode": "logsdb_columnar"`를 넣습니다. preview 기능이고, 만든 뒤에는 mode를 바꿀 수 없으니 별도 data stream에서 먼저 시험합니다.
 
-### 기존 data stream, 통합(integration) data stream
+### 기존 data stream, integration data stream
 
 - 8.x에서 9.x로 올린 클러스터는 기존 `logs-*-*` data stream이 자동으로 logsdb가 되지 않습니다([Logs data streams](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream#logsdb-availability)).
 - 템플릿을 바꾸면 다음 rollover부터 적용됩니다. 이미 만들어진 backing index는 그대로입니다.
-- 통합 data stream은 managed 템플릿을 직접 고치지 않고 dataset별 `@custom` component template에 넣습니다([Enable logsdb for integrations](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream-integrations)).
+- integration data stream은 managed 템플릿을 직접 고치지 않고 dataset별 `@custom` component template에 넣습니다([Enable logsdb for integrations](https://www.elastic.co/docs/manage-data/data-store/data-streams/logs-data-stream-integrations)).
 
 ```console
 PUT _component_template/logs-nginx.access@custom
@@ -269,11 +269,11 @@ flowchart TD
 
 | 상황 | 권장 |
 | --- | --- |
-| 보관 기간 연장 sizing | 지금 쓰는 설정을 baseline으로 잡고, 운영 데이터 일부를 두 설정에 넣어 문서당 바이트를 잰다. 공개 자료의 절감률을 그대로 곱하지 않는다 |
+| 보관 기간 연장 sizing | 지금 쓰는 설정을 baseline으로 잡고, 운영 데이터 일부를 두 설정에 넣어 문서당 바이트를 측정한다. 공개 자료의 절감률을 그대로 곱하지 않는다 |
 | 이미 `best_compression`을 쓰는 로그 | logsdb 전환 효과는 이 실험 기준 45% 안팎. host cardinality가 높으면 더 작다 |
 | 필드가 많은 보안 이벤트, 감사 로그 | `_source` 비중이 커서 logsdb 효과가 크다. 이 실험에서 73% |
 | 긴 stack trace가 많은 애플리케이션 로그 | standard에 synthetic `_source`만 켜는 조합은 피한다. 원문 보관 필드가 LZ4로 저장돼 `best_compression`보다 덜 줄었다 |
-| 운영 중인 data stream을 logsdb로 전환 | 전환 전에 노드 CPU 여유와 write thread pool `rejected`를 확인한다. 공식 문서는 indexing 비용이 10%에서 20% 늘 수 있다고 안내하고, 사내 사례에서도 이미 CPU 여유가 없던 클러스터는 전환 뒤 write rejection이 늘었다. 일부 data stream부터 전환하고 rejection을 지켜본다 |
+| 운영 중인 data stream을 logsdb로 전환 | 전환 전에 노드 CPU 여유와 write thread pool `rejected`를 확인한다. 공식 문서는 indexing 비용이 10%에서 20% 늘 수 있다고 안내하고, 현장 사례에서도 이미 CPU 여유가 없던 클러스터는 전환 뒤 write rejection이 늘었다. 일부 data stream부터 전환하고 rejection을 지켜본다 |
 | 크기가 기대만큼 줄지 않을 때 | `_disk_usage`로 필드별 크기를 보고, 고 cardinality ID 필드가 색인과 doc values를 모두 갖고 있는지 확인한다 |
 | 우리 데이터의 절감률을 미리 보고 싶을 때 | 하루치 정도를 template 기반 data stream 두 개에 넣고 force merge 뒤 `store.size`와 `_disk_usage`를 비교한다. 측정 스크립트는 `labs/data/storage-footprint/run.py` |
 

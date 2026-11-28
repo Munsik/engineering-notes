@@ -15,7 +15,7 @@ shard 수와 크기, bulk 크기를 정하는 기준과, 잘못 정했을 때 �
 :::note[기준]
 - Elasticsearch 9.5.5 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. self-managed와 Elastic Cloud Hosted를 기준으로 썼습니다.
 - Elastic Cloud Serverless는 Elastic이 sharding을 직접 관리하고 자동으로 조정합니다. custom routing도 쓸 수 없습니다([Differences from other Elasticsearch offerings](https://www.elastic.co/docs/deploy-manage/deploy/elastic-cloud/differences-from-other-elasticsearch-offerings)). 이 글의 shard 수 결정은 Serverless에는 해당하지 않습니다.
-- 실측은 로컬 Elasticsearch 9.5.5 단일 노드(vCPU 1, JVM heap 1GB)에서 했습니다. 기획 단계에서는 3노드 구성을 생각했지만, 이번에는 노드 사이 분산이 아니라 shard와 요청 수가 만드는 비용만 쟀습니다. 절대값보다 조건 사이의 비율을 보세요. 실험 코드와 결과는 [`labs/data/shards-and-bulk/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/shards-and-bulk)에 있습니다.
+- 실측은 로컬 Elasticsearch 9.5.5 단일 노드(vCPU 1, JVM heap 1GB)에서 했습니다. 기획 단계에서는 3노드 구성을 생각했지만, 이번에는 노드 사이 분산이 아니라 shard와 요청 수가 만드는 비용만 측정했습니다. 절대값보다 조건 사이의 비율을 보세요. 실험 코드와 결과는 [`labs/data/shards-and-bulk/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/shards-and-bulk)에 있습니다.
 :::
 
 ## Shard가 비용이 되는 지점
@@ -39,7 +39,7 @@ shard 하나는 Lucene index 하나입니다([01](../01-segments/#shard는-lucen
 - shard 하나의 문서 수를 2억 건 아래로 둡니다. Lucene의 하드 한도는 shard당 2,147,483,519건이고, 삭제 표시된 문서도 이 수에 포함됩니다.
 - ILM을 쓰면 rollover의 `max_primary_shard_size`를 50GB, `min_primary_shard_size`를 10GB로 잡습니다.
 
-가이드는 이 범위가 출발점이라고도 적고 있습니다. 실제 하드웨어와 데이터로 벤치마크해서 정하라는 뜻입니다.
+가이드는 이 범위를 출발점으로 안내합니다. 실제 하드웨어와 데이터로 벤치마크해서 정하라는 뜻입니다.
 
 ### 기본 rollover 조건
 
@@ -71,7 +71,7 @@ flowchart LR
 ### 실측: bulk 크기 x primary shard 수
 
 같은 데이터(문서당 약 760바이트)를 primary 1, 5, 20개인 인덱스에 bulk 1, 10, 100, 1,000, 5,000건씩 넣었습니다. 클라이언트 하나가 순서대로 보냈고, replica 0개, `refresh_interval: 30s`, auto-generated id입니다.
-두 번 돌렸고 칸마다 "1회차 / 2회차"로 적었습니다. primary 1개 행의 2회차는 노드를 재시작한 직후에 돌아 JVM warm-up 영향이 커서, JVM이 충분히 돈 뒤 다시 잰 3회차 값으로 바꿨습니다.
+두 번 돌렸고 칸마다 "1회차 / 2회차"로 적었습니다. primary 1개 행의 2회차는 노드를 재시작한 직후에 돌아 JVM warm-up 영향이 커서, JVM이 충분히 돈 뒤 다시 측정한 3회차 값으로 바꿨습니다.
 
 초당 적재 문서 수:
 
