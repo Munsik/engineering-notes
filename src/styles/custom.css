@@ -113,7 +113,8 @@
 	}
 
 	/* Prose stays at a readable line length; tables, code, diagrams and images may use the full width. */
-	.sl-markdown-content > :is(p, ul, ol, blockquote, dl, hr, aside, details, .sl-heading-wrapper, h1, h2, h3, h4, h5, h6) {
+	/* Pages with a sidebar only: the home page (splash) keeps its full-width layout. */
+	[data-has-sidebar] .sl-markdown-content > :is(p, ul, ol, blockquote, dl, hr, aside, details, .sl-heading-wrapper, h1, h2, h3, h4, h5, h6) {
 		max-width: var(--en-prose-width);
 	}
 }
@@ -132,6 +133,13 @@
  */
 [data-has-hero] .hero {
 	grid-template-columns: 1fr;
+}
+
+/* Less empty space around the hero so the collection cards start sooner. */
+@media (min-width: 50rem) {
+	[data-has-hero] .hero {
+		padding-block: 2.5rem 1rem;
+	}
 }
 
 [data-has-hero] .hero .copy > * {

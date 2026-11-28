@@ -1,0 +1,26 @@
+name: Check pull request
+
+# PR마다 빌드와 링크 검사를 돌려, 깨진 링크가 main에 들어가기 전에 알 수 있게 합니다.
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'planning/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check:links

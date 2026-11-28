@@ -30,6 +30,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # 사이트 안 링크와 anchor가 깨졌으면 배포하지 않습니다.
+      - run: npm run check:links
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
