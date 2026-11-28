@@ -100,7 +100,7 @@ partially mounted index는 `store.size`가 0으로 나왔습니다. 데이터는
 
 ### 첫 조회와 반복 조회
 
-세 index에 같은 요청을 보내고, 첫 실행과 이후 10번 반복의 median(ms)을 쟀습니다. 2회차는 노드를 재시작해서 shared cache를 비운 뒤 다시 쟀습니다. 재시작 직후라 JVM도 차가워서 regular index의 첫 실행도 함께 느려졌습니다. 칸마다 "1회차 / 2회차"입니다.
+세 index에 같은 요청을 보내고, 첫 실행과 이후 10번 반복의 median(ms)을 측정했습니다. 2회차는 노드를 재시작해서 shared cache를 비운 뒤 다시 측정했습니다. 재시작 직후라 JVM warm-up이 안 된 상태여서 regular index의 첫 실행도 함께 느려졌습니다. 칸마다 "1회차 / 2회차"입니다.
 
 | 요청 | regular 첫 실행 | regular 반복 | fully mounted 첫 실행 | fully mounted 반복 | partially mounted 첫 실행 | partially mounted 반복 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -113,7 +113,7 @@ partially mounted index는 `store.size`가 0으로 나왔습니다. 데이터는
 - **fully mounted는 regular index와 같은 수준이었습니다.** 노드를 재시작한 뒤에도 다시 받아 오지 않고 로컬 데이터를 그대로 썼습니다. 공식 문서도 fully mounted index의 로컬 데이터는 재시작 뒤에도 유지된다고 설명합니다.
 - **partially mounted는 첫 조회만 느렸습니다.** 같은 디스크의 `fs` repository인데도 `_source`를 읽는 fetch는 첫 실행이 1.9초였습니다. 반복 조회는 regular index와 비슷했습니다.
 - shared cache 통계(`GET _searchable_snapshots/cache/stats`)를 보면, 위 요청들이 16MB region 7개, 약 116MB를 cache에 썼습니다. 110MB짜리 index를 거의 통째로 올린 셈입니다. 이 실험의 index가 작아서 생긴 결과입니다. 실제 frozen 데이터는 cache보다 훨씬 크므로, 검색 범위가 넓으면 cache에서 밀려나고 다시 받아 오는 일이 반복됩니다.
-- object storage에서는 첫 조회 지연이 이 값보다 훨씬 클 수 있습니다(확인 필요: 이 실험에서 S3는 재지 않았습니다). 오래 걸리는 frozen 검색은 async search로 보내라고 공식 문서가 권합니다.
+- object storage에서는 첫 조회 지연이 이 값보다 훨씬 클 수 있습니다(확인 필요: 이 실험에서 S3는 측정하지 않았습니다). 오래 걸리는 frozen 검색은 async search로 보내라고 공식 문서가 권합니다.
 
 ### ILM이 frozen으로 보내는 과정
 
@@ -233,7 +233,7 @@ mount된 index는 점검 중에도 cache에 있는 부분은 검색됩니다. ca
 - 일반 snapshot(SLM)만 남기고 필요할 때 restore합니다. 검색하려면 복원을 기다려야 합니다.
 
 Elastic Search Labs의 Deepfreeze 글은 여기서 한 단계 더 나가, repository를 주기적으로 새로 만들고 오래된 repository를 등록 해제한 뒤 그 S3 경로를 Glacier로 옮기는 방법을 소개합니다([Reducing Elasticsearch frozen tier costs with Deepfreeze](https://www.elastic.co/search-labs/blog/s3-glacier-archiving-elasticsearch-deepfreeze)).
-Elasticsearch에 내장된 기능이 아니라 cron 등으로 돌리는 별도 Python 도구이고, 글 작성 시점에는 AWS만 지원합니다. Glacier에서 꺼낼 때는 AWS 복원 시간을 기다린 뒤 다시 mount합니다. 운영에 쓰려면 도구의 지원 범위를 따로 확인해야 합니다(확인 필요).
+Elasticsearch에 내장된 기능이 아니라 cron 등으로 돌리는 별도 Python 도구이고, 글 작성 시점에는 AWS만 지원합니다. Glacier에 옮긴 데이터를 다시 쓰려면 AWS 복원 시간을 기다린 뒤 mount합니다. 운영에 쓰려면 도구의 지원 범위를 따로 확인해야 합니다(확인 필요).
 
 ## 판단 기준
 

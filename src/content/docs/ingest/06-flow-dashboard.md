@@ -162,7 +162,7 @@ TS metrics-elastic_agent.elastic_agent-*, metrics-elastic_agent.filebeat-*
 
 이 쿼리는 실행해 보지 않았습니다(문서 기준). 필드는 elastic_agent 패키지 2.9.6의 필드 정의에서 확인했습니다.
 
-- `duplicates`는 다시 보낸 문서가 409로 막힌 수입니다. fingerprint `_id`를 쓰면 생깁니다. 상시 비율이 높으면 출력이 응답을 늦게 받아 다시 보내고 있다는 신호입니다. 사내 사례에서 15%, 38%처럼 계속 높은 비율이 나온 경우가 있었습니다.
+- `duplicates`는 다시 보낸 문서가 409로 막힌 수입니다. fingerprint `_id`를 쓰면 생깁니다. 상시 비율이 높으면 출력이 응답을 늦게 받아 다시 보내고 있다는 신호입니다. 현장 사례에서 15%, 38%처럼 계속 높은 비율이 나온 경우가 있었습니다.
 - `toomany`는 Elasticsearch가 429로 밀어낸 수입니다. 버리지 않고 다시 보내지만, 계속 생기면 클러스터 쓰기 용량이 모자란 것입니다.
 - `dropped`는 Elasticsearch가 거부해 Agent가 버린 수입니다. failure store가 없는 data stream의 mapping 충돌이 여기로 옵니다([02](../02-where-to-parse/#실패한-문서는-어디로-가나)). beats는 failure store로 간 수를 `output.events.failure_store`로도 세지만, 패키지 2.9.6에는 이 필드 정의가 없습니다. failure store 건수는 위의 `::failures` 쿼리로 셉니다.
 

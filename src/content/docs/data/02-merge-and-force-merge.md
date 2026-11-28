@@ -8,7 +8,7 @@ sidebar:
 
 segment가 많아서 검색이 느리다는 얘기를 듣고 force merge를 매일 밤 돌리는 환경을 자주 봅니다.
 그런데 쓰기 중인 인덱스에 force merge를 하면 디스크가 순간 세 배로 뛰고, snapshot이 매번 전체 크기로 올라가고, 나중에는 지운 문서가 정리되지 않는 segment가 남습니다.
-merge는 Elasticsearch가 알아서 하는 일이라 평소에는 신경 쓸 일이 적습니다. 그래도 언제 끼어들어야 하는지, 언제 두어야 하는지는 구조를 알아야 판단할 수 있습니다.
+merge는 Elasticsearch가 알아서 하는 일이라 평소에는 신경 쓸 일이 적습니다. 그래도 언제 직접 손대고 언제 그대로 둘지는 구조를 알아야 판단할 수 있습니다.
 
 segment가 무엇이고 왜 쌓이는지는 [01. Segment 생명주기](../01-segments/)에서 다뤘습니다.
 
@@ -78,7 +78,7 @@ data stream은 만들 때부터 `@timestamp` 매핑이 있어야 하므로 이 �
 | `policy-dynamic-ts` | `@timestamp` (dynamic) | Tiered | 12 / 11 | 178.0만 / 169.3만 | 542MB / 517MB | 68.5초 / 67.5초 | 5 / 4 |
 | `policy-dynamic-ts`, close/open 후 60만 건 추가 | `@timestamp` (dynamic) | LogByteSize | 1 / 1 | 40.2만 / 40.6만 | 124MB / 125MB | 19.5초 / 19.8초 | 22 / 21 |
 
-`policy-dynamic-ts`는 dynamic mapping이 `message`에 `keyword` 하위 필드까지 만들어서 크기를 다른 인덱스와 바로 비교할 수 없습니다. merge 횟수와 segment 수만 보세요. 결과 원본은 [`results/D_policy.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/D_policy.csv)에 있습니다.
+`policy-dynamic-ts`는 dynamic mapping이 `message`에 `keyword` 하위 필드까지 만들어서 크기를 다른 인덱스와 바로 비교할 수 없습니다. merge 횟수와 segment 수만 비교합니다. 결과 원본은 [`results/D_policy.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/D_policy.csv)에 있습니다.
 
 - **Tiered는 segment를 적게 유지하는 대신 많이 다시 씁니다.** 100만 건을 넣는 동안 문서를 182만 번에서 246만 번 다시 썼습니다. LogByteSize는 두 번 모두 78만 번 안팎이었습니다. 다시 쓴 양이 2.3배에서 3.1배, merge IO 제한에 걸린 시간도 2.3배에서 3배였습니다. Tiered는 merge가 언제 일어나느냐에 따라 회차 사이 편차가 컸고, LogByteSize는 거의 같았습니다.
 - **LogByteSize는 작은 segment를 32개 가까이 모았다가 한 번에 합칩니다.** 적재 중 segment 수가 40개까지 올라갔다가 13개로 떨어지는 패턴이 나왔습니다. 검색할 segment가 많아지는 대신 쓰기 비용이 적습니다.
@@ -181,7 +181,7 @@ segment 22개, 478MB인 인덱스를 `max_num_segments=1`로 force merge하면�
 전체 14.8초 중 대부분은 새 segment를 쓰는 시간이었고, 사용량은 원래 크기의 두 배 근처까지 천천히 올랐습니다. 마지막 1초 동안 세 배 가까이 뛰었다가 바로 내려왔습니다.
 새 segment가 1GB 이하라서 Lucene이 다 쓴 파일을 다시 compound file(`.cfs`)로 묶는 단계가 있고, 그동안 옛 segment, 새 segment 파일, `.cfs`가 함께 있었던 것으로 봅니다(해석, compound 기준은 [01](../01-segments/#segment를-이루는-파일) 참고). 측정 원본은 [`results/C_peak_samples.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/C_peak_samples.csv)에 있습니다.
 
-replica 1개인 다른 인덱스(copy당 segment 3개, primary 161.6MB)에서도 재 봤습니다. primary는 최대 397.9MB로 2.46배까지 올랐습니다. primary와 replica를 합친 크기는 최대 720.9MB였고, 끝난 뒤에는 322.9MB였습니다. primary와 replica가 각자 노드에서 같은 시간에 force merge를 하기 때문에 copy가 있는 노드 모두 디스크를 더 씁니다(실측).
+replica 1개인 다른 인덱스(copy당 segment 3개, primary 161.6MB)에서도 측정했습니다. primary는 최대 397.9MB로 2.46배까지 올랐습니다. primary와 replica를 합친 크기는 최대 720.9MB였고, 끝난 뒤에는 322.9MB였습니다. primary와 replica가 각자 노드에서 같은 시간에 force merge를 하기 때문에 copy가 있는 노드 모두 디스크를 더 씁니다(실측).
 
 두 인덱스에서 2.46배와 2.96배가 나왔으니 공식 문서의 "최대 세 배"와 맞습니다. 짧게 지나가서 모니터링 주기가 길면 안 보일 수도 있습니다. 여유 공간은 최대치로 잡아야 합니다.
 
@@ -242,7 +242,7 @@ merge disk watermark에 걸린 노드에서는 force merge도 끝나지 않습�
 
 ## 다음 글
 
-- 저장 용량 비교(logsdb, `best_compression`, synthetic `_source`)는 데이터 설계 컬렉션의 다음 글에서 다룰 예정입니다. 비교는 모두 force merge와 flush 뒤의 크기로 합니다.
+- [03. 저장 용량 비교](../03-storage-footprint/): logsdb, `best_compression`, synthetic `_source`를 force merge와 flush 뒤의 크기로 비교합니다.
 - 이 글의 실측 코드: [`labs/data/segments-and-merge/`](https://github.com/Munsik/engineering-notes/tree/main/labs/data/segments-and-merge)
 
 ## 참고 문서

@@ -46,7 +46,7 @@ index 하나에 숫자 필드를 n개 가진 문서를 넣고, 노드의 `total_
 - heap 추정치는 필드(mapper) 하나에 1,024 byte로 늘었습니다. 이 값이 **index 하나마다** 붙습니다. 필드 5만 개짜리 backing index가 data node에 300개 있으면 추정치만 약 14GB입니다(계산).
 - 첫 문서와 두 번째 문서의 차이가 mapping 갱신에 든 시간입니다. 단일 노드라 노드 사이 전파 시간은 들어 있지 않습니다. 노드가 많으면 더 걸립니다.
 
-### 한도를 올린 결과: 사내 사례
+### 한도를 올린 결과: 현장 사례
 
 필드 한도를 30만으로 올려 둔 클러스터에서 indexing node가 반복해서 OutOfMemory로 내려간 사례가 있었습니다. OOM 시점은 merge와 겹쳤고, segment마다 들고 있는 필드 정보가 heap을 차지한 것으로 분석됐습니다. 위 실측처럼 필드 하나의 비용은 작지만, 필드 수와 index 수, segment 수가 곱해지면 heap 전체를 채웁니다.
 
@@ -80,9 +80,9 @@ index 하나에 숫자 필드를 n개 가진 문서를 넣고, 노드의 `total_
 
 - 값이 모두 keyword입니다. 숫자 range query도 문자열로 비교하고, 정렬도 사전순입니다.
 - 키에 wildcard를 쓸 수 없고, highlight가 안 됩니다.
-- 9.4부터 `properties`로 특정 키만 타입을 지정해 따로 매핑할 수 있습니다(같은 문서). 자주 쓰는 몇 개 키는 이렇게 살립니다.
+- 9.4부터 `properties`로 특정 키만 타입을 지정해 따로 매핑할 수 있습니다(같은 문서). 자주 쓰는 키 몇 개는 이렇게 타입을 따로 지정합니다.
 
-가장 좋은 해법은 구조를 바꾸는 것입니다. 값을 키에서 꺼내 `{"dataset_id": "<UUID>", "events": 12}`처럼 배열이나 별도 문서로 두면 필드 수가 고정됩니다. 소스를 바꿀 수 없을 때 ingest pipeline에서 이렇게 바꾸거나, `flattened`로 받습니다.
+가장 좋은 해법은 구조를 바꾸는 것입니다. 값을 키 이름에서 빼서 `{"dataset_id": "<UUID>", "events": 12}`처럼 배열이나 별도 문서로 두면 필드 수가 고정됩니다. 소스를 바꿀 수 없을 때 ingest pipeline에서 이렇게 바꾸거나, `flattened`로 받습니다.
 
 ## Mapper 수를 줄이는 설정
 
@@ -97,7 +97,7 @@ index 하나에 숫자 필드를 n개 가진 문서를 넣고, 노드의 `total_
 
 ## Template 계층과 이름
 
-설정을 어디에 넣느냐에 따라 integration 업그레이드 뒤에도 유지되는지가 갈립니다.
+설정을 어디에 넣느냐에 따라 integration 업그레이드 뒤에도 유지되는지가 달라집니다.
 
 - Elasticsearch 내장 template(`logs-*-*`, `metrics-*-*` 등)의 priority는 100이고, Fleet integration이 만드는 template은 200까지 씁니다. Fleet을 쓰는 클러스터에서 이 패턴에 직접 index template을 만들면 integration template을 덮어쓸 수 있습니다([Templates](https://www.elastic.co/docs/manage-data/data-store/templates)).
 - 그래서 integration data stream의 설정과 매핑은 `@custom` component template에 넣습니다. 범위별로 세 가지가 있습니다([Data streams](https://www.elastic.co/docs/reference/fleet/data-streams)).
@@ -115,7 +115,7 @@ index 하나에 숫자 필드를 n개 가진 문서를 넣고, 노드의 `total_
 
 integration을 업그레이드하면 template이 바뀌고, 다음 backing index부터 새 매핑이 적용됩니다. 어떤 필드의 타입이 바뀌면 같은 data stream 안에서 backing index끼리 타입이 달라집니다.
 
-- data view에서는 그 필드가 conflict로 보이고, 집계나 정렬이 안 될 수 있습니다. 사내 사례에서 업그레이드 뒤 필드 60여 개가 `keyword`와 `long` 사이 conflict로 나타났습니다.
+- data view에서는 그 필드가 conflict로 보이고, 집계나 정렬이 안 될 수 있습니다. 현장 사례에서 업그레이드 뒤 필드 60여 개가 `keyword`와 `long` 사이 conflict로 나타났습니다.
 - 바뀐 타입에 맞지 않는 값은 failure store로 갑니다. 업그레이드 직후 failure store에 수백만 건이 쌓인 사례도 있었습니다.
 - 필드가 한도에 가까운 data stream은 새 template의 필드가 더해지면서 업그레이드가 실패할 수 있습니다.
 
