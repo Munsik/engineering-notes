@@ -1,0 +1,30 @@
+# 02. 변경 절차: 사전 점검
+GET _health_report
+GET _cluster/health?filter_path=status,relocating_shards,initializing_shards,unassigned_shards
+GET _cat/recovery?active_only=true&v
+GET _cat/allocation?v&s=disk.percent:desc
+GET _slm/policy?filter_path=*.last_success,*.last_failure
+GET _cat/snapshots/prod-repo?v&s=end_epoch:desc&h=id,status,end_epoch,indices
+
+# 검증 환경에 운영 data stream 복원(feature state는 복원하지 않음)
+POST _snapshot/prod-repo/nightly-2026.11.27/_restore
+{
+  "indices": "logs-app-default",
+  "include_global_state": false
+}
+
+# 실행: rollover로 바로 반영 결과 확인
+POST logs-app-default/_rollover
+GET logs-app-default/_mapping
+GET _data_stream/logs-app-default?filter_path=data_streams.indices,data_streams.template,data_streams.ilm_policy
+
+# 사후 점검: failure store
+GET logs-*::failures/_search
+{
+  "size": 0,
+  "query": { "range": { "@timestamp": { "gte": "now-1h" } } },
+  "aggs": { "by_stream": { "terms": { "field": "data_stream.dataset", "size": 20 } } }
+}
+
+GET _migration/deprecations
+GET kbn:/api/task_manager/_health

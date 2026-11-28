@@ -1,0 +1,20 @@
+# 05. ID를 지정해 data view 생성(Stack 9.0에서 9.5)
+POST kbn:/api/data_views/data_view
+{
+  "data_view": {
+    "id": "logs-web-prod",
+    "name": "Web logs",
+    "title": "logs-nginx.access-*",
+    "timeFieldName": "@timestamp"
+  }
+}
+
+# space 간 복사. createNewCopies 기본값이 true이므로 ID를 유지하려면 명시
+POST kbn:/api/spaces/_copy_saved_objects
+{
+  "spaces": ["production"],
+  "objects": [{ "type": "dashboard", "id": "web-logs-overview" }],
+  "includeReferences": true,
+  "createNewCopies": false,
+  "overwrite": true
+}

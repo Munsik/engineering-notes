@@ -1,0 +1,36 @@
+# 10. 데이터 이관
+# 대상 클러스터 elasticsearch.yml: reindex.remote.whitelist: ["old-es-01:9200"]
+
+POST _reindex?wait_for_completion=false
+{
+  "source": {
+    "remote": {
+      "host": "https://old-es-01:9200",
+      "username": "migrator",
+      "password": "<secret>"
+    },
+    "index": "app-logs-2026.10.*",
+    "size": 2000,
+    "query": { "range": { "@timestamp": { "lt": "2026-11-01" } } }
+  },
+  "dest": {
+    "index": "logs-app-default",
+    "op_type": "create"
+  }
+}
+
+GET _tasks?actions=*reindex&detailed=true
+
+# 검증: 기간별 문서 수(원천과 대상에서 같은 요청)
+GET logs-app-default/_search
+{
+  "size": 0,
+  "query": { "range": { "@timestamp": { "gte": "2026-10-01", "lt": "2026-11-01" } } },
+  "aggs": {
+    "per_day": { "date_histogram": { "field": "@timestamp", "calendar_interval": "day", "time_zone": "Asia/Seoul" } }
+  }
+}
+
+# analyzer 비교(원천과 대상에서)
+POST _analyze
+{ "analyzer": "standard", "text": "주문 처리 지연 경고" }

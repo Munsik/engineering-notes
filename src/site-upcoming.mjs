@@ -18,15 +18,6 @@ export const upcomingTopics = [
     topics: ['alert가 오지 않으면 정상이라고 믿을 수 있게 만드는 alerting 설계'],
   },
   {
-    axis: '변화 관리',
-    name: '버전과 플랫폼을 바꿀 때',
-    topics: [
-      '되돌릴 수 없다는 전제로 세우는 메이저 업그레이드 계획',
-      '보안 공지가 나왔을 때 확인할 것과 올라갈 버전 정하기',
-      '다른 플랫폼이나 구버전의 데이터를 옮겨 오는 방법',
-    ],
-  },
-  {
     axis: '검색',
     name: '검색 품질 측정과 개선',
     topics: ['semantic search를 도입하기 전에 측정할 것', 'embedding, LLM 제공자가 바뀌어도 버티는 검색 설계'],

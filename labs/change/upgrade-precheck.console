@@ -1,0 +1,34 @@
+# 08. 메이저 업그레이드 사전 점검
+
+GET _health_report
+GET _cat/nodes?v&h=name,version,node.role,heap.percent,disk.used_percent
+GET _migration/deprecations
+GET _cat/plugins?v
+GET _cluster/settings?flat_settings=true
+
+# Kibana 시스템 index 크기(디스크 여유는 이 크기의 두 배 이상)
+GET _cat/indices/.kibana*?v&h=index,store.size&expand_wildcards=all
+
+# 업그레이드 전용 snapshot(SLM 밖)
+PUT _snapshot/prod-repo/pre-upgrade-8.19.20-to-9.5.7?wait_for_completion=false
+{
+  "indices": "*",
+  "include_global_state": true,
+  "feature_states": ["kibana", "security", "fleet"],
+  "metadata": { "reason": "pre-upgrade", "change": "CHG-2026-1130" }
+}
+GET _snapshot/prod-repo/pre-upgrade-8.19.20-to-9.5.7?filter_path=snapshots.state,snapshots.feature_states,snapshots.failures
+
+# 노드 그룹 확인(업그레이드 순서)
+GET _nodes/data_frozen:true/_none
+GET _nodes/data_cold:true/_none
+GET _nodes/data_warm:true/_none
+GET _nodes/data_hot:true/_none
+GET _nodes/master:true/_none
+
+# Kibana 롤백: kibana feature state만 복원(모든 Kibana를 내린 뒤)
+POST _snapshot/prod-repo/pre-upgrade-8.19.20-to-9.5.7/_restore
+{
+  "indices": "-*",
+  "feature_states": ["kibana"]
+}
