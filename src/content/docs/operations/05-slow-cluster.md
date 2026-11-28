@@ -81,7 +81,7 @@ CPU가 GC 때문에 높은 경우도 많습니다. hot threads에서 `other` CPU
 
 근거: [Thread pool settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/thread-pool-settings). 9.0과 9.5 소스(`DefaultBuiltInExecutorBuilders.java`)에서도 같은 값을 확인했습니다.
 
-queue가 커졌다고 거부가 사라지지는 않습니다. 기다리는 요청이 많아질 뿐이라 응답은 더 느려지고 heap도 더 씁니다. 공식 문서도 thread pool 크기 조정은 부하 시험을 한 뒤에만 하라고 설명합니다(해석, [Task queue backlog](https://www.elastic.co/docs/troubleshoot/elasticsearch/task-queue-backlog)).
+queue가 커졌다고 거부가 사라지지는 않습니다. 기다리는 요청이 많아질 뿐이라 응답은 더 느려지고 heap도 더 씁니다. 공식 문서도 thread pool 크기 조정은 부하 시험을 한 뒤에만 하라고 설명합니다([Task queue backlog](https://www.elastic.co/docs/troubleshoot/elasticsearch/task-queue-backlog)).
 
 `queue`가 계속 높으면 오래 걸리는 작업이나 CPU를 많이 쓰는 작업이 있다는 뜻이고, 잠깐씩 튀면 요청이 한꺼번에 몰리는 것입니다. 앞의 경우는 아래의 task 확인으로, 뒤의 경우는 요청을 나눠 보내는 쪽으로 풉니다(같은 문서).
 

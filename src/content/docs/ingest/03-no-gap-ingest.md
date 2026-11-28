@@ -311,7 +311,7 @@ input {
 | `file_identity`를 다른 방식으로 변경 | `native`나 `path`에서 `fingerprint`로 바꾸는 것만 상태를 옮겨 줌. 그 밖의 변경은 중복을 만들 수 있음 | 같은 문서 |
 | Custom Logs(`log` input)에서 filestream으로 이전 | 두 입력이 같은 파일을 읽으면 중복. `log` input은 9.0부터 기본으로 꺼져 있음 | `take_over`로 상태를 넘기거나 `ignore_older`로 범위를 줄임([Migrate to filestream](https://www.elastic.co/docs/reference/beats/filebeat/migrate-to-filestream)) |
 
-다시 읽힌 RFC 3164 syslog 파일은 연도가 없어서 현재 연도가 다시 붙습니다([02](../02-where-to-parse/#자주-깨지는-지점)). 과거 이벤트가 최근 이벤트처럼 저장되고, 탐지 rule이 다시 알림을 낼 수 있습니다(해석).
+다시 읽힌 RFC 3164 syslog 파일은 연도가 없어서 현재 연도가 다시 붙습니다([02](../02-where-to-parse/#자주-깨지는-지점)). 과거 이벤트가 최근 이벤트처럼 저장되고, 탐지 rule이 다시 알림을 낼 수 있습니다.
 
 ## Logstash persistent queue
 

@@ -83,7 +83,7 @@ Elastic Agent 패키지가 설치하는 `[Elastic Agent] UDP Input Metrics` 대�
 
 ### 같은 component를 쓰는 입력은 서로 영향을 준다
 
-Agent 지표의 `component.id`는 입력 종류와 출력 이름으로 만들어집니다(`udp-default`, `tcp-default`처럼). 같은 정책에서 같은 종류의 입력을 여러 integration으로 받고 같은 출력으로 보내면, 지표상 하나의 component로 묶이고 queue 지표도 component 단위로 나옵니다([06](../06-flow-dashboard/)의 lab 관찰). 저는 이 입력들이 출력 쪽 queue를 함께 쓰는 것으로 봅니다(해석).
+Agent 지표의 `component.id`는 입력 종류와 출력 이름으로 만들어집니다(`udp-default`, `tcp-default`처럼). 같은 정책에서 같은 종류의 입력을 여러 integration으로 받고 같은 출력으로 보내면, 지표상 하나의 component로 묶이고 queue 지표도 component 단위로 나옵니다([06](../06-flow-dashboard/)의 lab 관찰). 저는 이 입력들이 출력 쪽 queue를 함께 쓰는 것으로 봅니다.
 
 이 경우 한 장비의 로그가 처리에서 오래 걸리면 같은 component의 다른 장비 수집도 같이 밀릴 수 있습니다. 현장 진단 사례에서는 형식이 깨진 메시지를 보내는 방화벽 하나 때문에 처리 지연이 커졌고, 같은 component로 받던 다른 장비의 수집도 늦어졌습니다. 그 방화벽을 별도 Agent로 옮긴 뒤 나머지가 정상으로 돌아왔습니다.
 

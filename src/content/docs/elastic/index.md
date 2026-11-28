@@ -48,7 +48,7 @@ flowchart LR
 
 ## 읽는 순서
 
-제가 권하는 순서입니다(해석).
+제가 권하는 순서입니다.
 
 - 새로 구축한다면 [데이터 설계](../data/), [수집](../ingest/), [안정성 운영](../operations/) 순서로 읽습니다. 앞에서 정한 shard와 tier 구성이 수집 사이징과 운영 기준의 전제가 됩니다.
 - 이미 운영 중인 클러스터를 맡았다면 [안정성 운영의 평소 점검](../operations/01-daily-checks/)과 [장애 첫 30분](../operations/10-incident-runbook/)부터 읽습니다.

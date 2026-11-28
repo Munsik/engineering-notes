@@ -60,7 +60,7 @@ TieredMergePolicy는 상한의 절반(2.5GB)을 넘는 segment를 삭제 비율�
 `@timestamp`가 있는지는 shard의 engine을 만들 때만 봅니다(소스 `IndexShard.java`의 `newEngineConfig`). engine은 shard copy가 열릴 때 만들어지고, 일부 복구 과정(`rollbackEngineToGlobalCheckpoint`)에서 다시 만들어집니다.
 그래서 매핑 없이 인덱스를 만들고 첫 문서의 `@timestamp`가 dynamic mapping으로 date가 된 경우, 그 shard는 다시 열리기 전까지 TieredMergePolicy로 움직입니다. 아래 실측으로 확인했습니다.
 
-data stream은 만들 때부터 `@timestamp` 매핑이 있어야 하므로 이 문제가 없습니다. 재시작, relocation, 새 replica 할당으로 새로 열린 copy는 그 시점의 매핑으로 판정하므로, 같은 인덱스라도 copy마다 policy가 다를 수 있습니다(해석, 확인 필요).
+data stream은 만들 때부터 `@timestamp` 매핑이 있어야 하므로 이 문제가 없습니다. 재시작, relocation, 새 replica 할당으로 새로 열린 copy는 그 시점의 매핑으로 판정하므로, 같은 인덱스라도 copy마다 policy가 다를 수 있습니다(확인 필요).
 
 일반 인덱스에 `@timestamp`를 넣을지는 쓰기 패턴을 보고 정합니다.
 
@@ -179,7 +179,7 @@ segment 22개, 478MB인 인덱스를 `max_num_segments=1`로 force merge하면�
 | 끝난 뒤 (segment 1개) | 471.5MB | 0.99배 |
 
 전체 14.8초 중 대부분은 새 segment를 쓰는 시간이었고, 사용량은 원래 크기의 두 배 근처까지 천천히 올랐습니다. 마지막 1초 동안 세 배 가까이 뛰었다가 바로 내려왔습니다.
-새 segment가 1GB 이하라서 Lucene이 다 쓴 파일을 다시 compound file(`.cfs`)로 묶는 단계가 있고, 그동안 옛 segment, 새 segment 파일, `.cfs`가 함께 있었던 것으로 봅니다(해석, compound 기준은 [01](../01-segments/#segment를-이루는-파일) 참고). 측정 원본은 [`results/C_peak_samples.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/C_peak_samples.csv)에 있습니다.
+새 segment가 1GB 이하라서 Lucene이 다 쓴 파일을 다시 compound file(`.cfs`)로 묶는 단계가 있고, 그동안 옛 segment, 새 segment 파일, `.cfs`가 함께 있었던 것으로 봅니다(compound 기준은 [01](../01-segments/#segment를-이루는-파일) 참고). 측정 원본은 [`results/C_peak_samples.csv`](https://github.com/Munsik/engineering-notes/blob/main/labs/data/segments-and-merge/results/C_peak_samples.csv)에 있습니다.
 
 replica 1개인 다른 인덱스(copy당 segment 3개, primary 161.6MB)에서도 측정했습니다. primary는 최대 397.9MB로 2.46배까지 올랐습니다. primary와 replica를 합친 크기는 최대 720.9MB였고, 끝난 뒤에는 322.9MB였습니다. primary와 replica가 각자 노드에서 같은 시간에 force merge를 하기 때문에 copy가 있는 노드 모두 디스크를 더 씁니다(실측).
 
