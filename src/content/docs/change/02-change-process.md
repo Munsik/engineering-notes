@@ -144,9 +144,9 @@ GET logs-*::failures/_search
 GET _migration/deprecations
 ```
 
-각 요청은 이럴 때 씁니다.
+요청별로 쓰는 상황입니다.
 
-| 요청 | 이럴 때 쓴다 |
+| 요청 | 쓰는 상황 |
 | --- | --- |
 | `GET _health_report` | 상태가 GREEN이 아닐 때 원인과 조치까지 한 번에 보고 싶을 때. `_cluster/health`는 색과 shard 수만 알려 주고, health report는 디스크, shard 가용성, ILM, SLM, master 안정성 같은 지표별로 원인과 영향받는 index를 알려 줌 |
 | `GET _cluster/health?wait_for_status=green` | rolling restart나 노드 교체 중에 다음 단계로 넘어가도 되는지 스크립트에서 기다릴 때 |

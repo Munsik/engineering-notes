@@ -40,13 +40,13 @@ Kibana 객체를 종류별로 어디서 관리하고, 환경 사이에 어떻게
 전용 as-code API가 없는 객체는 saved objects export와 import로 옮깁니다. 지켜야 할 규칙이 있습니다([Import saved objects](https://www.elastic.co/docs/api/kibana/operation/operation-post-saved-objects-import), [Export saved objects](https://www.elastic.co/docs/api/kibana/operation/operation-post-saved-objects-export)).
 
 - import는 같은 버전, 같은 메이저의 더 새로운 마이너, 바로 다음 메이저로만 됩니다. 더 오래된 Kibana로는 import할 수 없습니다. 개발 환경이 운영보다 새 버전이면 개발에서 만든 객체를 운영에 넣을 수 없습니다.
-- export 결과는 불투명한(opaque) 데이터로 취급하라고 공식 문서가 명시합니다. 손으로 고치면 알 수 없는 오류나 데이터 손실이 날 수 있습니다.
+- 공식 문서는 export 결과를 opaque 데이터로 다루라고 안내합니다. 손으로 고치면 알 수 없는 오류나 데이터 손실이 날 수 있습니다.
 - export에 들어 있는 `coreMigrationVersion`, `typeMigrationVersion`을 지우면 안 됩니다. Git에 저장할 때 diff를 줄이려고 이 필드를 빼면 다음 버전에서 import가 깨질 수 있습니다.
 - 한 번에 export할 수 있는 개수는 `savedObjects.maxImportExportSize`로 제한됩니다.
 
 import 옵션은 셋이고, 서로 함께 쓸 수 없는 조합이 있습니다.
 
-| 옵션 | 동작 | 이럴 때 쓴다 |
+| 옵션 | 동작 | 쓰는 상황 |
 | --- | --- | --- |
 | `overwrite=true` | 같은 ID가 있으면 덮어씀 | 개발 space에서 고친 Discover session을 운영에 반영할 때. ID가 같아서 운영의 dashboard 참조가 그대로 유지됨 |
 | `createNewCopies=true` | ID를 새로 만들고 origin을 초기화 | 팀마다 공용 템플릿 dashboard를 받아 각자 고쳐 쓰게 할 때. 원본과 연결이 끊긴 독립 복사본이 필요할 때. `overwrite`, `compatibilityMode`와 함께 쓸 수 없음 |
@@ -104,12 +104,12 @@ Kibana의 alerting rule과 detection rule은 실행할 때 API key를 씁니다.
 
 현장에서 자주 생기는 일은 두 가지입니다.
 
-- 담당자 계정으로 만든 rule이 퇴사나 계정 비활성화 뒤에 일제히 멈춥니다. 오류가 rule 실행 상태에만 나오기 때문에 알림이 오지 않는 것을 "조용하다"로 오해합니다.
+- 담당자 계정으로 만든 rule이 퇴사나 계정 비활성화 뒤에 일제히 멈춥니다. 오류가 rule 실행 상태에만 나오기 때문에 알림이 오지 않으니 문제가 없다고 오해합니다.
 - 자동화가 만든 rule을 누군가 운영 화면에서 한 번 수정하면, key가 그 사람의 것으로 바뀝니다. 다음 배포 때 다시 자동화의 key로 돌아가고, 그사이 권한 차이 때문에 결과가 달라집니다.
 
 ![API key를 무효화한 뒤의 rule. 상태가 Error로 바뀌고, History의 실패 기록에 인증 오류가 남습니다. 연결된 알림이 없으면 이 화면을 열기 전까지 알 수 없습니다.](../../../assets/change/rule-execution-error.jpg)
 
-대응은 [01의 CI/CD 계정 설계](../01-change-map/#cicd-계정-설계)와 같습니다. rule은 전용 계정으로만 만들고 수정합니다. 이미 사람 계정에 붙은 rule이 있다면 전용 계정으로 다시 저장해서 key를 교체합니다. 그리고 rule 실행 실패를 보는 alert를 따로 둡니다. "alert가 없다"가 "rule이 죽었다"일 수 있기 때문입니다.
+대응은 [01의 CI/CD 계정 설계](../01-change-map/#cicd-계정-설계)와 같습니다. rule은 전용 계정으로만 만들고 수정합니다. 이미 사람 계정에 붙은 rule이 있다면 전용 계정으로 다시 저장해서 key를 교체합니다. 그리고 rule 실행 실패를 보는 alert를 따로 둡니다. alert가 없는 이유가 rule이 멈췄기 때문일 수도 있습니다.
 
 ## encryption key
 
@@ -125,7 +125,7 @@ key는 비밀 관리 도구에 두고, `kibana.yml`을 Git에 둘 때는 값 대
 
 ## kibana.yml로 고정할 수 있는 것
 
-UI에서 바꿀 수 없게 파일로 고정하는 방법도 있습니다. 운영에서 바뀌면 안 되는 것에 맞습니다.
+UI에서 바꿀 수 없게 파일로 고정하는 방법도 있습니다. 운영에서 바뀌면 안 되는 설정에 적합합니다.
 
 | 설정 | 고정하는 대상 |
 | --- | --- |
@@ -152,7 +152,7 @@ preconfigured connector는 ID가 고정되므로 rule이 환경과 상관없이 
 
 ## Kibana 업그레이드와 saved object migration
 
-Kibana는 업그레이드할 때 saved object를 새 버전 형식으로 바꿉니다. 이 과정에 대한 공식 문서의 요구는 이렇습니다([Upgrade Kibana](https://www.elastic.co/docs/deploy-manage/upgrade/deployment-or-cluster/kibana)).
+Kibana는 업그레이드할 때 saved object를 새 버전 형식으로 바꿉니다. 공식 문서가 요구하는 조건은 아래와 같습니다([Upgrade Kibana](https://www.elastic.co/docs/deploy-manage/upgrade/deployment-or-cluster/kibana)).
 
 - Kibana는 항상 Elasticsearch 다음에, 같은 버전으로 올립니다.
 - rolling upgrade를 지원하지 않습니다. 이전 버전 인스턴스를 모두 내린 뒤 새 버전을 띄웁니다. 이전 버전이 살아 있는 상태로 업그레이드하면 데이터 손실이나 실패가 생길 수 있습니다.

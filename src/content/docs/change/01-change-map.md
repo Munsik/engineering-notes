@@ -98,7 +98,7 @@ GET _ingest/pipeline?filter_path=*.version,*._meta
 GET _ilm/policy?filter_path=*.version,*.modified_date
 ```
 
-이 요청들은 이럴 때 씁니다.
+요청별로 쓰는 상황입니다.
 
 | 상황 | 쓰는 요청 |
 | --- | --- |

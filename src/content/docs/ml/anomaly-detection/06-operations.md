@@ -148,7 +148,7 @@ rule을 저장하기 전에 Test 버튼을 누르면, 고른 기간 동안 alert
 
 ### Anomaly detection jobs health rule
 
-| 점검 | 이럴 때 알려 줍니다 |
+| 점검 | 알려 주는 상황 |
 | --- | --- |
 | Datafeed is not started | job은 열려 있는데 datafeed가 시작되지 않았을 때 |
 | Model memory limit reached | 메모리 상태가 `soft_limit`(한도의 60% 초과)나 `hard_limit`(한도 초과)이 됐을 때 |

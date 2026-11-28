@@ -42,16 +42,16 @@ GET logs-app-default/_mapping
 
 | 확인할 것 | API | 상태 |
 | --- | --- | --- |
-| 새 index에 어떤 template이 이기고, 결과 설정과 mapping이 무엇인지 | `POST _index_template/_simulate_index/<index>` | GA |
+| 새 index에 어떤 template이 적용되고, 최종 설정과 mapping이 무엇인지 | `POST _index_template/_simulate_index/<index>` | GA |
 | 아직 저장하지 않은 template, 또는 저장된 template 하나의 결과 | `POST _index_template/_simulate`, `POST _index_template/_simulate/<template>` | GA |
 | pipeline 하나의 처리 결과와 processor별 변화 | `POST _ingest/pipeline/_simulate`, `POST _ingest/pipeline/<id>/_simulate` | GA(5.0부터) |
 | index에 실제로 넣을 때의 전체 흐름(default, final pipeline, reroute)과 mapping 검증 | `POST _ingest/_simulate`, `POST _ingest/<index>/_simulate` | experimental(8.12부터) |
 
 ### template simulate API 두 가지
 
-| API | 입력 | 답하는 질문 | 이럴 때 쓴다 |
+| API | 입력 | 답하는 질문 | 쓰는 상황 |
 | --- | --- | --- | --- |
-| `_simulate_index/<index>` | index 이름 | "이 이름으로 index가 만들어지면 어떤 template이 이기고 결과가 무엇인가" | `logs-*` 같은 넓은 패턴의 template을 새로 만들기 전에, 기존 integration data stream 이름을 넣어 우선순위 경쟁에서 무엇이 이기는지 확인할 때. 겹치는 template이 있으면 응답의 `overlapping`에 나옴 |
+| `_simulate_index/<index>` | index 이름 | "이 이름으로 index가 만들어지면 어떤 template이 적용되고 결과가 무엇인가" | `logs-*` 같은 넓은 패턴의 template을 새로 만들기 전에, 기존 integration data stream 이름을 넣어 어떤 template이 우선 적용되는지 확인할 때. 겹치는 template이 있으면 응답의 `overlapping`에 나옴 |
 | `_simulate` (본문에 정의) | 저장하지 않은 template 정의 | "이 template을 저장하면 결과 mapping과 설정이 무엇인가" | PR에 올라온 template 변경을 CI에서 검증할 때. component template이 합쳐진 최종 mapping을 리뷰어에게 보여 줄 때 |
 
 ```console
@@ -80,9 +80,9 @@ POST _index_template/_simulate
 | processor별 결과 | `verbose=true`로 processor마다 문서 변화 표시 | 없음. 실행된 pipeline 목록(`executed_pipelines`)만 |
 | 저장 | 하지 않음 | 하지 않음 |
 
-공식 설명도 같은 구분을 합니다. simulate pipeline API는 pipeline 하나를 개발할 때, simulate ingest API는 index에 넣을 때 적용되는 여러 pipeline의 상호작용을 문제 해결할 때 더 맞는다고 적혀 있습니다([Simulate data ingestion](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-simulate-ingest), [Simulate a pipeline](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-ingest-simulate)).
+공식 설명도 같은 구분을 합니다. simulate pipeline API는 pipeline 하나를 개발할 때, simulate ingest API는 index에 넣을 때 적용되는 여러 pipeline의 상호작용을 문제 해결할 때 더 적합하다고 설명합니다([Simulate data ingestion](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-simulate-ingest), [Simulate a pipeline](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-ingest-simulate)).
 
-이럴 때 쓴다.
+상황별로 쓸 API입니다.
 
 | 상황 | 쓸 API | 이유 |
 | --- | --- | --- |
@@ -163,7 +163,7 @@ POST _ingest/_simulate
 
 template을 고치지 않고 data stream 하나에만 mapping이나 설정을 덮어쓰는 API가 있습니다. 둘 다 GA입니다.
 
-| API | 반영 | 이럴 때 쓴다 |
+| API | 반영 | 쓰는 상황 |
 | --- | --- | --- |
 | `PUT _data_stream/<name>/_mappings` | 다음 rollover로 만들어지는 write index | 여러 data stream이 같이 쓰는 template은 그대로 두고, 특정 data stream 하나에만 필드를 추가해야 할 때 |
 | `PUT _data_stream/<name>/_settings` | 허용된 설정은 모든 backing index에 바로, 아니면 다음 rollover | 한 data stream만 적재량이 급증해서 다음 backing index의 shard 수를 늘리거나 `index.mapping.total_fields.limit`을 올려야 할 때 |
@@ -199,7 +199,7 @@ data stream에서 type을 바꾸면 이전 backing index와 새 backing index의
 
 reindex는 일반 `_reindex`로 새 data stream에 넣습니다. 이름이 비슷한 reindex data stream API(`POST _migration/reindex`)는 mapping 변경용이 아닙니다.
 
-| API | 하는 일 | 이럴 때 쓴다 |
+| API | 하는 일 | 쓰는 상황 |
 | --- | --- | --- |
 | `POST _reindex` | 원본 문서를 대상 index나 data stream의 현재 mapping으로 다시 색인 | type 변경, analyzer 변경, 필드 정리처럼 mapping을 바꿔야 할 때 |
 | `POST _migration/reindex` (reindex data stream API) | 이전 메이저에서 만든 backing index를 같은 설정과 mapping으로 새로 만들어 교체 | 8.x에서 9.x로 가기 전에 7.x에서 만든 backing index를 정리할 때. Upgrade Assistant가 쓰는 API이고 공식 문서도 Upgrade Assistant를 쓰라고 권함 |
@@ -213,7 +213,7 @@ pipeline은 저장하는 순간 다음 요청부터 적용됩니다. 되돌리�
 - 배포 전에 simulate pipeline API로 processor 단위를 확인하고, simulate ingest API로 실제 index에 넣는 흐름과 mapping 충돌을 확인합니다([pipeline simulate API 두 가지](#pipeline-simulate-api-두-가지)).
 - 모든 processor에 `tag`를 붙이면 실패한 문서의 오류 정보에서 어느 processor가 실패했는지 바로 보입니다.
 - failure store가 켜져 있으면 pipeline이 실패한 문서는 failure store로 갑니다. 고친 뒤에 다시 넣을 수 있습니다([수집 03](../../ingest/03-no-gap-ingest/)).
-- `on_failure`로 실패를 삼키면 데이터는 들어가지만 문제가 숨습니다. 실패 사실을 필드로 남기는 것까지 하고, 그 필드를 alert로 봅니다.
+- `on_failure`로 실패를 그냥 넘기면 데이터는 들어가지만 문제가 보이지 않습니다. 실패 사실을 필드로 남기는 것까지 하고, 그 필드를 alert로 봅니다.
 - `version`과 `_meta`를 PR마다 갱신합니다([01](../01-change-map/#drift-확인)).
 
 ## ILM policy 변경
@@ -233,7 +233,7 @@ GET logs-app-default/_ilm/explain?filter_path=indices.*.policy,indices.*.phase,i
 
 `phase_execution.version`이 policy의 현재 version보다 낮으면 그 index는 이전 정의로 phase를 실행 중입니다.
 
-ILM과 data stream lifecycle 중 무엇을 쓸지는 [데이터 설계 05](../../data/05-tiers-and-retention/)에서 다룹니다. 같은 data stream에서 둘을 바꿔 탈 때는 `index.lifecycle.prefer_ilm` 설정이 어느 쪽을 쓸지 정합니다.
+ILM과 data stream lifecycle 중 무엇을 쓸지는 [데이터 설계 05](../../data/05-tiers-and-retention/)에서 다룹니다. 같은 data stream에서 둘 사이를 전환할 때는 `index.lifecycle.prefer_ilm` 설정이 어느 쪽을 쓸지 정합니다.
 
 ## 영향 분석
 
@@ -262,7 +262,7 @@ Kibana의 saved objects 화면에서 객체마다 Relationships를 보면 data v
 
 integration을 업그레이드하면 그 integration의 template, pipeline, mapping이 바뀝니다. Agent를 업그레이드하면 같은 integration이라도 보내는 필드 구조가 바뀔 수 있습니다. 둘 다 데이터 정의 변경으로 다룹니다.
 
-현장에서 겪은 사례를 업종 수준으로 옮기면 이렇습니다. 일부 Windows Agent를 업그레이드했더니 업그레이드한 Agent에서 온 이벤트만 그 시점부터 failure store로 들어가기 시작했습니다. Agent 상태는 정상으로 표시됐습니다. 새 Agent가 보낸 필드의 type이 기존 data stream의 mapping, 또는 설치된 integration pipeline의 기대와 맞지 않았던 경우입니다. Agent는 정상인데 데이터가 실패한다면 이 방향부터 봅니다.
+현장에서 겪은 사례입니다. 일부 Windows Agent를 업그레이드했더니 업그레이드한 Agent에서 온 이벤트만 그 시점부터 failure store로 들어가기 시작했습니다. Agent 상태는 정상으로 표시됐습니다. 새 Agent가 보낸 필드의 type이 기존 data stream의 mapping, 또는 설치된 integration pipeline의 기대와 맞지 않았던 경우입니다. Agent는 정상인데 데이터가 실패한다면 이 방향부터 봅니다.
 
 - integration 업그레이드는 검증 환경에서 먼저 하고, 업그레이드한 Agent 몇 대의 데이터로 failure store와 mapping 충돌을 확인한 뒤 넓힙니다.
 - 운영에서는 Agent policy 단위로 단계적으로 배포합니다. Fleet의 자동 업그레이드는 비율을 정해 단계적으로 올릴 수 있습니다(9.1부터, 구독 조건 있음)([Auto-upgrade agents](https://www.elastic.co/docs/reference/fleet/upgrade-elastic-agent#auto-upgrade-agents)).

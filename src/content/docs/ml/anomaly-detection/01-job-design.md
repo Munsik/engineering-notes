@@ -60,7 +60,7 @@ job을 만들고 나면 `analysis_config`(`bucket_span`, `detectors`, `influence
 Kibana의 wizard는 job을 쉽게 만들도록 도와주는 화면일 뿐이고, 결과물은 모두 같은 분석 엔진에 들어가는 job 설정입니다.
 API로 만들면 어떤 job이든 detector를 여러 개 둘 수 있습니다. wizard마다 다른 건 detector를 몇 개까지 허용하는지, split field를 어떻게 처리하는지입니다.
 
-| wizard | detector 수 | split field 처리 | 이럴 때 씁니다 |
+| wizard | detector 수 | split field 처리 | 쓰는 상황 |
 | --- | --- | --- | --- |
 | Single metric | 1개 | split 없음 | 핵심 KPI 하나가 튀거나 떨어지는 걸 볼 때. 처음 시작할 때 |
 | Multi-metric | 1개 이상 | split field 하나를 모든 detector에 `partition_field_name`으로 똑같이 넣음 | 같은 entity 기준으로 여러 지표를 함께 볼 때 |

@@ -27,7 +27,7 @@ sidebar:
 
 reindex from remote는 공식 문서가 "만날 가능성이 있는 거의 모든 버전의 Elasticsearch"와 동작하도록 만들었다고 설명합니다. 7.10보다 오래된 소스에서는 point in time을 쓰지 못하고 scroll로 읽습니다([Reindex from remote](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reindex-indices#reindex-remote-compatibility)). snapshot은 더 오래된 버전으로 복원할 수 없고, index가 대상 버전과 호환돼야 합니다. 7.17 index를 9.x에 넣으려면 archive 기능이나 searchable snapshot을 써야 합니다([Snapshot compatibility](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore#snapshot-restore-version-compatibility)).
 
-다른 플랫폼과는 snapshot 형식과 API가 갈라져 있어서 snapshot 복원과 reindex from remote를 그대로 쓸 수 있다고 기대하면 안 됩니다. 이 경우 Logstash의 `elasticsearch` input으로 읽어 Elasticsearch output으로 쓰거나, 소스에서 다시 수집하는 방법이 현실적입니다. Logstash input이 특정 플랫폼 버전을 읽을 수 있는지는 시험해서 확인합니다.
+다른 플랫폼과는 snapshot 형식과 API가 달라서 snapshot 복원과 reindex from remote를 그대로 쓸 수 있다고 기대하면 안 됩니다. 이 경우 Logstash의 `elasticsearch` input으로 읽어 Elasticsearch output으로 쓰거나, 소스에서 다시 수집하는 방법이 현실적입니다. Logstash input이 특정 플랫폼 버전을 읽을 수 있는지는 시험해서 확인합니다.
 
 ## 고르는 기준
 
@@ -43,7 +43,7 @@ flowchart TB
   E -- 예 --> I["reindex from remote"]
 ```
 
-- 이관을 계기로 mapping을 정리하고 싶다면 snapshot보다 reindex나 재수집이 맞습니다. snapshot은 소스의 문제까지 그대로 옮깁니다.
+- 이관을 계기로 mapping을 정리하고 싶다면 snapshot보다 reindex나 재수집이 적합합니다. snapshot은 소스의 문제까지 그대로 옮깁니다.
 - 보관 기간이 정해진 로그라면, 오래된 데이터는 옮기지 않고 소스 클러스터를 보관 기간 동안 읽기 전용으로 두는 선택도 있습니다. cross-cluster search로 함께 검색할 수 있는지는 버전 조건을 확인합니다([08의 함께 확인할 것](../08-major-upgrade/#함께-확인할-것)).
 - 대용량이라면 방식을 섞습니다. 최근 데이터는 재수집이나 reindex, 오래된 데이터는 snapshot이나 archive로 나눕니다.
 
@@ -97,7 +97,7 @@ GET _tasks?actions=*reindex&detailed=true
 
 ## 검증
 
-문서 수만 맞추고 끝내면 안 됩니다. 세 단계로 봅니다.
+문서 수만 맞추고 끝내면 안 됩니다. 네 단계로 확인합니다.
 
 | 단계 | 방법 | 기준 |
 | --- | --- | --- |
