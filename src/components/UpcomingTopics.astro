@@ -5,11 +5,17 @@
 import { getCollection } from 'astro:content';
 import { upcomingTopics } from '../site-upcoming.mjs';
 import { siteAreas } from '../site-areas.mjs';
+import { localizedId, t, toLocale } from '../lib/i18n.mjs';
 
+// 영어 홈에서는 site-upcoming.mjs의 en 문구를 쓰고, 영어 번역이 있는 컬렉션으로 링크합니다.
+const locale = toLocale(Astro.locals.starlightRoute.locale);
 const docs = await getCollection('docs');
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const indexOf = (dir: string) => docs.find((d) => d.id === dir || d.id === `${dir}/index`);
+const indexOf = (dir: string) => {
+	const id = localizedId(dir, locale);
+	return docs.find((d) => d.id === id || d.id === `${id}/index`);
+};
 const publishedAreas = siteAreas.filter(({ dir }) => {
 	const index = indexOf(dir);
 	return index && !(import.meta.env.PROD && index.data.draft);
@@ -18,15 +24,16 @@ const showArea = publishedAreas.length > 1;
 const axisLabel = (g: { area?: string; axis: string }) =>
 	showArea && g.area ? `${indexOf(g.area)?.data.title ?? g.area} · ${g.axis}` : g.axis;
 
-const groups = upcomingTopics.map((g) => {
-	if (!g.collection) return { ...g, axis: axisLabel(g), label: g.name, note: '새 컬렉션', href: undefined };
-	const index = docs.find((d) => d.id === g.collection || d.id === `${g.collection}/index`);
+const groups = upcomingTopics.map((source) => {
+	const g = locale === 'en' && source.en ? { ...source, ...source.en } : source;
+	if (!g.collection) return { ...g, axis: axisLabel(g), label: g.name, note: t(locale, 'upcomingNew'), href: undefined };
+	const index = indexOf(g.collection);
 	return {
 		...g,
 		axis: axisLabel(g),
 		label: index?.data.title ?? g.name ?? g.collection,
-		note: '기존 컬렉션에 추가',
-		href: `${base}/${g.collection}/`,
+		note: t(locale, 'upcomingExisting'),
+		href: index ? `${base}/${localizedId(g.collection, locale)}/` : undefined,
 	};
 });
 ---

@@ -20,15 +20,23 @@
 // - axis: 홈 카드 위에 붙는 문제 축 이름(ROADMAP의 괄호 안 이름)
 // - topic: 검색 결과에 보이는 <title> 뒤에 붙는 주제 이름. 글 제목만으로는 무슨 제품 이야기인지 모르므로
 //   제품과 주제를 함께 씁니다. 예: "Job 설계 | Elasticsearch ML anomaly detection"
+// - en: 영어 페이지에 쓰는 axis와 topic(src/lib/i18n.mjs). 이름과 설명은 영어 index.md에서 읽습니다.
+//
+// id 규칙: 아래 find* 함수는 언어를 뺀 기본 id(한국어 id)를 받습니다. 영어 페이지 id는 baseIdOf()로 먼저 바꿉니다.
 export const siteAreas = [
   {
     dir: 'elastic',
     collections: [
-      { dir: 'data', axis: '설계', topic: 'Elasticsearch 데이터 설계' },
-      { dir: 'ingest', axis: '수집', topic: 'Elastic 데이터 수집' },
-      { dir: 'operations', axis: '운영', topic: 'Elasticsearch 안정성 운영' },
-      { dir: 'change', axis: '변경 관리', topic: 'Elastic 변경 관리' },
-      { dir: 'ml/anomaly-detection', axis: '탐지와 알림', topic: 'Elasticsearch ML anomaly detection' },
+      { dir: 'data', axis: '설계', topic: 'Elasticsearch 데이터 설계', en: { axis: 'Design', topic: 'Elasticsearch data design' } },
+      { dir: 'ingest', axis: '수집', topic: 'Elastic 데이터 수집', en: { axis: 'Ingest', topic: 'Elastic data ingestion' } },
+      { dir: 'operations', axis: '운영', topic: 'Elasticsearch 안정성 운영', en: { axis: 'Operations', topic: 'Elasticsearch operations' } },
+      { dir: 'change', axis: '변경 관리', topic: 'Elastic 변경 관리', en: { axis: 'Change management', topic: 'Elastic change management' } },
+      {
+        dir: 'ml/anomaly-detection',
+        axis: '탐지와 알림',
+        topic: 'Elasticsearch ML anomaly detection',
+        en: { axis: 'Detection and alerting', topic: 'Elasticsearch ML anomaly detection' },
+      },
     ],
   },
   // 다음 영역 자리입니다. 주제가 정해지면 주석을 풀고 <dir>/index.md를 draft로 먼저 만듭니다.
@@ -45,6 +53,10 @@ export const siteExtras = [{ dir: 'about', label: 'About' }];
 export const siteCollections = siteAreas.flatMap((area) =>
   area.collections.map((collection) => ({ ...collection, area: area.dir })),
 );
+
+/** 컬렉션의 axis와 topic을 언어에 맞게 돌려줍니다. */
+export const collectionText = (collection, locale) =>
+  locale === 'en' && collection.en ? { axis: collection.en.axis, topic: collection.en.topic } : { axis: collection.axis, topic: collection.topic };
 
 // 페이지 id(예: 'ingest/03-no-gap-ingest', 'elastic')가 속한 영역과 컬렉션을 찾습니다.
 const inDir = (id, dir) => id === dir || id.startsWith(`${dir}/`);

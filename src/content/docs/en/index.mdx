@@ -1,0 +1,39 @@
+---
+title: Engineering Notes
+description: From a business problem to a production system. The design, implementation and operating decisions it takes, written down.
+template: splash
+translatedFrom: da98e87b83a16d1b31d76aafb958a5a81e48ef0b
+hero:
+  tagline: 'From a business problem to a production system:<br class="en-tagline-br" /> the design, implementation and operating decisions it takes.'
+  actions:
+    - text: Browse collections
+      link: '#collections'
+      icon: down-arrow
+    - text: How this site works
+      link: /engineering-notes/en/about/principles/
+      icon: document
+      variant: minimal
+---
+
+import AreaSections from '../../../components/AreaSections.astro';
+import UpcomingTopics from '../../../components/UpcomingTopics.astro';
+
+## Collections
+
+An area is a technology. A collection takes one business problem and works through it in a series of articles, in order. The tag on each card is the collection's subject. These pages are English translations of the Korean originals; collections that are not translated yet are listed on the [Korean home page](/engineering-notes/).
+
+<AreaSections />
+
+## Coming next
+
+Topics not published yet, in the order I plan to write them. Once published, they move into the collections above. Titles and scope may change while writing. New articles are announced in the [RSS feed](/engineering-notes/en/rss.xml).
+
+<UpcomingTopics />
+
+## What these articles contain
+
+Each article starts from a real business problem and, depending on the topic, covers three things:
+
+- **Design decisions and reasons**: why this setup and these settings, and how they compare with the alternatives
+- **How to apply it**: settings, APIs, queries and lab code you can follow as written
+- **How to run it**: what can go wrong in production, and how to verify and respond

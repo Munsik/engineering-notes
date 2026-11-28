@@ -4,7 +4,8 @@
 import { entryToMarkdown, indexId, siteSections, textResponse } from '../lib/agent-markdown.mjs';
 
 export async function getStaticPaths() {
-  const sections = await siteSections();
+  // 한국어와 영어 번역 모두. 영어는 /en/... 주소입니다.
+  const sections = [...(await siteSections('ko')), ...(await siteSections('en'))];
   return sections.flatMap((section) =>
     [section.index, ...section.articles]
       .filter((entry) => entry.filePath.endsWith('.md'))

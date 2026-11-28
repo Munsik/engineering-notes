@@ -12,13 +12,24 @@ import { gitDates } from './src/lib/git-dates.mjs';
 // 영역과 컬렉션 index.md의 frontmatter에서 title과 draft를 읽습니다.
 // sidebar 그룹 이름이 개요 페이지 제목과 항상 같도록 하기 위해서입니다.
 const isDev = process.argv.includes('dev');
+const readIndex = (dir) => {
+  try {
+    return readFileSync(new URL(`./src/content/docs/${dir}/index.md`, import.meta.url), 'utf8');
+  } catch {
+    return undefined;
+  }
+};
 const collectionIndex = (dir) => {
-  const text = readFileSync(new URL(`./src/content/docs/${dir}/index.md`, import.meta.url), 'utf8');
+  const text = readIndex(dir) ?? '';
   const frontmatter = text.split('---')[1] ?? '';
   const title = frontmatter.match(/^title:\s*(.+)$/m)?.[1].trim().replace(/^['"]|['"]$/g, '');
   const draft = /^draft:\s*true\s*$/m.test(frontmatter);
-  return { title, draft };
+  // 영어 번역이 있으면 영어 sidebar 그룹 이름으로 씁니다.
+  const enFront = (readIndex(`en/${dir}`) ?? '').split('---')[1] ?? '';
+  const enTitle = enFront.match(/^title:\s*(.+)$/m)?.[1].trim().replace(/^['"]|['"]$/g, '');
+  return { title, draft, enTitle };
 };
+const labelWith = (label, enTitle) => (enTitle ? { label, translations: { en: enTitle } } : { label });
 
 // sidebar 규칙
 // - 구조는 영역 > 컬렉션 > 글입니다(src/site-areas.mjs). 여기서는 영역마다 그룹 하나를 만듭니다.
@@ -28,16 +39,19 @@ const collectionIndex = (dir) => {
 //   그래서 영역과 컬렉션이 늘어도 sidebar 길이는 한 영역의 컬렉션 수만큼만 늘어납니다.
 // - 그룹 이름은 영역과 컬렉션 index.md의 title을 그대로 씁니다.
 const collectionGroup = (dir) => {
-  const { title, draft } = collectionIndex(dir);
-  return draft && !isDev ? undefined : { label: title, collapsed: true, items: [{ autogenerate: { directory: dir } }] };
+  const { title, draft, enTitle } = collectionIndex(dir);
+  return draft && !isDev ? undefined : { ...labelWith(title, enTitle), collapsed: true, items: [{ autogenerate: { directory: dir } }] };
 };
 const areaGroups = siteAreas
   .map(({ dir, collections }) => ({ dir, collections, ...collectionIndex(dir) }))
   .filter(({ draft }) => isDev || !draft)
-  .map(({ dir, title, collections }) => ({
-    label: title,
+  .map(({ dir, title, enTitle, collections }) => ({
+    ...labelWith(title, enTitle),
     collapsed: false,
-    items: [{ slug: dir, label: '영역 개요' }, ...collections.map((c) => collectionGroup(c.dir)).filter(Boolean)],
+    items: [
+      { slug: dir, label: '영역 개요', translations: { en: 'Area overview' } },
+      ...collections.map((c) => collectionGroup(c.dir)).filter(Boolean),
+    ],
   }));
 
 // sitemap의 lastmod. 페이지 URL과 원본 파일을 짝지어 git 마지막 수정 시점을 넣습니다.
@@ -70,6 +84,8 @@ export default defineConfig({
     // Starlight가 기본으로 넣는 sitemap 대신 lastmod를 넣은 sitemap을 씁니다.
     // 같은 이름의 integration이 있으면 Starlight는 자기 sitemap을 추가하지 않습니다.
     sitemap({
+      // 번역이 없는 영어 주소(한국어 내용의 fallback 페이지)는 sitemap에 넣지 않습니다.
+      filter: (page) => !page.startsWith(`${siteUrl}en/`) || lastmodByUrl.has(page),
       serialize(item) {
         const lastmod = lastmodByUrl.get(item.url);
         return lastmod ? { ...item, lastmod: lastmod.toISOString() } : item;
@@ -83,8 +99,10 @@ export default defineConfig({
       // 본문 이미지(Kibana 화면 캡처)를 누르면 크게 볼 수 있습니다.
       plugins: [starlightImageZoom()],
       description: '엔터프라이즈 환경에서 기술을 프로덕션에 올릴 때 필요한 판단 기준과 운영 경험',
+      // 한국어가 원본이고 루트에 있습니다. 영어 번역은 /en/ 아래에 둡니다(src/lib/i18n.mjs).
       locales: {
         root: { label: '한국어', lang: 'ko' },
+        en: { label: 'English', lang: 'en' },
       },
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/Munsik/engineering-notes' },
