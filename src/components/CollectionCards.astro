@@ -2,10 +2,12 @@
 // 컬렉션 카드 목록입니다. src/site-areas.mjs의 컬렉션을 순서대로 그립니다.
 // - area를 주면 그 영역의 컬렉션만 그립니다. 홈에서는 AreaSections가 영역마다 이 컴포넌트를 씁니다.
 // - 제목과 설명은 컬렉션 index.md의 title, description을, 글 수는 그 폴더의 공개된 글 수를 씁니다.
+// - 카드 아래에는 글 수와 그 컬렉션에서 가장 최근에 공개한 날짜를 보여 줍니다.
 // - 컬렉션을 추가하거나 글을 발행할 때 이 파일은 고치지 않습니다.
 import { getCollection } from 'astro:content';
 import { Icon } from '@astrojs/starlight/components';
 import { siteCollections } from '../site-areas.mjs';
+import { gitDates } from '../lib/git-dates.mjs';
 
 interface Props {
 	area?: string;
@@ -14,6 +16,8 @@ const { area } = Astro.props;
 
 const docs = await getCollection('docs');
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// 날짜는 한국 시간 기준 YYYY-MM-DD입니다.
+const ymd = (d: Date) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(d);
 const isIndex = (id: string, dir: string) => id === dir || id === `${dir}/index`;
 
 const cards = siteCollections
@@ -23,21 +27,34 @@ const cards = siteCollections
 		const articles = docs.filter(
 			(d) => d.id.startsWith(`${dir}/`) && !isIndex(d.id, dir) && !(import.meta.env.PROD && d.data.draft)
 		);
-		return { dir, axis, index, count: articles.length };
+		// 컬렉션 안에서 가장 최근에 공개한 글의 날짜(git에 처음 추가된 시점)입니다. 새 글이 어디에 생겼는지 보여 줍니다.
+		const latest = articles
+			.map((d) => gitDates(d.filePath).published)
+			.filter(Boolean)
+			.sort((a, b) => b - a)[0];
+		return { dir, axis, index, count: articles.length, latest };
 	})
 	.filter(({ index }) => index && !(import.meta.env.PROD && index.data.draft));
 ---
 
 <ul class="en-collections">
 	{
-		cards.map(({ dir, axis, index, count }) => (
+		cards.map(({ dir, axis, index, count, latest }) => (
 			<li>
 				<a class="en-collection" href={`${base}/${dir}/`}>
 					<span class="en-collection-axis">{axis}</span>
 					<span class="en-collection-title">{index!.data.title}</span>
 					<span class="en-collection-desc">{index!.data.description}</span>
 					<span class="en-collection-foot">
-						<span>글 {count}편</span>
+						<span>
+							글 {count}편
+							{latest && (
+								<>
+									{' · 최근 공개 '}
+									<time datetime={ymd(latest)}>{ymd(latest).replaceAll('-', '.')}</time>
+								</>
+							)}
+						</span>
 						<span class="en-collection-go">
 							컬렉션 보기
 							<Icon name="right-arrow" size="1rem" />
