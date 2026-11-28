@@ -98,6 +98,15 @@ GET _ingest/pipeline?filter_path=*.version,*._meta
 GET _ilm/policy?filter_path=*.version,*.modified_date
 ```
 
+이 요청들은 이럴 때 씁니다.
+
+| 상황 | 쓰는 요청 |
+| --- | --- |
+| 변경 창 직전, 바꾸기 전의 정의를 남겨 두고 싶다 | 대상 template, pipeline, policy를 GET해서 파일로 저장. 롤백 때 그대로 다시 PUT |
+| 월간 점검에서 Git과 운영이 같은지 확인한다 | 위 요청을 스크립트로 돌려 Git의 정의와 비교 |
+| 장애 대응 중에 누가 바꾼 설정이 남아 있는지 찾는다 | `GET _cluster/settings?flat_settings=true`. 기본값이 아닌 것만 나오므로 짧음 |
+| 이전 담당자가 Dev Tools에서 고친 template이 있는지 의심된다 | `version`과 `_meta`가 비어 있거나 Git과 다른 template을 찾음 |
+
 `version`은 사용자가 정하는 값이라 자동으로 오르지 않습니다(ILM policy의 `version`은 예외로, 수정할 때마다 Elasticsearch가 올립니다). 그래서 template과 pipeline을 Git에서 관리할 때는 PR마다 `version`을 올리고 `_meta`에 변경 근거(PR 번호, 담당 팀)를 적는 규칙을 둡니다. 그러면 위 요청만으로 운영에 적용된 정의가 Git의 어느 시점인지 알 수 있습니다.
 
 ```console

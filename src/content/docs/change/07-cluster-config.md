@@ -87,6 +87,8 @@ POST _cluster/voting_config_exclusions?node_names=master-01,master-02
 DELETE _cluster/voting_config_exclusions
 ```
 
+voting configuration exclusions는 이럴 때 씁니다. 데이터센터를 옮기면서 master 후보 세 대 중 두 대를 같은 날 새 장비로 바꿔야 할 때, 장애로 master 후보 두 대가 영구히 사라질 예정이라 미리 투표에서 빼야 할 때입니다. 한 대씩 빼는 일반 교체에는 필요 없습니다. Elasticsearch가 투표 구성을 자동으로 조정합니다.
+
 현재 투표 구성은 `GET _cluster/state?filter_path=metadata.cluster_coordination`으로 봅니다. 교체 중에는 master 교체가 일어나므로 [안정성 운영 07](../../operations/07-unstable-cluster/#master가-자주-바뀔-때)의 신호를 같이 봅니다.
 
 ## node role 변경
@@ -113,7 +115,7 @@ GET _ssl/certificates?filter_path=*.path,*.subject_dn,*.expiry
 | keystore 비밀번호도 바뀜 | 비밀번호가 secure settings에 있으므로 rolling restart가 필요합니다. 재시작 전에 파일을 다시 읽지 않도록 새 keystore는 다른 파일 이름으로 둡니다 |
 | CA 변경 | 새 CA를 먼저 모든 노드와 client의 신뢰 목록에 추가하고, 그다음 인증서를 바꾸고, 마지막에 이전 CA를 신뢰 목록에서 뺍니다. 단계마다 rolling restart가 필요합니다 |
 
-교체 뒤에는 `GET _ssl/certificates`로 새 인증서가 읽혔는지 확인합니다([Same CA](https://www.elastic.co/docs/deploy-manage/security/same-ca), [Different CA](https://www.elastic.co/docs/deploy-manage/security/different-ca)).
+`GET _ssl/certificates`는 이럴 때 씁니다. 분기 점검에서 모든 노드 인증서의 만료일을 모을 때, 인증서 파일을 바꾼 뒤 Elasticsearch가 새 파일을 실제로 읽었는지 볼 때, 노드마다 다른 인증서가 들어가 있지 않은지 확인할 때입니다. 교체 뒤에는 이 API로 새 인증서가 읽혔는지 확인합니다([Same CA](https://www.elastic.co/docs/deploy-manage/security/same-ca), [Different CA](https://www.elastic.co/docs/deploy-manage/security/different-ca)).
 
 Elasticsearch 인증서만 보면 안 됩니다. Kibana의 Elasticsearch 연결 설정, Fleet Server와 Agent, Logstash output, Beats, 애플리케이션의 신뢰 설정이 모두 같은 CA 변경의 영향을 받습니다. CA를 바꾸는 작업은 client 목록부터 만듭니다.
 
@@ -138,7 +140,7 @@ API로 바꾸는 cluster settings는 바로 반영됩니다. 변경 관리에서
 - `persistent`만 씁니다. `transient`는 deprecated이고, 재시작하면 사라져 원인 추적을 어렵게 합니다.
 - 값을 지울 때는 `null`을 넣습니다. 기본값으로 돌아갑니다.
 - 설정의 우선순위는 transient, persistent, `elasticsearch.yml`, 기본값 순입니다. `elasticsearch.yml`을 고쳤는데 반영되지 않으면 같은 설정이 persistent로 들어가 있지 않은지 봅니다.
-- 직접 바꾼 값 전체는 `GET _cluster/settings?flat_settings=true`로 보고, 기본값까지 보려면 `include_defaults=true`를 붙입니다.
+- 직접 바꾼 값 전체는 `GET _cluster/settings?flat_settings=true`로 보고, 기본값까지 보려면 `include_defaults=true`를 붙입니다. `include_defaults`는 "이 설정의 지금 값이 무엇인가"를 확인할 때 씁니다. 예를 들어 recovery 속도를 바꿀지 판단하기 전에 현재 `indices.recovery.max_bytes_per_sec`가 기본값인지, `elasticsearch.yml`에서 바꾼 값인지 볼 때입니다. 응답이 길므로 `filter_path`로 필요한 설정만 고릅니다.
 - 장애 중에 바꾼 설정(recovery 속도, allocation 제한 등)은 장애가 끝난 뒤 되돌리는 작업을 [장애 대응](../../operations/10-incident-runbook/) 기록에 남깁니다.
 
 이 설정들도 Git에 요청 파일로 두고 PR로 바꿉니다. 그러면 [01의 drift 확인](../01-change-map/#drift-확인)으로 원본과 실제를 비교할 수 있습니다.
@@ -167,6 +169,8 @@ GET _security/api_key?active_only=true&filter_path=api_keys.name,api_keys.expira
 ```console
 POST _snapshot/new-repo/_analyze?blob_count=100&max_blob_size=10mb&timeout=300s
 ```
+
+repository analysis는 이럴 때 씁니다. S3 호환 스토리지나 NAS를 처음 snapshot 저장소로 쓸 때, 스토리지 펌웨어나 게이트웨이를 바꾼 뒤, snapshot이 가끔 알 수 없는 이유로 실패할 때입니다. 공식 문서는 S3 호환이라고 해도 Elasticsearch가 요구하는 동작을 모두 지키지 않는 스토리지가 있다고 안내합니다. 분석은 저장소에 실제로 읽고 쓰는 부하를 주므로 업무 시간을 피하고, 운영 저장소라면 snapshot이 돌지 않는 시간에 합니다. `blob_count`, `max_blob_size`를 작게 시작해서 늘립니다.
 
 같은 저장소를 두 클러스터에서 동시에 쓰기 가능하게 등록하면 저장소가 손상될 수 있습니다. 다른 클러스터에서 읽어야 하면 `readonly: true`로 등록합니다. searchable snapshot이 쓰는 저장소는 이전 저장소를 지우면 frozen 데이터를 잃습니다([데이터 설계 05](../../data/05-tiers-and-retention/)). 교체 전에 searchable snapshot index가 어느 저장소를 쓰는지 확인합니다.
 

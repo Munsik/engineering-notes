@@ -142,6 +142,16 @@ GET logs-*::failures/_search
 GET _migration/deprecations
 ```
 
+각 요청은 이럴 때 씁니다.
+
+| 요청 | 이럴 때 쓴다 |
+| --- | --- |
+| `GET _health_report` | 상태가 GREEN이 아닐 때 원인과 조치까지 한 번에 보고 싶을 때. `_cluster/health`는 색과 shard 수만 알려 주고, health report는 디스크, shard 가용성, ILM, SLM, master 안정성 같은 지표별로 원인과 영향받는 index를 알려 줌 |
+| `GET _cluster/health?wait_for_status=green` | rolling restart나 노드 교체 중에 다음 단계로 넘어가도 되는지 스크립트에서 기다릴 때 |
+| `GET _migration/deprecations` | 마이너 업그레이드나 설정 변경 뒤, 다음 메이저에서 막힐 설정과 index가 새로 생겼는지 볼 때. 8.19에서는 9.x 업그레이드를 막는 critical 항목을 찾는 데 씀 |
+| `GET kbn:/api/task_manager/_health` | rule 실행이 늦거나 alert가 몇 분씩 늦게 올 때. task 적체와 처리량, Kibana 인스턴스별 상태가 나옴 |
+| `GET <data stream>::failures/_search` | 변경 뒤 적재가 일부만 실패하는지 볼 때. 수집기 쪽은 성공으로 보여도 문서가 failure store로 가 있을 수 있음 |
+
 failure store는 9.1에서 GA가 됐고, 9.2부터 `logs-*-*` 패턴의 새 data stream은 built-in `logs` template으로 failure store가 켜집니다([Failure store](https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store)). failure store가 켜져 있지 않은 data stream은 실패한 문서가 수집기 쪽에서 오류로 끝나므로, 수집기 로그와 출력 오류 지표를 같이 봅니다([수집 03](../../ingest/03-no-gap-ingest/)).
 
 ## 관찰 기간과 롤백 판단

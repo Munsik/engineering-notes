@@ -46,11 +46,12 @@ Kibana에는 화면에서 만든 것들이 쌓입니다. dashboard, data view, r
 
 import 옵션은 셋이고, 서로 함께 쓸 수 없는 조합이 있습니다.
 
-| 옵션 | 동작 | 쓰는 경우 |
+| 옵션 | 동작 | 이럴 때 쓴다 |
 | --- | --- | --- |
-| `overwrite=true` | 같은 ID가 있으면 덮어씀 | ID를 환경 간에 맞추는 운영 방식 |
-| `createNewCopies=true` | ID를 새로 만들고 origin을 초기화 | 한 번 복사해서 따로 쓰는 경우. `overwrite`, `compatibilityMode`와 함께 쓸 수 없음 |
-| `compatibilityMode=true` | 버전 간 호환을 위한 보정 | import 결과에 문제가 있을 때만 |
+| `overwrite=true` | 같은 ID가 있으면 덮어씀 | 개발 space에서 고친 Discover session을 운영에 반영할 때. ID가 같아서 운영의 dashboard 참조가 그대로 유지됨 |
+| `createNewCopies=true` | ID를 새로 만들고 origin을 초기화 | 팀마다 공용 템플릿 dashboard를 받아 각자 고쳐 쓰게 할 때. 원본과 연결이 끊긴 독립 복사본이 필요할 때. `overwrite`, `compatibilityMode`와 함께 쓸 수 없음 |
+| `compatibilityMode=true` | 버전 간 호환을 위한 보정 | 이전 마이너에서 export한 파일을 import했더니 객체가 열리지 않는 등 문제가 있을 때만 |
+| 아무 옵션 없음 | 같은 ID가 있으면 충돌 오류 | 대상 환경에 같은 객체가 이미 있는지 먼저 확인하고 싶을 때. 충돌 목록을 보고 `_resolve_import_errors`로 객체별로 처리 |
 
 space 사이로 복사하는 `POST /api/spaces/_copy_saved_objects`는 `createNewCopies`의 기본값이 `true`입니다([Copy saved objects between spaces](https://www.elastic.co/docs/api/kibana/operation/operation-post-spaces-copy-saved-objects)). 기본값 그대로 복사하면 ID가 새로 생겨서, 같은 ID로 관리하려던 계획이 깨집니다. ID를 유지하려면 `createNewCopies: false`와 `overwrite: true`를 명시합니다.
 

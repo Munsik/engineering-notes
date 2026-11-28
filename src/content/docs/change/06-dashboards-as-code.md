@@ -115,6 +115,15 @@ UI에서는 dashboard의 **Export** 메뉴에서 **Export JSON**을 고르면 AP
 
 ### deploy
 
+만드는 API는 둘입니다.
+
+| API | ID | 이럴 때 쓴다 |
+| --- | --- | --- |
+| `POST /api/dashboards` | Kibana가 새로 만듦. 호출할 때마다 새 dashboard | 공용 템플릿에서 팀별 dashboard를 한 번 찍어 내고 이후는 각 팀이 UI로 관리할 때 |
+| `PUT /api/dashboards/{id}` | 요청한 ID. 없으면 만들고 있으면 바꿈 | Git에서 관리하는 dashboard를 환경마다 같은 ID로 배포할 때. CI/CD는 항상 이쪽 |
+
+CI/CD에서 `POST`를 쓰면 배포할 때마다 같은 dashboard가 하나씩 늘어납니다.
+
 `PUT /api/dashboards/{id}`는 없으면 만들고 있으면 통째로 바꿉니다. 요청에 없는 패널은 지워집니다([Upsert a dashboard](https://www.elastic.co/docs/api/kibana/operation/operation-upsert-dashboard)). 일부만 바꾸는 요청은 없으니, 항상 Git의 전체 정의를 보냅니다.
 
 ```bash

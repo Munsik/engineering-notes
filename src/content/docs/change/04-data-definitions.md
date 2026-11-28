@@ -11,7 +11,7 @@ template을 고쳤는데 데이터는 그대로입니다. 반대로 pipeline 하
 
 :::note[기준]
 - Elasticsearch 9.5.x 기준입니다. 공식 문서와 API reference는 2026년 11월에 다시 확인했습니다.
-- `_ingest/_simulate`(simulate ingest API)는 Elasticsearch REST API spec에서 experimental로 표시돼 있습니다.
+- 이름이 비슷한 simulate API가 둘 있습니다. `POST _ingest/pipeline/_simulate`(simulate pipeline API)는 5.0부터 GA이고, `POST _ingest/_simulate`(simulate ingest API)는 8.12에 들어온 experimental API입니다. 차이는 [pipeline simulate API 두 가지](#pipeline-simulate-api-두-가지)에 정리했습니다.
 - 명령 모음은 [`labs/change/data-definitions.console`](https://github.com/Munsik/engineering-notes/blob/main/labs/change/data-definitions.console)에 있습니다.
 :::
 
@@ -40,14 +40,82 @@ GET logs-app-default/_mapping
 
 ## 적용 전에 확인하는 API
 
-| 확인할 것 | API | 비고 |
+| 확인할 것 | API | 상태 |
 | --- | --- | --- |
-| 새 index에 어떤 template이 이기고, 결과 설정과 mapping이 무엇인지 | `POST _index_template/_simulate_index/<index>` | 우선순위 경쟁 확인 |
-| 아직 저장하지 않은 template의 결과 | `POST _index_template/_simulate` (본문에 template 정의) | 저장 전 검증 |
-| pipeline 하나의 처리 결과 | `POST _ingest/pipeline/<id>/_simulate` 또는 본문에 pipeline 정의 | 단일 pipeline 개발 |
-| default pipeline, final pipeline, reroute까지 포함한 실제 흐름과 mapping 검증 | `POST _ingest/_simulate` | experimental. template과 pipeline을 대체 정의로 바꿔서 시험 가능 |
+| 새 index에 어떤 template이 이기고, 결과 설정과 mapping이 무엇인지 | `POST _index_template/_simulate_index/<index>` | GA |
+| 아직 저장하지 않은 template, 또는 저장된 template 하나의 결과 | `POST _index_template/_simulate`, `POST _index_template/_simulate/<template>` | GA |
+| pipeline 하나의 처리 결과와 processor별 변화 | `POST _ingest/pipeline/_simulate`, `POST _ingest/pipeline/<id>/_simulate` | GA(5.0부터) |
+| index에 실제로 넣을 때의 전체 흐름(default, final pipeline, reroute)과 mapping 검증 | `POST _ingest/_simulate`, `POST _ingest/<index>/_simulate` | experimental(8.12부터) |
 
-`_ingest/_simulate`가 가장 쓸모 있습니다. 대상 index의 default pipeline과 final pipeline을 실제처럼 실행하고, reroute processor가 있으면 따라가고, 결과 문서를 적용될 mapping으로 검증해서 오류를 알려 줍니다. 아직 저장하지 않은 pipeline이나 component template, index template을 대체 정의로 넣어서 시험할 수 있습니다([Simulate data ingestion](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-simulate-ingest)).
+### template simulate API 두 가지
+
+| API | 입력 | 답하는 질문 | 이럴 때 쓴다 |
+| --- | --- | --- | --- |
+| `_simulate_index/<index>` | index 이름 | "이 이름으로 index가 만들어지면 어떤 template이 이기고 결과가 무엇인가" | `logs-*` 같은 넓은 패턴의 template을 새로 만들기 전에, 기존 integration data stream 이름을 넣어 우선순위 경쟁에서 무엇이 이기는지 확인할 때. 겹치는 template이 있으면 응답의 `overlapping`에 나옴 |
+| `_simulate` (본문에 정의) | 저장하지 않은 template 정의 | "이 template을 저장하면 결과 mapping과 설정이 무엇인가" | PR에 올라온 template 변경을 CI에서 검증할 때. component template이 합쳐진 최종 mapping을 리뷰어에게 보여 줄 때 |
+
+```console
+# PR의 template 정의를 저장하지 않고 결과만 확인
+POST _index_template/_simulate
+{
+  "index_patterns": ["logs-app-*"],
+  "priority": 50,
+  "composed_of": ["logs@mappings", "logs@settings", "app-logs-mappings"],
+  "data_stream": {}
+}
+```
+
+### pipeline simulate API 두 가지
+
+이름이 거의 같아서 자주 헷갈립니다. 경로에 `pipeline`이 들어가면 pipeline 하나를 시험하는 GA API이고, 들어가지 않으면 index에 넣는 과정 전체를 시험하는 experimental API입니다. Elasticsearch 명세에서 simulate pipeline API는 `stack since=5.0.0 stability=stable`, simulate ingest API는 `stack since=8.12.0 stability=experimental`로 표시돼 있습니다([elasticsearch-specification](https://github.com/elastic/elasticsearch-specification)).
+
+| | simulate pipeline API | simulate ingest API |
+| --- | --- | --- |
+| 경로 | `POST _ingest/pipeline/_simulate`, `POST _ingest/pipeline/<id>/_simulate` | `POST _ingest/_simulate`, `POST _ingest/<index>/_simulate` |
+| 상태 | GA | experimental. 바뀌거나 없어질 수 있고 GA의 지원 SLA 대상이 아님 |
+| 실행하는 것 | 지정한 pipeline 하나(그 안의 `pipeline` processor가 부르는 pipeline 포함) | 대상 index의 default pipeline과 final pipeline. reroute processor가 있으면 새 index의 pipeline까지 |
+| 대상 index의 설정 | 보지 않음 | 봄. index 이름으로 default pipeline, final pipeline, mapping을 찾음 |
+| mapping 검증 | 하지 않음 | 결과 문서를 적용될 mapping으로 검증해서 오류를 문서마다 표시 |
+| 대체 정의 | 본문에 pipeline 하나 | `pipeline_substitutions`, `component_template_substitutions`, `index_template_substitutions`, `mapping_addition` |
+| processor별 결과 | `verbose=true`로 processor마다 문서 변화 표시 | 없음. 실행된 pipeline 목록(`executed_pipelines`)만 |
+| 저장 | 하지 않음 | 하지 않음 |
+
+공식 설명도 같은 구분을 합니다. simulate pipeline API는 pipeline 하나를 개발할 때, simulate ingest API는 index에 넣을 때 적용되는 여러 pipeline의 상호작용을 문제 해결할 때 더 맞는다고 적혀 있습니다([Simulate data ingestion](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-simulate-ingest), [Simulate a pipeline](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-ingest-simulate)).
+
+이럴 때 쓴다.
+
+| 상황 | 쓸 API | 이유 |
+| --- | --- | --- |
+| `@custom` pipeline에 grok processor를 추가하면서 패턴이 맞는지 보고 싶다 | simulate pipeline, `verbose=true` | processor마다 문서가 어떻게 바뀌는지 보여서 어느 단계에서 틀렸는지 바로 보임 |
+| CI에서 pipeline 변경을 막는 필수 테스트를 만들고 싶다 | simulate pipeline | GA라 응답 형식이 안정적이고, 기대 결과와 비교하는 테스트로 고정하기 좋음 |
+| pipeline을 고쳤더니 문서가 failure store로 간다. pipeline 단독으로는 문제가 없었다 | simulate ingest | final pipeline이나 integration pipeline과의 순서 문제, 결과 필드와 mapping의 type 충돌은 index 단위로 돌려야 보임 |
+| `logs-app-default`에 type을 바꾼 component template과 새 pipeline을 같이 배포하려 한다 | simulate ingest와 `component_template_substitutions`, `pipeline_substitutions` | 두 변경을 저장하지 않고 함께 넣었을 때 실제 문서가 mapping 검증을 통과하는지 한 번에 확인 |
+| reroute processor로 dataset을 나누는 pipeline을 만들었다 | simulate ingest | 문서가 최종적으로 어느 index로 가는지(`_index`)와 거기서 실행된 pipeline이 응답에 나옴 |
+| Agent나 integration 업그레이드 전에 새 버전 Agent가 보낼 문서를 미리 시험하고 싶다 | simulate ingest | 실제 data stream 이름으로 넣어 현재 mapping과 충돌하는지 확인 |
+
+CI에 넣는다면 두 단계로 나눕니다. simulate pipeline API로 만든 테스트는 실패하면 배포를 막는 필수 단계로 두고, simulate ingest API로 만든 테스트는 실패하면 경고를 남기는 단계로 둡니다. experimental API는 버전이 바뀌면 요청이나 응답 형식이 달라질 수 있어서, 필수 단계로 두면 업그레이드 뒤 파이프라인이 이유 없이 깨질 수 있기 때문입니다.
+
+simulate pipeline API의 예입니다. 본문에 pipeline 정의를 넣으면 저장하지 않은 pipeline을 시험할 수 있습니다.
+
+```console
+POST _ingest/pipeline/_simulate?verbose=true
+{
+  "pipeline": {
+    "processors": [
+      { "gsub": { "tag": "strip-ms", "field": "http.response.time", "pattern": "ms$", "replacement": "" } },
+      { "convert": { "tag": "to-long", "field": "http.response.time", "type": "long" } }
+    ]
+  },
+  "docs": [
+    { "_source": { "http": { "response": { "time": "35ms" } } } },
+    { "_source": { "http": { "response": { "time": "-" } } } }
+  ]
+}
+```
+
+두 번째 문서처럼 값이 `-`인 경우 `convert`가 실패하는 것이 `verbose` 결과에서 `to-long` tag와 함께 보입니다. 운영 로그에서 자주 나오는 예외 값을 표본에 꼭 넣습니다.
+
+simulate ingest API의 예입니다. 실제 index 이름으로 넣고, 아직 저장하지 않은 pipeline과 component template을 대체 정의로 줍니다.
 
 ```console
 POST _ingest/_simulate
@@ -65,8 +133,8 @@ POST _ingest/_simulate
   "pipeline_substitutions": {
     "logs@custom": {
       "processors": [
-        { "gsub": { "field": "http.response.time", "pattern": "ms$", "replacement": "" } },
-        { "convert": { "field": "http.response.time", "type": "long" } }
+        { "gsub": { "tag": "strip-ms", "field": "http.response.time", "pattern": "ms$", "replacement": "" } },
+        { "convert": { "tag": "to-long", "field": "http.response.time", "type": "long" } }
       ]
     }
   },
@@ -84,7 +152,18 @@ POST _ingest/_simulate
 }
 ```
 
-응답에 처리된 문서, 실행된 pipeline 목록, 저장될 index 이름이 나오고, mapping과 맞지 않으면 그 오류가 문서마다 붙습니다. 운영에서 실제로 들어오는 문서 몇 건을 표본으로 넣어 CI에서 돌리면, pipeline이나 template 변경으로 적재가 깨지는 것을 배포 전에 잡을 수 있습니다. experimental API이므로 CI 단계는 실패해도 배포를 막지 않는 경고로 시작하는 편이 안전합니다.
+응답에는 처리된 문서, 실행된 pipeline 목록, 저장될 index 이름이 나오고, mapping과 맞지 않으면 그 오류가 문서마다 붙습니다. 같은 문서로 `component_template_substitutions`를 넣은 요청과 뺀 요청을 각각 돌리면, 새 mapping에서 통과하는지와 아직 rollover되지 않은 현재 mapping에서 통과하는지를 따로 볼 수 있습니다. 배포 순서(template 먼저, pipeline 나중)를 정할 때 이 비교가 근거가 됩니다.
+
+### data stream override API와 template 수정
+
+template을 고치지 않고 data stream 하나에만 mapping이나 설정을 덮어쓰는 API가 있습니다. 둘 다 GA입니다.
+
+| API | 반영 | 이럴 때 쓴다 |
+| --- | --- | --- |
+| `PUT _data_stream/<name>/_mappings` | 다음 rollover로 만들어지는 write index | 여러 data stream이 같이 쓰는 template은 그대로 두고, 특정 data stream 하나에만 필드를 추가해야 할 때 |
+| `PUT _data_stream/<name>/_settings` | 허용된 설정은 모든 backing index에 바로, 아니면 다음 rollover | 한 data stream만 적재량이 급증해서 다음 backing index의 shard 수를 늘리거나 `index.mapping.total_fields.limit`을 올려야 할 때 |
+
+override는 template보다 우선하고, template만 보는 사람에게는 보이지 않습니다. 임시 조치로 쓰고, 계속 필요하면 `<data stream>@custom` component template으로 옮겨 Git에서 관리합니다. 남아 있는 override는 `GET _data_stream/<name>/_mappings`, `GET _data_stream/<name>/_settings`로 확인합니다.
 
 ## 깨지는 변경과 깨지지 않는 변경
 
@@ -113,13 +192,20 @@ data stream에서 type을 바꾸면 이전 backing index와 새 backing index의
 | rollover 후 이전 데이터 보관 기간이 지나길 기다림 | template 변경, rollover, 이전 backing index가 ILM으로 지워질 때까지 혼재 | 혼재 기간의 검색 오류 |
 | reindex | 새 data stream으로 reindex 후 전환 | reindex 시간과 부하, 디스크 2배 |
 
-reindex는 [reindex data stream API](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reindex-data-stream)와 일반 reindex의 차이를 확인하고 고릅니다. reindex data stream API는 주로 업그레이드 호환성을 위해 이전 버전에서 만든 backing index를 다시 만드는 용도입니다.
+reindex는 일반 `_reindex`로 새 data stream에 넣습니다. 이름이 비슷한 reindex data stream API(`POST _migration/reindex`)는 mapping 변경용이 아닙니다.
+
+| API | 하는 일 | 이럴 때 쓴다 |
+| --- | --- | --- |
+| `POST _reindex` | 원본 문서를 대상 index나 data stream의 현재 mapping으로 다시 색인 | type 변경, analyzer 변경, 필드 정리처럼 mapping을 바꿔야 할 때 |
+| `POST _migration/reindex` (reindex data stream API) | 이전 메이저에서 만든 backing index를 같은 설정과 mapping으로 새로 만들어 교체 | 8.x에서 9.x로 가기 전에 7.x에서 만든 backing index를 정리할 때. Upgrade Assistant가 쓰는 API이고 공식 문서도 Upgrade Assistant를 쓰라고 권함 |
+
+reindex data stream API는 원래 backing index의 설정과 mapping을 그대로 복사합니다([Reindex data stream API](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reindex-data-stream)). type을 바꾸는 데 쓰면 아무것도 바뀌지 않습니다.
 
 ## ingest pipeline 변경
 
 pipeline은 저장하는 순간 다음 요청부터 적용됩니다. 되돌리기는 쉽지만, 잘못된 pipeline으로 처리된 문서는 그대로 남습니다.
 
-- 배포 전에 `_ingest/_simulate`로 운영 표본 문서를 돌립니다.
+- 배포 전에 simulate pipeline API로 processor 단위를 확인하고, simulate ingest API로 실제 index에 넣는 흐름과 mapping 충돌을 확인합니다([pipeline simulate API 두 가지](#pipeline-simulate-api-두-가지)).
 - 모든 processor에 `tag`를 붙이면 실패한 문서의 오류 정보에서 어느 processor가 실패했는지 바로 보입니다.
 - failure store가 켜져 있으면 pipeline이 실패한 문서는 failure store로 갑니다. 고친 뒤에 다시 넣을 수 있습니다([수집 03](../../ingest/03-no-gap-ingest/)).
 - `on_failure`로 실패를 삼키면 데이터는 들어가지만 문제가 숨습니다. 실패 사실을 필드로 남기는 것까지 하고, 그 필드를 alert로 봅니다.
