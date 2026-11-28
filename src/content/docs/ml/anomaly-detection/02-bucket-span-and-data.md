@@ -8,7 +8,7 @@ sidebar:
 
 bucket span은 탐지 해상도와 alert가 올 수 있는 가장 빠른 시점을 함께 정하고, job을 만든 뒤에는 바꿀 수 없습니다.
 데이터 준비가 덜 된 채 시작하면 학습 초반의 결과와 늦게 들어온 데이터 때문에 오탐이 쌓이고, 운영팀이 alert를 믿지 않게 됩니다.
-이 장은 bucket span을 고르는 기준과, 학습을 시작하기 전에 데이터 쪽에서 해 둘 일을 다룹니다.
+bucket span을 고르는 기준과 학습을 시작하기 전에 데이터 쪽에서 해 둘 일을 봅니다.
 
 :::note[기준]
 Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다. 제공 job의 bucket span은 GitHub elastic/kibana main 브랜치의 설정을 봤습니다.

@@ -7,7 +7,7 @@ sidebar:
 ---
 
 job 설계는 대부분 되돌릴 수 없습니다. detector 구성과 bucket span은 job을 만든 뒤에는 바꿀 수 없어서, 처음에 잘못 정하면 job을 다시 만들고 학습 기간을 처음부터 기다려야 합니다.
-이 장은 그 전에 정해야 할 것들을 다룹니다. 그보다 먼저, anomaly detection이 이 문제에 맞는 도구인지부터 따져 봅니다.
+그래서 만들기 전에 정할 것들을 차례로 봅니다. 그보다 먼저 anomaly detection이 이 문제에 맞는 도구인지부터 따져 봅니다.
 
 :::note[기준]
 Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다시 확인했습니다.
@@ -20,7 +20,7 @@ Elasticsearch, Kibana 9.x 기준입니다. 공식 문서는 2026년 11월에 다
 여기에 하나를 더 따져 봐야 합니다. 같은 문제를 고정 임계값 rule이나 SLO로 더 단순하게 풀 수 있는지입니다.
 아래 표는 공식 문서의 기준이 아니라 제가 현장에서 쓰는 판단 기준입니다.
 
-| 상황 | 더 맞는 방법 | 이유 |
+| 상황 | 더 적합한 방법 | 이유 |
 | --- | --- | --- |
 | 정상 범위를 숫자로 정할 수 있다(디스크 사용률 90% 이상, 인증서 만료 7일 전) | 임계값 rule | 기준이 분명하면 학습이 필요 없고, 왜 울렸는지 설명하기도 쉽습니다. |
 | 규정이나 계약으로 정해진 기준이 있다 | 임계값 rule | 감사나 보고에서 "어떤 기준으로 탐지했는가"에 고정값으로 답해야 합니다. anomaly score는 job이 지금까지 본 이상들 사이의 상대값이라 이 용도에 맞지 않습니다([04](../04-reading-results/#score가-정해지는-방식)). |
@@ -134,9 +134,9 @@ API 문서는 `over_field_name`이 있는 job에 forecast를 요청하면 에러
 | forecast가 필요한 지표와 population 분석을 같이 하고 싶을 때 | job을 나누는 편이 깔끔합니다. 한 job에 두면 population detector만 빠진 forecast가 만들어져서, 무엇이 예측됐는지 헷갈리기 쉽습니다. |
 | 데이터 소스(index)나 필터 조건이 다를 때 | job을 나눕니다. datafeed는 job당 하나뿐입니다. |
 | alert를 받는 팀이나 심각도 기준이 다를 때 | job을 나누거나 job group으로 묶어 관리합니다. |
+| split field의 cardinality가 아주 클 때 | population을 검토하거나, datafeed query로 범위를 나눠 job을 쪼갭니다. |
 
 여러 영역의 job을 이 기준으로 나누고 group으로 다시 묶은 예는 [09장 결정 기록](../09-manufacturing-aiops/#결정-기록)에 있습니다.
-| split field의 cardinality가 아주 클 때 | population을 검토하거나, datafeed query로 범위를 나눠 job을 쪼갭니다. |
 
 :::tip
 `function`, `field_name`, `by`, `over`, `partition` 조합이 똑같은 detector를 한 job에 두 번 넣으면 job이 만들어지지 않습니다.
